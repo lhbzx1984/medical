@@ -176,6 +176,18 @@ export class SupabaseStore implements DataStore {
     };
   }
 
+  async addLearningAttempt(organId: string, kind: string, answer: string, correct: boolean): Promise<void> {
+    const { error } = await this.tbl("learning_attempts").insert({ organ_id: organId, question_type: kind, answer, correct });
+    if (error) throw new Error(`保存练习记录失败: ${error.message}`);
+  }
+
+  async listLearningAttempts() {
+    const { data, error } = await this.tbl("learning_attempts").select("organ_id,question_type,answer,correct,created_at")
+      .order("created_at", { ascending: false }).limit(200);
+    if (error) throw new Error(`加载练习记录失败: ${error.message}`);
+    return data ?? [];
+  }
+
   async setFinalized(planId: string, expectedUpdatedAt: string, version: number, finalized: boolean): Promise<void> {
     const { error } = await this.sb.rpc("medplan_set_finalized", {
       p_plan_id: planId, p_expected_updated_at: expectedUpdatedAt, p_version: version, p_finalized: finalized,

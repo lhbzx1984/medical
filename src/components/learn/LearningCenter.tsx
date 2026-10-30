@@ -8,6 +8,7 @@ import { useCallback, useMemo, useState } from "react";
 import { ORGAN_LIST, ORGANS } from "@/lib/organ-models";
 import type { OrganId } from "@/lib/types";
 import type { StructureInfo } from "@/components/atlas/AtlasViewer";
+import OrganQuiz from "./OrganQuiz";
 
 const Anatomy2D = dynamic(() => import("./Anatomy2D"), {
   ssr: false,
@@ -29,6 +30,7 @@ type ViewMode = "overview" | "organ" | "atlas";
 
 export default function LearningCenter() {
   const [mode, setMode] = useState<ViewMode>("overview");
+  const [quizOrgan, setQuizOrgan] = useState<OrganId | null>(null);
   const [organId, setOrganId] = useState<OrganId>("heart");
   /** 概览中选中的器官（null = 外皮实体状态） */
   const [selectedId, setSelectedId] = useState<OrganId | null>(null);
@@ -75,6 +77,7 @@ export default function LearningCenter() {
 
   return (
     <div className="mx-auto flex h-[calc(100vh-56px-49px)] max-w-[1720px] gap-3 p-3">
+      {quizOrgan && <OrganQuiz key={quizOrgan} organId={quizOrgan} onClose={() => setQuizOrgan(null)} />}
       {/* 左侧：模式与器官选择 */}
       <aside className="panel hidden w-56 shrink-0 flex-col overflow-y-auto p-3 md:flex">
         <div className="mb-3">
@@ -168,6 +171,7 @@ export default function LearningCenter() {
                 ? `器官特写 · ${organ.nameZh}（${organ.nameEn}）`
                 : "全身概览 · 点击文字标注查看器官"}
           </span>
+          {(mode === "organ" || (mode === "overview" && selectedId)) && <button className="btn ml-auto !py-1 !text-xs" onClick={() => setQuizOrgan(mode === "organ" ? organId : selectedId)}>学习自测</button>}
           <span className="chip ml-auto hidden sm:inline-flex">
             {mode === "atlas" ? "BodyParts3D 4.0 · 15 系统" : `${organ.system}`}
           </span>

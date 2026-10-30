@@ -47,6 +47,7 @@
 - **器官特写**：脑 / 眼球 / 心脏 / 肺 / 肝 / 胰 / 肾 / 肠 / 皮肤组织 / 子宫附件（女性），360° 观察
 - **精细人体图谱**：BodyParts3D 4.0 的 **2,234 个可选择结构**，15 大解剖系统过滤、
   按名称/概念搜索、爆炸视图、点击查看结构详情（GPU 逐结构控制，15 个 draw call）
+- **学习自测**：对当前选中的器官练习系统归属和英文名称，按账号保存最近答题及错题记录
 - **AI 医学导师**（agnes-2.5-flash 流式对话）：问答自动关联当前浏览的 3D 结构
 - **教学插图生成**：agnes-image-2.5-flash 一键生成当前器官的教学插图
 
@@ -104,7 +105,8 @@ KNOWLEDGE_RETRIEVER=keyword
 [`202610300005_edit_case.sql`](supabase/migrations/202610300005_edit_case.sql) 和
 [`202610300006_archive_cases.sql`](supabase/migrations/202610300006_archive_cases.sql) 和
 [`202610300007_finalize_plan.sql`](supabase/migrations/202610300007_finalize_plan.sql) 和
-[`202610300008_knowledge_sources.sql`](supabase/migrations/202610300008_knowledge_sources.sql)。
+[`202610300008_knowledge_sources.sql`](supabase/migrations/202610300008_knowledge_sources.sql) 和
+[`202610300009_learning_quiz.sql`](supabase/migrations/202610300009_learning_quiz.sql)。
 
 在 Supabase Auth 中关闭公开注册，由管理员创建用户，用户通过 `/login` 登录。旧病历的 `owner_id` 默认为空，
 任何普通用户都无法访问；管理员须核实后在数据库中将每条 `patients.owner_id` 分配给对应的
