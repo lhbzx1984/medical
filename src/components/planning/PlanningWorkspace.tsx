@@ -142,6 +142,23 @@ export default function PlanningWorkspace() {
     finally { setBusy(null); }
   };
 
+  const setFinalized = async () => {
+    if (!detail || !currentVersion) return;
+    const finalized = detail.plan.status !== "finalized";
+    setBusy(finalized ? "定稿中…" : "撤销定稿中…"); setError(null);
+    try {
+      const res = await fetch(`/api/plans/${detail.plan.id}/finalize`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ finalized, version: detail.plan.currentVersion, expectedUpdatedAt: detail.plan.updatedAt }),
+      });
+      const data = await res.json() as { error?: string };
+      if (!res.ok) throw new Error(data.error ?? "操作失败");
+      await selectPlan(detail.plan.id);
+      await loadPlans();
+    } catch (e) { setError(e instanceof Error ? e.message : "操作失败"); }
+    finally { setBusy(null); }
+  };
+
   const setArchived = async () => {
     if (!detail) return;
     const archived = !detail.plan.archivedAt;
@@ -345,13 +362,14 @@ export default function PlanningWorkspace() {
                   </div>
                 </div>
                 <div className="ml-auto flex items-center gap-2">
-                  <button className="btn !py-1 !text-[12px]" disabled={!!busy} onClick={() => setEditing(true)}>编辑病例</button>
+                  <button className="btn !py-1 !text-[12px]" disabled={!!busy || detail.plan.status === "finalized"} onClick={() => setEditing(true)}>编辑病例</button>
+                  {detail.versions.length > 0 && <button className="btn !py-1 !text-[12px]" disabled={!!busy || (detail.plan.status !== "finalized" && currentVersion?.version !== detail.plan.currentVersion)} onClick={() => void setFinalized()}>{detail.plan.status === "finalized" ? "撤销定稿" : "确认定稿"}</button>}
                   <button className="btn !py-1 !text-[12px]" disabled={!!busy} onClick={() => void setArchived()}>{detail.plan.archivedAt ? "恢复病例" : "归档病例"}</button>
                   {detail.versions.length === 0 ? (
                     <button
                       className="btn btn-primary"
                       onClick={() => void generate()}
-                      disabled={!!busy}
+                      disabled={!!busy || detail.plan.status === "finalized"}
                     >
                       ✨ AI 生成手术规划
                     </button>
@@ -378,7 +396,7 @@ export default function PlanningWorkspace() {
                       <button
                         className="btn !py-1 !text-[12px]"
                         onClick={() => void generate()}
-                        disabled={!!busy}
+                        disabled={!!busy || detail.plan.status === "finalized"}
                         title="AI 重新生成（知识库增强）"
                       >
                         ↻ 重新生成
@@ -423,6 +441,7 @@ export default function PlanningWorkspace() {
 
             {/* 内容区 */}
             <div className="min-h-0 flex-1 overflow-y-auto pr-0.5">
+              {detail.plan.status === "finalized" && <p className="panel mb-3 p-3 text-sm">已定稿{detail.plan.finalizedVersion ? `：v${detail.plan.finalizedVersion}` : ""}。如需修改，请先撤销定稿。</p>}
               {error && (
                 <div className="panel mb-3 border-red-900/60 bg-[#2a1215] px-4 py-2.5 text-[13px] text-red-200">
                   {error}
@@ -516,7 +535,7 @@ export default function PlanningWorkspace() {
                       <button
                         className="btn btn-primary"
                         onClick={submitFeedback}
-                        disabled={!comment.trim() || !!busy || !currentVersion || currentVersion.version !== detail.plan.currentVersion}
+                        disabled={!comment.trim() || !!busy || !currentVersion || currentVersion.version !== detail.plan.currentVersion || detail.plan.status === "finalized"}
                       >
                         {busy ?? "提交反馈并由 AI 修订方案"}
                       </button>

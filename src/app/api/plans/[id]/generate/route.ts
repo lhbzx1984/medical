@@ -61,6 +61,7 @@ export async function POST(
   if (!store) return Response.json({ error: "请先登录" }, { status: 401 });
   const detail = await store.getPlanDetail(planId);
   if (!detail) return Response.json({ error: "未找到该手术规划" }, { status: 404 });
+  if (detail.plan.status === "finalized") return Response.json({ error: "方案已定稿，请先撤销定稿" }, { status: 409 });
   if (!agnesConfigured()) {
     return Response.json(
       { error: "AGNES_API_KEY 未配置：请在 .env.local 中设置后重启服务" },

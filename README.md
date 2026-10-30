@@ -37,6 +37,7 @@
 - 病例列表支持按患者姓名或方案名称搜索、按方案状态筛选，可编辑病例资料及归档和恢复病例；编辑前的资料保存在数据库历史记录中
 - 内置「急性化脓性阑尾炎」示例病例，一键体验完整流程
 - 版本对比：选择两个版本并排查看发生变化的方案字段；每个版本记录来源、引用的知识库条目和修订说明
+- 可对最新版本确认定稿；修改病例或重新生成前须先撤销定稿
 
 ### 功能二：医学学习中心（`/learning`）
 
@@ -100,7 +101,8 @@ KNOWLEDGE_RETRIEVER=keyword
 [`202610300003_atomic_revisions.sql`](supabase/migrations/202610300003_atomic_revisions.sql) 和
 [`202610300004_ai_quotas.sql`](supabase/migrations/202610300004_ai_quotas.sql) 和
 [`202610300005_edit_case.sql`](supabase/migrations/202610300005_edit_case.sql) 和
-[`202610300006_archive_cases.sql`](supabase/migrations/202610300006_archive_cases.sql)。
+[`202610300006_archive_cases.sql`](supabase/migrations/202610300006_archive_cases.sql) 和
+[`202610300007_finalize_plan.sql`](supabase/migrations/202610300007_finalize_plan.sql)。
 
 在 Supabase Auth 中关闭公开注册，由管理员创建用户，用户通过 `/login` 登录。旧病历的 `owner_id` 默认为空，
 任何普通用户都无法访问；管理员须核实后在数据库中将每条 `patients.owner_id` 分配给对应的

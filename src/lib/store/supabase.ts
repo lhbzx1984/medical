@@ -112,6 +112,8 @@ export class SupabaseStore implements DataStore {
       status: (r.status as SurgicalPlan["status"]) ?? "draft",
       currentVersion: Number(r.current_version ?? 0),
       archivedAt: r.archived_at ? String(r.archived_at) : null,
+      finalizedVersion: r.finalized_version == null ? null : Number(r.finalized_version),
+      finalizedAt: r.finalized_at ? String(r.finalized_at) : null,
       createdAt: String(r.created_at ?? ""),
       updatedAt: String(r.updated_at ?? ""),
     };
@@ -173,6 +175,15 @@ export class SupabaseStore implements DataStore {
     };
   }
 
+  async setFinalized(planId: string, expectedUpdatedAt: string, version: number, finalized: boolean): Promise<void> {
+    const { error } = await this.sb.rpc("medplan_set_finalized", {
+      p_plan_id: planId, p_expected_updated_at: expectedUpdatedAt, p_version: version, p_finalized: finalized,
+    });
+    if (error?.code === "40001") throw new RevisionConflictError();
+    if (error?.code === "P0002") throw new CaseNotFoundError();
+    if (error) throw new Error(`更新定稿状态失败: ${error.message}`);
+  }
+
   async setArchived(planId: string, expectedUpdatedAt: string, archived: boolean): Promise<void> {
     const { error } = await this.sb.rpc("medplan_set_archived", {
       p_plan_id: planId, p_expected_updated_at: expectedUpdatedAt, p_archived: archived,
@@ -186,7 +197,7 @@ export class SupabaseStore implements DataStore {
     const { error } = await this.sb.rpc("medplan_update_case", {
       p_plan_id: planId, p_expected_updated_at: expectedUpdatedAt, p_patient: patient,
     });
-    if (error?.code === "40001") throw new RevisionConflictError();
+    if (error?.code === "40001" || error?.code === "P0001") throw new RevisionConflictError();
     if (error?.code === "P0002") throw new CaseNotFoundError();
     if (error) throw new Error(`保存病例失败: ${error.message}`);
   }
@@ -211,7 +222,7 @@ export class SupabaseStore implements DataStore {
       p_simulation: input.simulation,
       p_feedback: input.feedback ?? null,
     });
-    if (error?.code === "40001" || error?.code === "23505") throw new RevisionConflictError();
+    if (error?.code === "40001" || error?.code === "23505" || error?.code === "P0001") throw new RevisionConflictError();
     if (error) throw new Error(`保存规划版本失败: ${error.message}`);
   }
 

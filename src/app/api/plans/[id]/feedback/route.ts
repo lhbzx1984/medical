@@ -51,6 +51,7 @@ export async function POST(
   if (!store) return Response.json({ error: "请先登录" }, { status: 401 });
   const detail = await store.getPlanDetail(planId);
   if (!detail) return Response.json({ error: "未找到该手术规划" }, { status: 404 });
+  if (detail.plan.status === "finalized") return Response.json({ error: "方案已定稿，请先撤销定稿" }, { status: 409 });
   if (!detail.versions.length) {
     return Response.json({ error: "该规划尚未生成 AI 方案，无法反馈" }, { status: 400 });
   }
