@@ -3,6 +3,8 @@
 import { NextRequest } from "next/server";
 import { agnesChatJSON, agnesConfigured, AgnesError } from "@/lib/agnes";
 import { getStore } from "@/lib/store";
+import { RevisionConflictError } from "@/lib/store/supabase";
+import { id, now } from "@/lib/store/base";
 import { getRetriever } from "@/lib/knowledge";
 import {
   SIMULATION_SYSTEM,
@@ -13,7 +15,7 @@ import {
   simulationUser,
 } from "@/lib/planning-prompt";
 import { matchOrgan, normalizeRegion } from "@/lib/organ-models";
-import type { SimulationStep, StructuredPlan } from "@/lib/types";
+import type { PlanVersion, SimulationRun, SimulationStep, StructuredPlan } from "@/lib/types";
 
 export const maxDuration = 300;
 
@@ -99,17 +101,7 @@ export async function POST(
     return Response.json({ error: `手术方案生成失败：${msg}` }, { status: 502 });
   }
 
-  // 3. 版本落库
-  const version = await store.addPlanVersion({
-    planId,
-    version: nextVersion,
-    content: plan,
-    changelog: nextVersion === 1 ? "初版：由 AI 依据病历、初步方案与知识库生成" : "AI 重新生成",
-    source: "ai",
-    knowledgeUsed: knowledge.map((k) => k.title),
-  });
-
-  // 4. 模拟编排（LLM 失败时降级为规则合成，保证模拟始终可用）
+  // 3. 模拟编排（LLM 失败时降级为规则合成，保证模拟始终可用）
   let steps: SimulationStep[];
   try {
     const sim = await agnesChatJSON<{ steps?: SimulationStep[] }>(
@@ -124,13 +116,22 @@ export async function POST(
   } catch {
     steps = fallbackSimulationSteps(plan).steps;
   }
-  const simulation = await store.addSimulation({
-    planId,
-    version: nextVersion,
-    focusOrgan: plan.focusOrgan,
-    region: plan.region,
-    steps,
-  });
+  const createdAt = now();
+  const version: PlanVersion = {
+    id: id(), createdAt, planId, version: nextVersion, content: plan,
+    changelog: nextVersion === 1 ? "初版：由 AI 依据病历、初步方案与知识库生成" : "AI 重新生成",
+    source: "ai", knowledgeUsed: knowledge.map((k) => k.title),
+  };
+  const simulation: SimulationRun = {
+    id: id(), createdAt, planId, version: nextVersion,
+    focusOrgan: plan.focusOrgan, region: plan.region, steps,
+  };
+  try {
+    await store.saveRevision({ expectedVersion: detail.plan.currentVersion, version, simulation });
+  } catch (error) {
+    if (error instanceof RevisionConflictError) return Response.json({ error: error.message }, { status: 409 });
+    throw error;
+  }
 
   return Response.json({ version, simulation, knowledge: knowledge.map((k) => k.title) });
 }

@@ -95,12 +95,16 @@ KNOWLEDGE_RETRIEVER=keyword
 
 新数据库执行 [`supabase/schema.sql`](supabase/schema.sql)。已有数据库按顺序执行
 [`202610300001_enable_rls.sql`](supabase/migrations/202610300001_enable_rls.sql) 和
-[`202610300002_user_isolation.sql`](supabase/migrations/202610300002_user_isolation.sql)。
+[`202610300002_user_isolation.sql`](supabase/migrations/202610300002_user_isolation.sql) 和
+[`202610300003_atomic_revisions.sql`](supabase/migrations/202610300003_atomic_revisions.sql)。
 
 在 Supabase Auth 中由管理员创建用户，用户通过 `/login` 登录。旧病历的 `owner_id` 默认为空，
 任何普通用户都无法访问；管理员须核实后在数据库中将每条 `patients.owner_id` 分配给对应的
 `auth.users.id`。知识库供登录用户读取，内容由数据库管理员维护。应用不再提供无登录的内存演示存储。
 执行迁移前应备份数据库并核查现有授权；上线前应使用两个测试账号验证跨账号访问被拒绝。
+第三个迁移会为方案版本和模拟建立唯一索引。如果历史数据含重复的 `(plan_id, version)`，
+迁移会失败；请先核实并处理重复数据，不要直接删除未经确认的记录。版本、模拟和专家反馈
+现在一起保存，遇到并发修改时请求返回 409，刷新方案后可重试。
 
 ## 手术知识库接口（预留设计）
 

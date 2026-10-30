@@ -16,6 +16,10 @@ import { DataStore, id, NewPatient, now } from "./base";
 
 type Row = Record<string, unknown>;
 
+export class RevisionConflictError extends Error {
+  constructor() { super("规划已被更新，请刷新后重试"); }
+}
+
 export class SupabaseStore implements DataStore {
   readonly kind = "supabase" as const;
   private sb: SupabaseClient;
@@ -162,6 +166,23 @@ export class SupabaseStore implements DataStore {
         createdAt: String(r.created_at ?? ""),
       })),
     };
+  }
+
+  async saveRevision(input: {
+    expectedVersion: number;
+    version: PlanVersion;
+    simulation: SimulationRun;
+    feedback?: ExpertFeedback;
+  }): Promise<void> {
+    const { error } = await this.sb.rpc("medplan_save_revision", {
+      p_plan_id: input.version.planId,
+      p_expected_version: input.expectedVersion,
+      p_version: input.version,
+      p_simulation: input.simulation,
+      p_feedback: input.feedback ?? null,
+    });
+    if (error?.code === "40001" || error?.code === "23505") throw new RevisionConflictError();
+    if (error) throw new Error(`保存规划版本失败: ${error.message}`);
   }
 
   async addPlanVersion(v: Omit<PlanVersion, "id" | "createdAt">): Promise<PlanVersion> {

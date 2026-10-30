@@ -3,6 +3,8 @@
 import { NextRequest } from "next/server";
 import { agnesChatJSON, agnesConfigured, AgnesError } from "@/lib/agnes";
 import { getStore } from "@/lib/store";
+import { RevisionConflictError } from "@/lib/store/supabase";
+import { id, now } from "@/lib/store/base";
 import { getRetriever } from "@/lib/knowledge";
 import {
   SIMULATION_SYSTEM,
@@ -13,7 +15,7 @@ import {
   simulationUser,
 } from "@/lib/planning-prompt";
 import { matchOrgan, normalizeRegion } from "@/lib/organ-models";
-import type { SimulationStep, StructuredPlan } from "@/lib/types";
+import type { ExpertFeedback, PlanVersion, SimulationRun, SimulationStep, StructuredPlan } from "@/lib/types";
 
 export const maxDuration = 300;
 
@@ -57,13 +59,13 @@ export async function POST(
   const current = detail.versions[detail.versions.length - 1];
   const nextVersion = current.version + 1;
 
-  // 1. 保存专家反馈
-  const feedback = await store.addFeedback({
-    planId,
-    version: current.version,
-    expertName: body.expertName?.trim() || "专家",
-    comment,
-  });
+  if (current.version !== detail.plan.currentVersion) {
+    return Response.json({ error: "规划版本状态不一致，请联系管理员" }, { status: 409 });
+  }
+  const feedback: ExpertFeedback = {
+    id: id(), createdAt: now(), planId, version: current.version,
+    expertName: body.expertName?.trim() || "专家", comment,
+  };
 
   // 2. 知识库检索（反馈中提到的主题优先）
   const retriever = getRetriever(store);
@@ -121,15 +123,6 @@ export async function POST(
     return Response.json({ error: `方案修订失败：${msg}` }, { status: 502 });
   }
 
-  const version = await store.addPlanVersion({
-    planId,
-    version: nextVersion,
-    content: plan,
-    changelog,
-    source: "expert_refine",
-    knowledgeUsed: knowledge.map((k) => k.title),
-  });
-
   // 4. 为新版本重新编排模拟
   let steps: SimulationStep[];
   try {
@@ -145,13 +138,21 @@ export async function POST(
   } catch {
     steps = fallbackSimulationSteps(plan).steps;
   }
-  const simulation = await store.addSimulation({
-    planId,
-    version: nextVersion,
-    focusOrgan: plan.focusOrgan,
-    region: plan.region,
-    steps,
-  });
+  const createdAt = now();
+  const version: PlanVersion = {
+    id: id(), createdAt, planId, version: nextVersion, content: plan, changelog,
+    source: "expert_refine", knowledgeUsed: knowledge.map((k) => k.title),
+  };
+  const simulation: SimulationRun = {
+    id: id(), createdAt, planId, version: nextVersion,
+    focusOrgan: plan.focusOrgan, region: plan.region, steps,
+  };
+  try {
+    await store.saveRevision({ expectedVersion: current.version, version, simulation, feedback });
+  } catch (error) {
+    if (error instanceof RevisionConflictError) return Response.json({ error: error.message }, { status: 409 });
+    throw error;
+  }
 
   return Response.json({ version, simulation, feedback, changelog });
 }
