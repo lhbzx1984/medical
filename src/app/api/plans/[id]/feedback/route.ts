@@ -33,7 +33,14 @@ export async function POST(
   } catch {
     return Response.json({ error: "请求体不是合法 JSON" }, { status: 400 });
   }
-  const comment = (body.comment ?? "").trim();
+  if (!body || typeof body !== "object" || typeof body.comment !== "string" ||
+      (body.expertName !== undefined && typeof body.expertName !== "string")) {
+    return Response.json({ error: "反馈字段格式不正确" }, { status: 400 });
+  }
+  if (body.comment.length > 16000 || (body.expertName?.length ?? 0) > 200) {
+    return Response.json({ error: "反馈内容过长" }, { status: 400 });
+  }
+  const comment = body.comment.trim();
   if (!comment) return Response.json({ error: "反馈内容不能为空" }, { status: 400 });
 
   const store = getStore();

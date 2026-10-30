@@ -23,7 +23,14 @@ export async function POST(req: NextRequest) {
   } catch {
     return Response.json({ error: "请求体不是合法 JSON" }, { status: 400 });
   }
-  const prompt = (body.prompt ?? "").trim();
+  if (!body || typeof body !== "object" || typeof body.prompt !== "string" || body.prompt.length > 4000 ||
+      (body.organId !== undefined && (typeof body.organId !== "string" || body.organId.length > 100)) ||
+      (body.size !== undefined && (typeof body.size !== "string" || body.size.length > 32)) ||
+      (body.ratio !== undefined && (typeof body.ratio !== "string" || body.ratio.length > 32)) ||
+      (body.style !== undefined && body.style !== "teaching" && body.style !== "plain")) {
+    return Response.json({ error: "图像请求格式不正确或内容过长" }, { status: 400 });
+  }
+  const prompt = body.prompt.trim();
   if (!prompt) return Response.json({ error: "prompt 不能为空" }, { status: 400 });
   if (!agnesConfigured()) {
     return Response.json({ error: "AGNES_API_KEY 未配置" }, { status: 500 });

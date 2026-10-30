@@ -57,6 +57,16 @@ export async function POST(req: NextRequest) {
     return Response.json({ error: "请求体不是合法 JSON" }, { status: 400 });
   }
 
+  if (!body || typeof body !== "object" || !Array.isArray(body.messages) ||
+      body.messages.length > 100 || body.messages.some((m) => !m ||
+        (m.role !== "user" && m.role !== "assistant") ||
+        typeof m.content !== "string" || m.content.length > 16000) ||
+      (body.sessionId !== undefined && (typeof body.sessionId !== "string" || body.sessionId.length > 128)) ||
+      (body.context !== undefined && (!body.context || typeof body.context !== "object" || Array.isArray(body.context) ||
+        Object.values(body.context).some((v) => typeof v !== "string" || v.length > 16000)))) {
+    return Response.json({ error: "对话请求格式不正确或内容过长" }, { status: 400 });
+  }
+
   const mode = body.mode === "guidance" ? "guidance" : "learning";
   const history = (body.messages ?? [])
     .filter((m) => m.role === "user" || m.role === "assistant")

@@ -24,8 +24,15 @@ export async function POST(req: NextRequest) {
   } catch {
     return Response.json({ error: "请求体不是合法 JSON" }, { status: 400 });
   }
-  if (!body.title?.trim() || !body.content?.trim()) {
+  if (!body || typeof body !== "object" || typeof body.title !== "string" ||
+      typeof body.content !== "string" || !body.title.trim() || !body.content.trim() ||
+      (body.category !== undefined && typeof body.category !== "string")) {
     return Response.json({ error: "title 与 content 不能为空" }, { status: 400 });
+  }
+  if (body.title.length > 500 || body.content.length > 50000 || (body.category?.length ?? 0) > 100 ||
+      (body.tags !== undefined && (!Array.isArray(body.tags) || body.tags.length > 10 ||
+        body.tags.some((tag) => typeof tag !== "string" || tag.length > 100)))) {
+    return Response.json({ error: "知识条目格式不正确或内容过长" }, { status: 400 });
   }
   const entry = await getStore().addKnowledge({
     title: body.title.trim(),

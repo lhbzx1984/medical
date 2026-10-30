@@ -12,7 +12,10 @@ export function getStore(): DataStore {
     process.env.SUPABASE_SERVICE_ROLE_KEY ||
     process.env.SUPABASE_ANON_KEY ||
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (url && key && /^https?:\/\//.test(url)) {
+  if (url || key) {
+    if (!url || !key || !/^https?:\/\//.test(url)) {
+      throw new Error("Supabase 配置不完整：请同时配置有效的 URL 和密钥");
+    }
     g.__medplanStore = new SupabaseStore(url, key);
   } else {
     g.__medplanStore = new MemoryStore();

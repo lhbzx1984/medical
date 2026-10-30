@@ -123,11 +123,15 @@ export class SupabaseStore implements DataStore {
     if (!planRow) return null;
     const patient = await this.getPatient(String(planRow.patient_id));
     if (!patient) return null;
-    const [versions, feedbacks, simulations] = await Promise.all([
-      this.tbl("plan_versions").select("*").eq("plan_id", planId).order("version").then((r) => r.data ?? []),
-      this.tbl("plan_feedback").select("*").eq("plan_id", planId).order("created_at").then((r) => r.data ?? []),
-      this.tbl("simulations").select("*").eq("plan_id", planId).order("version").then((r) => r.data ?? []),
+    const results = await Promise.all([
+      this.tbl("plan_versions").select("*").eq("plan_id", planId).order("version"),
+      this.tbl("plan_feedback").select("*").eq("plan_id", planId).order("created_at"),
+      this.tbl("simulations").select("*").eq("plan_id", planId).order("version"),
     ]);
+    for (const result of results) {
+      if (result.error) throw new Error(`Supabase 查询规划详情失败: ${result.error.message}`);
+    }
+    const [versions, feedbacks, simulations] = results.map((result) => result.data ?? []);
     return {
       plan: this.rowToPlan(planRow),
       patient,

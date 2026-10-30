@@ -97,7 +97,7 @@ KNOWLEDGE_RETRIEVER=keyword
 在 Supabase Dashboard → SQL Editor 中执行 [`supabase/schema.sql`](supabase/schema.sql)
 （包含 patients / surgical_plans / plan_versions / plan_feedback / simulations /
 knowledge_entries / chat_sessions / chat_messages / generated_images 九张表与索引）。
-填入环境变量后自动启用持久化；不配置则使用进程内存演示存储（重启清空）。
+填入环境变量后自动启用持久化；两项均不配置时使用进程内存演示存储（重启清空）；配置不完整时会报错，避免误以为数据已持久化。
 
 ## 手术知识库接口（预留设计）
 
