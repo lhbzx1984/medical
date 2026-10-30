@@ -1,4 +1,4 @@
-// 内置演示存储：无 Supabase 配置时的降级实现（进程内存，开发/演示用）。
+// 进程内存实现，仅供独立测试；应用请求不会使用它。
 import type {
   ChatMode,
   ExpertFeedback,

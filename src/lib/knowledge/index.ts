@@ -9,7 +9,7 @@
 //                              表 knowledge_entries 已预留 embedding vector 列）
 //   3. ExternalRAGRetriever —— 预留：对接外部 RAG 服务（HTTP）
 import type { KnowledgeEntry } from "../types";
-import { getStore } from "../store";
+import type { DataStore } from "../store/base";
 
 export interface KnowledgeQuery {
   text: string;
@@ -42,10 +42,10 @@ function tokenize(text: string): string[] {
 /** 默认实现：关键词重叠评分检索（无向量依赖，演示开箱即用） */
 export class KeywordRetriever implements KnowledgeRetriever {
   readonly name = "keyword-v1";
+  constructor(private store: DataStore) {}
 
   async retrieve(query: KnowledgeQuery): Promise<KnowledgeEntry[]> {
-    const store = getStore();
-    const all = await store.listKnowledge();
+    const all = await this.store.listKnowledge();
     if (!all.length) return [];
 
     const qTokens = new Set([...tokenize(query.text), ...tokenize(query.organ ?? "")]);
@@ -70,13 +70,13 @@ export class KeywordRetriever implements KnowledgeRetriever {
 }
 
 // 预留注册表：新增检索实现后在此登记，通过 KNOWLEDGE_RETRIEVER 环境变量切换。
-const REGISTRY: Record<string, () => KnowledgeRetriever> = {
-  keyword: () => new KeywordRetriever(),
+const REGISTRY: Record<string, (store: DataStore) => KnowledgeRetriever> = {
+  keyword: (store) => new KeywordRetriever(store),
   // vector: () => new VectorRetriever(),   // TODO: pgvector / Agnes embedding
 };
 
-export function getRetriever(): KnowledgeRetriever {
+export function getRetriever(store: DataStore): KnowledgeRetriever {
   const name = process.env.KNOWLEDGE_RETRIEVER ?? "keyword";
   const factory = REGISTRY[name] ?? REGISTRY.keyword;
-  return factory();
+  return factory(store);
 }

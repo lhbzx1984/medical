@@ -1,6 +1,5 @@
 // 数据访问层抽象。
-// 生产环境使用 SupabaseStore（配置环境变量后自动启用）；
-// 未配置 Supabase 时自动降级为 MemoryStore（内置演示存储，重启即清空），保证开箱即用。
+// 应用使用带用户会话的 SupabaseStore；MemoryStore 仅保留供独立测试使用。
 import type {
   ChatMode,
   ExpertFeedback,

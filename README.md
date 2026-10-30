@@ -58,7 +58,7 @@
 | 3D | Three.js + @react-three/fiber + @react-three/drei |
 | 解剖数据 | BodyParts3D 4.0（2,234 网格，CC BY 4.0）+ 器官 GLTF（Meshopt） |
 | 大模型 | agnes-2.5-flash（对话/规划/模拟编排）、agnes-image-2.5-flash（插图） |
-| 数据库 | Supabase（可选，未配置时自动降级为内置演示存储） |
+| 数据库 | Supabase（用户认证及持久化存储） |
 
 ## 快速开始
 
@@ -81,29 +81,26 @@ npm run start
 AGNES_API_KEY=sk-xxxx
 AGNES_API_BASE_URL=https://apihub.agnes-ai.com
 
-# Supabase（可选，留空则使用内置演示存储）
+# Supabase：使用项目 URL 和 anon/publishable key，勿使用 service_role key
 SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+SUPABASE_ANON_KEY=your-anon-key
 
 # 手术知识库检索器（预留接口，当前：keyword）
 KNOWLEDGE_RETRIEVER=keyword
 ```
 
-**安全说明**：API Key 只在服务端（Next.js API Route）使用，不会打包进浏览器代码；
-使用 Supabase 时服务端以 SERVICE_ROLE_KEY 直连，浏览器不直接访问数据库。
+**安全说明**：服务端使用当前登录用户的会话和匿名密钥访问数据库，行级安全按病例归属限制访问。请勿将 service_role 密钥用于应用请求。
 
-### Supabase 建库
+### Supabase 建库与登录
 
-在 Supabase Dashboard → SQL Editor 中执行 [`supabase/schema.sql`](supabase/schema.sql)
-（包含 patients / surgical_plans / plan_versions / plan_feedback / simulations /
-knowledge_entries / chat_sessions / chat_messages / generated_images 九张表与索引）。
-填入环境变量后自动启用持久化；两项均不配置时使用进程内存演示存储（重启清空）；配置不完整时会报错，避免误以为数据已持久化。
+新数据库执行 [`supabase/schema.sql`](supabase/schema.sql)。已有数据库按顺序执行
+[`202610300001_enable_rls.sql`](supabase/migrations/202610300001_enable_rls.sql) 和
+[`202610300002_user_isolation.sql`](supabase/migrations/202610300002_user_isolation.sql)。
 
-建库脚本默认开启行级安全（RLS），禁止没有策略的客户端直接读写业务表。启用后服务端必须配置
-`SUPABASE_SERVICE_ROLE_KEY`；仅使用匿名密钥的现有部署需要先调整配置。已有数据库需在
-核查现有策略后执行 [`supabase/migrations/202610300001_enable_rls.sql`](supabase/migrations/202610300001_enable_rls.sql)。
-服务端使用的 service_role 会绕过 RLS；当前应用 API 尚未实现用户身份认证和病例归属隔离，
-因此开启 RLS 后仍不能安全地向公网开放或保存真实患者资料。
+在 Supabase Auth 中由管理员创建用户，用户通过 `/login` 登录。旧病历的 `owner_id` 默认为空，
+任何普通用户都无法访问；管理员须核实后在数据库中将每条 `patients.owner_id` 分配给对应的
+`auth.users.id`。知识库供登录用户读取，内容由数据库管理员维护。应用不再提供无登录的内存演示存储。
+执行迁移前应备份数据库并核查现有授权；上线前应使用两个测试账号验证跨账号访问被拒绝。
 
 ## 手术知识库接口（预留设计）
 
@@ -120,7 +117,7 @@ export interface KnowledgeRetriever {
 - 接入向量检索：启用 pgvector（schema 中已预留 `embedding vector(1536)` 列）→
   实现 `retrieve()`（Agnes embedding 或外部 RAG）→ 在 `REGISTRY` 注册 →
   设置 `KNOWLEDGE_RETRIEVER=vector` 即可切换，上层无需改动
-- 知识条目可通过 `GET/POST /api/knowledge` 管理；内置 8 条种子知识
+- 知识条目可通过 `GET /api/knowledge` 查询，由数据库管理员维护；内置 8 条种子知识
   （阑尾切除 / CABG 术前评估 / 无菌原则 / ASA 分级 / 肝切除解剖 / 开颅体位 / 肾部分切除 / WHO 核查表）
 
 ## API 一览
@@ -133,7 +130,7 @@ export interface KnowledgeRetriever {
 | `GET /api/plans/[id]` | 规划详情（版本历史+反馈+模拟记录） |
 | `POST /api/plans/[id]/generate` | AI 生成结构化规划 + 自动编排模拟 |
 | `POST /api/plans/[id]/feedback` | 专家反馈 → AI 修订 → 新版本 |
-| `GET/POST /api/knowledge` | 知识库查询 / 新增 |
+| `GET /api/knowledge` | 知识库查询 |
 | `GET /api/health` | 配置状态（存储类型 / 模型 / 检索器） |
 
 ## 项目结构

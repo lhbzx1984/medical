@@ -4,7 +4,8 @@ import { getStore } from "@/lib/store";
 
 
 export async function GET() {
-  const store = getStore();
+  const store = await getStore();
+  if (!store) return Response.json({ error: "请先登录" }, { status: 401 });
   const plans = await store.listPlans();
   return Response.json({ plans, store: store.kind });
 }
@@ -38,7 +39,8 @@ export async function POST(req: NextRequest) {
       (body.title?.length ?? 0) > 500) {
     return Response.json({ error: "病例字段过长" }, { status: 400 });
   }
-  const store = getStore();
+  const store = await getStore();
+  if (!store) return Response.json({ error: "请先登录" }, { status: 401 });
   const patient = await store.createPatient({
     name: body.patientName.trim(),
     gender: body.gender,

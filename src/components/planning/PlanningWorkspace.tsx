@@ -46,7 +46,8 @@ export default function PlanningWorkspace() {
 
   const loadPlans = useCallback(async () => {
     const res = await fetch("/api/plans");
-    const data = (await res.json()) as { plans: SurgicalPlan[] };
+    const data = (await res.json()) as { plans?: SurgicalPlan[]; error?: string };
+    if (!res.ok) { setError(data.error ?? "加载病例失败"); return; }
     setPlans(data.plans ?? []);
   }, []);
 

@@ -7,7 +7,9 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const detail = await getStore().getPlanDetail(id);
+  const store = await getStore();
+  if (!store) return Response.json({ error: "请先登录" }, { status: 401 });
+  const detail = await store.getPlanDetail(id);
   if (!detail) return Response.json({ error: "未找到该手术规划" }, { status: 404 });
   return Response.json(detail);
 }

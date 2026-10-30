@@ -1,24 +1,12 @@
-// 数据存储工厂：配置了 Supabase 环境变量则持久化，否则使用内置演示存储。
-import type { DataStore } from "./base";
-import { MemoryStore } from "./memory";
+import { createAuthClient } from "@/lib/auth";
 import { SupabaseStore } from "./supabase";
 
-const g = globalThis as unknown as { __medplanStore?: DataStore };
-
-export function getStore(): DataStore {
-  if (g.__medplanStore) return g.__medplanStore;
-  const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key =
-    process.env.SUPABASE_SERVICE_ROLE_KEY ||
-    process.env.SUPABASE_ANON_KEY ||
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (url || key) {
-    if (!url || !key || !/^https?:\/\//.test(url)) {
-      throw new Error("Supabase 配置不完整：请同时配置有效的 URL 和密钥");
-    }
-    g.__medplanStore = new SupabaseStore(url, key);
-  } else {
-    g.__medplanStore = new MemoryStore();
-  }
-  return g.__medplanStore;
+// 每次请求都建立独立客户端，绝不缓存用户会话或使用 service_role。
+export async function getStore(): Promise<SupabaseStore | null> {
+  const client = await createAuthClient();
+  const { data: { user }, error } = await client.auth.getUser();
+  if (error || !user) return null;
+  const { data: version, error: migrationError } = await client.rpc("medplan_security_version");
+  if (migrationError || version !== 1) throw new Error("数据库尚未完成用户隔离迁移");
+  return new SupabaseStore(client);
 }

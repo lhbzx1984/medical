@@ -86,7 +86,8 @@ export async function POST(req: NextRequest) {
   const payload: ChatMsg[] = [{ role: "system", content: system }, ...history];
 
   // 持久化（不阻塞主流程的错误）
-  const store = getStore();
+  const store = await getStore();
+  if (!store) return Response.json({ error: "请先登录" }, { status: 401 });
   const sessionId = body.sessionId;
   const lastUser = [...history].reverse().find((m) => m.role === "user");
 

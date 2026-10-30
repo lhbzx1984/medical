@@ -1,7 +1,6 @@
 // Supabase 持久化存储（表结构见 supabase/schema.sql）。
-// 服务端使用 SERVICE_ROLE_KEY 直连，绕过 RLS；所有访问都经过 Next.js API Route，
-// Key 不会下发到浏览器。
-import { createClient, SupabaseClient } from "@supabase/supabase-js";
+// 每个请求使用用户会话访问数据库，由 RLS 限制数据范围。
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
   ChatMode,
   ExpertFeedback,
@@ -21,8 +20,8 @@ export class SupabaseStore implements DataStore {
   readonly kind = "supabase" as const;
   private sb: SupabaseClient;
 
-  constructor(url: string, serviceKey: string) {
-    this.sb = createClient(url, serviceKey, { auth: { persistSession: false } });
+  constructor(client: SupabaseClient) {
+    this.sb = client;
   }
 
   private tbl(name: string) {

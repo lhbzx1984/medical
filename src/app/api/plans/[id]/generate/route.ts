@@ -55,7 +55,8 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id: planId } = await params;
-  const store = getStore();
+  const store = await getStore();
+  if (!store) return Response.json({ error: "请先登录" }, { status: 401 });
   const detail = await store.getPlanDetail(planId);
   if (!detail) return Response.json({ error: "未找到该手术规划" }, { status: 404 });
   if (!agnesConfigured()) {
@@ -68,7 +69,7 @@ export async function POST(
   const nextVersion = detail.plan.currentVersion + 1;
 
   // 1. 手术知识库检索增强（接口预留：可切换向量检索实现）
-  const retriever = getRetriever();
+  const retriever = getRetriever(store);
   const knowledge = await retriever
     .retrieve({
       text: `${detail.patient.medicalRecord}\n${detail.patient.preliminaryPlan}`,

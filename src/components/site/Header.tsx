@@ -73,6 +73,11 @@ export default function Header() {
           })}
         </nav>
         <div className="ml-auto flex items-center gap-2">
+          <Link href="/login" className="btn !px-2.5 !py-1.5">登录</Link>
+          <button className="btn !px-2.5 !py-1.5" onClick={async () => {
+            await fetch("/api/auth/logout", { method: "POST" });
+            window.location.assign("/login");
+          }}>退出</button>
           <ThemeToggle />
         </div>
       </div>

@@ -43,7 +43,8 @@ export async function POST(
   const comment = body.comment.trim();
   if (!comment) return Response.json({ error: "反馈内容不能为空" }, { status: 400 });
 
-  const store = getStore();
+  const store = await getStore();
+  if (!store) return Response.json({ error: "请先登录" }, { status: 401 });
   const detail = await store.getPlanDetail(planId);
   if (!detail) return Response.json({ error: "未找到该手术规划" }, { status: 404 });
   if (!detail.versions.length) {
@@ -65,7 +66,7 @@ export async function POST(
   });
 
   // 2. 知识库检索（反馈中提到的主题优先）
-  const retriever = getRetriever();
+  const retriever = getRetriever(store);
   const knowledge = await retriever
     .retrieve({ text: `${comment}\n${detail.patient.medicalRecord}`, topK: 3 })
     .catch(() => []);

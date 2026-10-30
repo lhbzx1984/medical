@@ -36,6 +36,9 @@ export async function POST(req: NextRequest) {
     return Response.json({ error: "AGNES_API_KEY 未配置" }, { status: 500 });
   }
 
+  const store = await getStore();
+  if (!store) return Response.json({ error: "请先登录" }, { status: 401 });
+
   const finalPrompt =
     body.style === "teaching" || body.organId
       ? [
@@ -53,7 +56,6 @@ export async function POST(req: NextRequest) {
       ratio: body.ratio ?? "4:3",
     });
     const url = result.url ?? (result.b64 ? `data:image/png;base64,${result.b64}` : "");
-    const store = getStore();
     const saved = await store
       .addGeneratedImage({ prompt: finalPrompt, url, organId: body.organId })
       .catch(() => null);
