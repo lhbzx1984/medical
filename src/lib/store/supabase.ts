@@ -16,6 +16,10 @@ import { DataStore, id, NewPatient, now } from "./base";
 
 type Row = Record<string, unknown>;
 
+export class CaseNotFoundError extends Error {
+  constructor() { super("未找到该病例"); }
+}
+
 export class RevisionConflictError extends Error {
   constructor() { super("规划已被更新，请刷新后重试"); }
 }
@@ -168,6 +172,15 @@ export class SupabaseStore implements DataStore {
     };
   }
 
+  async updateCase(planId: string, expectedUpdatedAt: string, patient: NewPatient): Promise<void> {
+    const { error } = await this.sb.rpc("medplan_update_case", {
+      p_plan_id: planId, p_expected_updated_at: expectedUpdatedAt, p_patient: patient,
+    });
+    if (error?.code === "40001") throw new RevisionConflictError();
+    if (error?.code === "P0002") throw new CaseNotFoundError();
+    if (error) throw new Error(`保存病例失败: ${error.message}`);
+  }
+
   async consumeAiQuota(operation: "chat" | "image" | "plan"): Promise<boolean> {
     const { data, error } = await this.sb.rpc("medplan_consume_ai_quota", { p_operation: operation });
     if (error) throw new Error(`AI 配额检查失败: ${error.message}`);
@@ -176,6 +189,7 @@ export class SupabaseStore implements DataStore {
 
   async saveRevision(input: {
     expectedVersion: number;
+    expectedUpdatedAt: string;
     version: PlanVersion;
     simulation: SimulationRun;
     feedback?: ExpertFeedback;
@@ -183,7 +197,7 @@ export class SupabaseStore implements DataStore {
     const { error } = await this.sb.rpc("medplan_save_revision", {
       p_plan_id: input.version.planId,
       p_expected_version: input.expectedVersion,
-      p_version: input.version,
+      p_version: { ...input.version, expectedUpdatedAt: input.expectedUpdatedAt },
       p_simulation: input.simulation,
       p_feedback: input.feedback ?? null,
     });

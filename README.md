@@ -34,7 +34,7 @@
 - **3D 模拟**：人体层面只聚焦患部器官（切口定位环标记术区）；器官层面按动作类型
   驱动程序化手术器械（手术刀/电刀/止血钳/手术剪/持针器/穿刺器/腹腔镜/冲洗吸引器/
   标本袋/纱布）的进入-操作-退出动画，12 种动作（切开、电凝止血、缝合、冲洗…）
-- 病例列表支持按患者姓名或方案名称搜索，并按方案状态筛选
+- 病例列表支持按患者姓名或方案名称搜索、按方案状态筛选，并可编辑病例资料；编辑前的资料保存在数据库历史记录中
 - 内置「急性化脓性阑尾炎」示例病例，一键体验完整流程
 - 版本对比：选择两个版本并排查看发生变化的方案字段；每个版本记录来源、引用的知识库条目和修订说明
 
@@ -98,7 +98,8 @@ KNOWLEDGE_RETRIEVER=keyword
 [`202610300001_enable_rls.sql`](supabase/migrations/202610300001_enable_rls.sql) 和
 [`202610300002_user_isolation.sql`](supabase/migrations/202610300002_user_isolation.sql) 和
 [`202610300003_atomic_revisions.sql`](supabase/migrations/202610300003_atomic_revisions.sql) 和
-[`202610300004_ai_quotas.sql`](supabase/migrations/202610300004_ai_quotas.sql)。
+[`202610300004_ai_quotas.sql`](supabase/migrations/202610300004_ai_quotas.sql) 和
+[`202610300005_edit_case.sql`](supabase/migrations/202610300005_edit_case.sql)。
 
 在 Supabase Auth 中关闭公开注册，由管理员创建用户，用户通过 `/login` 登录。旧病历的 `owner_id` 默认为空，
 任何普通用户都无法访问；管理员须核实后在数据库中将每条 `patients.owner_id` 分配给对应的
@@ -109,6 +110,7 @@ KNOWLEDGE_RETRIEVER=keyword
 现在一起保存，遇到并发修改时请求返回 409，刷新方案后可重试。
 AI 请求按用户使用数据库共享的固定 10 分钟窗口限额：对话 20 次、图像 5 次、
 方案生成或反馈修订合计 5 次；超过时返回 429。限额在调用上游模型之前扣除，失败也计入。
+编辑病例不会改变已有方案版本；编辑期间正在生成的方案会因病例状态变化而要求重新生成。
 
 ## 手术知识库接口（预留设计）
 

@@ -156,7 +156,7 @@ export async function POST(
     focusOrgan: plan.focusOrgan, region: plan.region, steps,
   };
   try {
-    await store.saveRevision({ expectedVersion: current.version, version, simulation, feedback });
+    await store.saveRevision({ expectedVersion: current.version, expectedUpdatedAt: detail.plan.updatedAt, version, simulation, feedback });
   } catch (error) {
     if (error instanceof RevisionConflictError) return Response.json({ error: error.message }, { status: 409 });
     throw error;

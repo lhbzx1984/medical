@@ -42,6 +42,7 @@ export default function PlanningWorkspace() {
   }, [plans, search, statusFilter]);
   const [detail, setDetail] = useState<PlanDetail | null>(null);
   const [creating, setCreating] = useState(false);
+  const [editing, setEditing] = useState(false);
   const [tab, setTab] = useState<"plan" | "sim" | "feedback" | "compare">("plan");
   const [versionIdx, setVersionIdx] = useState(0); // detail.versions 下标
   const [stepIdx, setStepIdx] = useState(0);
@@ -74,6 +75,7 @@ export default function PlanningWorkspace() {
       if (!res.ok) throw new Error(data.error ?? "加载失败");
       setDetail(data);
       setCreating(false);
+      setEditing(false);
       setVersionIdx(Math.max(0, data.versions.length - 1));
       setStepIdx(0);
       setPlaying(false);
@@ -119,6 +121,23 @@ export default function PlanningWorkspace() {
       setError(e instanceof Error ? e.message : String(e));
       setBusy(null);
     }
+  };
+
+  const saveCase = async (v: CaseFormValue) => {
+    if (!detail) return;
+    setBusy("保存病例…"); setError(null);
+    try {
+      const res = await fetch(`/api/plans/${detail.plan.id}`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...v, age: Number(v.age) || 0, expectedUpdatedAt: detail.plan.updatedAt }),
+      });
+      const data = await res.json() as { error?: string };
+      if (!res.ok) throw new Error(data.error ?? "保存失败");
+      await selectPlan(detail.plan.id);
+      await loadPlans();
+      setEditing(false);
+    } catch (e) { setError(e instanceof Error ? e.message : "保存失败"); }
+    finally { setBusy(null); }
   };
 
   const generate = async (planId?: string) => {
@@ -257,7 +276,15 @@ export default function PlanningWorkspace() {
 
       {/* 主区 */}
       <main className="flex min-w-0 flex-1 flex-col">
-        {creating && !detail ? (
+        {editing && detail ? (
+          <div className="min-h-0 flex-1 overflow-y-auto p-1">
+            {error && <p role="alert" className="panel mb-3 p-3 text-red-400">{error}</p>}
+            <PatientForm key={detail.plan.id} initialValue={{ patientName: detail.patient.name,
+              gender: detail.patient.gender, age: String(detail.patient.age || ""),
+              medicalRecord: detail.patient.medicalRecord, preliminaryPlan: detail.patient.preliminaryPlan }}
+              onSubmit={saveCase} busy={busy} onCancel={() => setEditing(false)} />
+          </div>
+        ) : creating && !detail ? (
           <div className="min-h-0 flex-1 overflow-y-auto p-1">
             <PatientForm
               onSubmit={createCase}
@@ -295,6 +322,7 @@ export default function PlanningWorkspace() {
                   </div>
                 </div>
                 <div className="ml-auto flex items-center gap-2">
+                  <button className="btn !py-1 !text-[12px]" disabled={!!busy} onClick={() => setEditing(true)}>编辑病例</button>
                   {detail.versions.length === 0 ? (
                     <button
                       className="btn btn-primary"

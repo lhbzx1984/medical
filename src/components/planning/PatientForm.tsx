@@ -30,12 +30,14 @@ export default function PatientForm({
   onSubmit,
   busy,
   onCancel,
+  initialValue,
 }: {
   onSubmit: (v: CaseFormValue) => void;
   busy: string | null;
   onCancel?: () => void;
+  initialValue?: CaseFormValue;
 }) {
-  const [v, setV] = useState<CaseFormValue>({
+  const [v, setV] = useState<CaseFormValue>(initialValue ?? {
     patientName: "",
     gender: "男",
     age: "",
@@ -48,13 +50,13 @@ export default function PatientForm({
   return (
     <div className="panel mx-auto max-w-[760px] p-6">
       <div className="mb-1 flex items-center justify-between">
-        <h2 className="text-[16px] font-bold text-[var(--heading)]">新建手术规划病例</h2>
-        <button className="btn !py-1 !text-[12px]" onClick={() => setV(DEMO_CASE)}>
+        <h2 className="text-[16px] font-bold text-[var(--heading)]">{initialValue ? "编辑病例资料" : "新建手术规划病例"}</h2>
+        {!initialValue && <button className="btn !py-1 !text-[12px]" onClick={() => setV(DEMO_CASE)}>
           📋 填入示例病例（急性阑尾炎）
-        </button>
+        </button>}
       </div>
       <p className="mb-5 text-[12.5px] text-[var(--muted)]">
-        录入病历与初步方案后，AI 将结合手术知识库生成结构化手术规划，并自动编排 3D 模拟。
+        {initialValue ? "修改病例不会更改已有的方案版本；需要时请重新生成方案。" : "录入病历与初步方案后，AI 将结合手术知识库生成结构化手术规划，并自动编排 3D 模拟。"}
       </p>
 
       <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-4">
@@ -70,6 +72,8 @@ export default function PatientForm({
         <div>
           <label className="label">性别</label>
           <select className="select" value={v.gender} onChange={(e) => set("gender", e.target.value)}>
+            <option value="">未填写</option>
+            {v.gender && v.gender !== "男" && v.gender !== "女" && <option value={v.gender}>{v.gender}</option>}
             <option>男</option>
             <option>女</option>
           </select>
@@ -81,6 +85,7 @@ export default function PatientForm({
             value={v.age}
             onChange={(e) => set("age", e.target.value)}
             placeholder="45"
+            type="number" min="0" max="150" step="1"
             inputMode="numeric"
           />
         </div>
@@ -115,9 +120,9 @@ export default function PatientForm({
         <button
           className="btn btn-primary"
           onClick={() => onSubmit(v)}
-          disabled={!v.patientName.trim() || !v.medicalRecord.trim() || !!busy}
+          disabled={!v.patientName.trim() || !v.medicalRecord.trim() || !!busy || (v.age !== "" && (!Number.isInteger(Number(v.age)) || Number(v.age) < 0 || Number(v.age) > 150))}
         >
-          {busy ?? "创建病例"}
+          {busy ?? (initialValue ? "保存病例" : "创建病例")}
         </button>
       </div>
     </div>
