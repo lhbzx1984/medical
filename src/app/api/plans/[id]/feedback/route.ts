@@ -56,6 +56,10 @@ export async function POST(
     return Response.json({ error: "AGNES_API_KEY 未配置" }, { status: 500 });
   }
 
+  if (!(await store.consumeAiQuota("plan"))) {
+    return Response.json({ error: "请求过于频繁，请稍后再试" }, { status: 429 });
+  }
+
   const current = detail.versions[detail.versions.length - 1];
   const nextVersion = current.version + 1;
 

@@ -168,6 +168,12 @@ export class SupabaseStore implements DataStore {
     };
   }
 
+  async consumeAiQuota(operation: "chat" | "image" | "plan"): Promise<boolean> {
+    const { data, error } = await this.sb.rpc("medplan_consume_ai_quota", { p_operation: operation });
+    if (error) throw new Error(`AI 配额检查失败: ${error.message}`);
+    return data === true;
+  }
+
   async saveRevision(input: {
     expectedVersion: number;
     version: PlanVersion;

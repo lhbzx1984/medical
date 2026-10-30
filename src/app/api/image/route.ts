@@ -39,6 +39,10 @@ export async function POST(req: NextRequest) {
   const store = await getStore();
   if (!store) return Response.json({ error: "请先登录" }, { status: 401 });
 
+  if (!(await store.consumeAiQuota("image"))) {
+    return Response.json({ error: "请求过于频繁，请稍后再试" }, { status: 429 });
+  }
+
   const finalPrompt =
     body.style === "teaching" || body.organId
       ? [

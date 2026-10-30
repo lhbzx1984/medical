@@ -88,6 +88,10 @@ export async function POST(req: NextRequest) {
   // 持久化（不阻塞主流程的错误）
   const store = await getStore();
   if (!store) return Response.json({ error: "请先登录" }, { status: 401 });
+  if (!(await store.consumeAiQuota("chat"))) {
+    return Response.json({ error: "请求过于频繁，请稍后再试" }, { status: 429 });
+  }
+
   const sessionId = body.sessionId;
   const lastUser = [...history].reverse().find((m) => m.role === "user");
 

@@ -68,6 +68,10 @@ export async function POST(
     );
   }
 
+  if (!(await store.consumeAiQuota("plan"))) {
+    return Response.json({ error: "请求过于频繁，请稍后再试" }, { status: 429 });
+  }
+
   const nextVersion = detail.plan.currentVersion + 1;
 
   // 1. 手术知识库检索增强（接口预留：可切换向量检索实现）
