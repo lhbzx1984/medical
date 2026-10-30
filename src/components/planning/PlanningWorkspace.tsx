@@ -30,6 +30,15 @@ const STATUS_LABEL: Record<SurgicalPlan["status"], { text: string; cls: string }
 
 export default function PlanningWorkspace() {
   const [plans, setPlans] = useState<SurgicalPlan[]>([]);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | SurgicalPlan["status"]>("all");
+  const filteredPlans = useMemo(() => {
+    const term = search.trim().toLocaleLowerCase();
+    return plans.filter((plan) =>
+      (statusFilter === "all" || plan.status === statusFilter) &&
+      (!term || `${plan.title} ${plan.patientName}`.toLocaleLowerCase().includes(term))
+    );
+  }, [plans, search, statusFilter]);
   const [detail, setDetail] = useState<PlanDetail | null>(null);
   const [creating, setCreating] = useState(false);
   const [tab, setTab] = useState<"plan" | "sim" | "feedback">("plan");
@@ -190,13 +199,31 @@ export default function PlanningWorkspace() {
             ＋ 新建规划病例
           </button>
         </div>
+        <div className="space-y-2 border-b border-[var(--line)] p-3">
+          <label className="sr-only" htmlFor="case-search">搜索病例</label>
+          <input id="case-search" type="search" className="input w-full" placeholder="搜索姓名或方案名称"
+            value={search} onChange={(event) => setSearch(event.target.value)} />
+          <label className="sr-only" htmlFor="case-status">筛选方案状态</label>
+          <select id="case-status" className="input w-full" value={statusFilter}
+            onChange={(event) => setStatusFilter(event.target.value as "all" | SurgicalPlan["status"])}>
+            <option value="all">全部状态</option>
+            <option value="draft">待生成</option>
+            <option value="simulated">已模拟</option>
+            <option value="refined">已迭代</option>
+            <option value="finalized">已定稿</option>
+          </select>
+          <p className="text-xs text-[var(--muted)]" aria-live="polite">显示 {filteredPlans.length} / {plans.length} 个病例</p>
+        </div>
         <div className="min-h-0 flex-1 overflow-y-auto p-2">
           {plans.length === 0 && (
             <div className="px-2 py-6 text-center text-[12px] text-[var(--muted)]">
               暂无病例，点击上方按钮创建
             </div>
           )}
-          {plans.map((p) => {
+          {plans.length > 0 && filteredPlans.length === 0 && (
+            <div className="px-2 py-6 text-center text-[12px] text-[var(--muted)]">没有符合条件的病例</div>
+          )}
+          {filteredPlans.map((p) => {
             const st = STATUS_LABEL[p.status];
             return (
               <button
