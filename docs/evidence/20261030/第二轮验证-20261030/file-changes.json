@@ -1,0 +1,1505 @@
+{
+  "date": "2026-10-30",
+  "exclusions": [
+    "node_modules",
+    ".next",
+    ".env* (secrets excluded)",
+    "*.tsbuildinfo"
+  ],
+  "originalZipFiles": 120,
+  "currentFiles": 143,
+  "cumulative": [
+    {
+      "path": ".gitignore",
+      "status": "未修改",
+      "beforeSha256": "207e265ff4901f9ad9f96d8ce08530e04f9fc600815472a66d0a446096d654cd",
+      "afterSha256": "207e265ff4901f9ad9f96d8ce08530e04f9fc600815472a66d0a446096d654cd"
+    },
+    {
+      "path": "AGENTS.md",
+      "status": "未修改",
+      "beforeSha256": "063098f6cb31bb44c6f8fbea25b3876de7ee1e5f7d00a50dbab506f6415eb7f0",
+      "afterSha256": "063098f6cb31bb44c6f8fbea25b3876de7ee1e5f7d00a50dbab506f6415eb7f0"
+    },
+    {
+      "path": "README.md",
+      "status": "修改",
+      "beforeSha256": "c8f243173a41d44b233a34fc543e82f3aaa097a151ab966a1138b58b9f10d3c3",
+      "afterSha256": "39a8a3fdb7b2bd477f5f6ef1677a8740b7ed9b46776b7297543fc9a4e58860ef",
+      "addedLines": 96,
+      "removedLines": 29
+    },
+    {
+      "path": "docs/superpowers/plans/2026-10-28-audit-fixes.md",
+      "status": "新增",
+      "beforeSha256": null,
+      "afterSha256": "d7642abf53cefc03358ccce444a4630a594d5ef2c4ddc09e76a91bd7edc4ad0d",
+      "addedLines": 46,
+      "removedLines": 0
+    },
+    {
+      "path": "eslint.config.mjs",
+      "status": "修改",
+      "beforeSha256": "870f1adccecf3051cbcd9fd307cef51d7633cf510979c181a81f4b1797273493",
+      "afterSha256": "a1a5444c7bc364e72f2c6ee9699f993b50776bbcf061328a47ca0c9b2080fcc1",
+      "addedLines": 5,
+      "removedLines": 0
+    },
+    {
+      "path": "mackdown.md",
+      "status": "新增",
+      "beforeSha256": null,
+      "afterSha256": "aff204f908266663dfbbc8f90b53d4e73dc0df3b3ba487e6d594a86c8b3da529",
+      "addedLines": 209,
+      "removedLines": 0
+    },
+    {
+      "path": "next-env.d.ts",
+      "status": "新增",
+      "beforeSha256": null,
+      "afterSha256": "1b59d4c6b83807db275d43f3cf2cc8e9323f465fab764eea091cc5becd5bad37",
+      "addedLines": 7,
+      "removedLines": 0
+    },
+    {
+      "path": "next.config.ts",
+      "status": "未修改",
+      "beforeSha256": "17145a9822ec351b92b8a5f8d3a709a531c8690ed92d397a4405ae084ea9acc7",
+      "afterSha256": "17145a9822ec351b92b8a5f8d3a709a531c8690ed92d397a4405ae084ea9acc7"
+    },
+    {
+      "path": "package-lock.json",
+      "status": "未修改",
+      "beforeSha256": "aecb9da8caae2dbb5709145589d731062c896bce9e7ccb9db2e91366d3b04af6",
+      "afterSha256": "aecb9da8caae2dbb5709145589d731062c896bce9e7ccb9db2e91366d3b04af6"
+    },
+    {
+      "path": "package.json",
+      "status": "修改",
+      "beforeSha256": "8f9eed626218c159fa1c81bb251238faff7bb660689216c3bdeec5967edbc84b",
+      "afterSha256": "786487b806ad79a2bdb61164610419b94841ca8f3ac06e503a774b9cf8c83c77",
+      "addedLines": 4,
+      "removedLines": 1
+    },
+    {
+      "path": "public/anatomy/brain/location.webp",
+      "status": "未修改",
+      "beforeSha256": "d2b33bbe9c17ef12f3f0ad930b0a77fcdef249b856e6db11033a68bbbec048aa",
+      "afterSha256": "d2b33bbe9c17ef12f3f0ad930b0a77fcdef249b856e6db11033a68bbbec048aa"
+    },
+    {
+      "path": "public/anatomy/brain/organ.webp",
+      "status": "未修改",
+      "beforeSha256": "d16dba895a61a7adde8d02d53ab5b27d39e3c5a8cb97627416b70d56c582a120",
+      "afterSha256": "d16dba895a61a7adde8d02d53ab5b27d39e3c5a8cb97627416b70d56c582a120"
+    },
+    {
+      "path": "public/anatomy/brain/thumb.webp",
+      "status": "未修改",
+      "beforeSha256": "0d856fef914d2f4d46d41a2a7fe69aae0fccd2ca720170f0d8081ea0452303f6",
+      "afterSha256": "0d856fef914d2f4d46d41a2a7fe69aae0fccd2ca720170f0d8081ea0452303f6"
+    },
+    {
+      "path": "public/anatomy/eyeball/location.webp",
+      "status": "未修改",
+      "beforeSha256": "e44f7dc3446cdd9e5f090729cde2f6018de6e01ba5bc66e2c1268e67becece9d",
+      "afterSha256": "e44f7dc3446cdd9e5f090729cde2f6018de6e01ba5bc66e2c1268e67becece9d"
+    },
+    {
+      "path": "public/anatomy/eyeball/organ.webp",
+      "status": "未修改",
+      "beforeSha256": "efbf43beafd8ca61778d80b3569137e3656a2b0e770416e7f2bb165f23d17205",
+      "afterSha256": "efbf43beafd8ca61778d80b3569137e3656a2b0e770416e7f2bb165f23d17205"
+    },
+    {
+      "path": "public/anatomy/eyeball/thumb.webp",
+      "status": "未修改",
+      "beforeSha256": "b67b60fdb70f1f94ed254d905c849769935ff83c41351eab599626c20b8df2bc",
+      "afterSha256": "b67b60fdb70f1f94ed254d905c849769935ff83c41351eab599626c20b8df2bc"
+    },
+    {
+      "path": "public/anatomy/heart/location.webp",
+      "status": "未修改",
+      "beforeSha256": "918c2a2448444779f4245491df501290259e3ecbcc9003b49d9ff15ad1e2cfec",
+      "afterSha256": "918c2a2448444779f4245491df501290259e3ecbcc9003b49d9ff15ad1e2cfec"
+    },
+    {
+      "path": "public/anatomy/heart/organ.webp",
+      "status": "未修改",
+      "beforeSha256": "5a8121a3b0594e203e83ace4660edc13cc29a011d9054ff67800ddbe1a6dd523",
+      "afterSha256": "5a8121a3b0594e203e83ace4660edc13cc29a011d9054ff67800ddbe1a6dd523"
+    },
+    {
+      "path": "public/anatomy/heart/thumb.webp",
+      "status": "未修改",
+      "beforeSha256": "3444630d37ea695064879806207a6f8b84ba00efc2426cadaf5c6ef701be9000",
+      "afterSha256": "3444630d37ea695064879806207a6f8b84ba00efc2426cadaf5c6ef701be9000"
+    },
+    {
+      "path": "public/anatomy/intestine/location.webp",
+      "status": "未修改",
+      "beforeSha256": "35831d39e386438a7ce9741d592530a10b3390c9e1b33c2de89839bb6fea5faf",
+      "afterSha256": "35831d39e386438a7ce9741d592530a10b3390c9e1b33c2de89839bb6fea5faf"
+    },
+    {
+      "path": "public/anatomy/intestine/organ.webp",
+      "status": "未修改",
+      "beforeSha256": "4ae4d0766e80d1863691ced3f7fd2b5aaa89d78cf7229d1980c343dfe112c8f2",
+      "afterSha256": "4ae4d0766e80d1863691ced3f7fd2b5aaa89d78cf7229d1980c343dfe112c8f2"
+    },
+    {
+      "path": "public/anatomy/intestine/thumb.webp",
+      "status": "未修改",
+      "beforeSha256": "bfb1804cca4d8392e1aeb6f50fa5e2ca6077e65661f4f4d05c4f9ee319e07fdd",
+      "afterSha256": "bfb1804cca4d8392e1aeb6f50fa5e2ca6077e65661f4f4d05c4f9ee319e07fdd"
+    },
+    {
+      "path": "public/anatomy/kidneys/location.webp",
+      "status": "未修改",
+      "beforeSha256": "dae3575db9703ccc9e9de8465ce317b2b94814dbc3abcb72cf23be5b07d2357f",
+      "afterSha256": "dae3575db9703ccc9e9de8465ce317b2b94814dbc3abcb72cf23be5b07d2357f"
+    },
+    {
+      "path": "public/anatomy/kidneys/organ.webp",
+      "status": "未修改",
+      "beforeSha256": "560ccb896d019ff84f8556317ac581fb99411d12b313110d075841ffbc0a3cf3",
+      "afterSha256": "560ccb896d019ff84f8556317ac581fb99411d12b313110d075841ffbc0a3cf3"
+    },
+    {
+      "path": "public/anatomy/kidneys/thumb.webp",
+      "status": "未修改",
+      "beforeSha256": "cd714251659eb05f12cdd1657ff81e2cd3a5abce6751c60645f6096dcd2bcf42",
+      "afterSha256": "cd714251659eb05f12cdd1657ff81e2cd3a5abce6751c60645f6096dcd2bcf42"
+    },
+    {
+      "path": "public/anatomy/liver/location.webp",
+      "status": "未修改",
+      "beforeSha256": "5bac46cdd2d474b78d304e34fc582e0e17cd3e9dc0931d742c11ea1ec7e23a49",
+      "afterSha256": "5bac46cdd2d474b78d304e34fc582e0e17cd3e9dc0931d742c11ea1ec7e23a49"
+    },
+    {
+      "path": "public/anatomy/liver/organ.webp",
+      "status": "未修改",
+      "beforeSha256": "4f6b2e4db6eb6db66436d9f5a46449ad45eddd9b031899001f4b6b3460d67cd6",
+      "afterSha256": "4f6b2e4db6eb6db66436d9f5a46449ad45eddd9b031899001f4b6b3460d67cd6"
+    },
+    {
+      "path": "public/anatomy/liver/thumb.webp",
+      "status": "未修改",
+      "beforeSha256": "da70f44c59122c991ad5b575aca09f35cbadbb372501f7e456b12491b4157b25",
+      "afterSha256": "da70f44c59122c991ad5b575aca09f35cbadbb372501f7e456b12491b4157b25"
+    },
+    {
+      "path": "public/anatomy/lungs/location.webp",
+      "status": "未修改",
+      "beforeSha256": "d2b0c8edd43a9ff6cf87e6f962192a4804da2146c131e6363cfcf4acd28b8f80",
+      "afterSha256": "d2b0c8edd43a9ff6cf87e6f962192a4804da2146c131e6363cfcf4acd28b8f80"
+    },
+    {
+      "path": "public/anatomy/lungs/organ.webp",
+      "status": "未修改",
+      "beforeSha256": "ccbe39dd866aeb912cedfade77f99cfdfd78ef329ded14e6fb2fb8d9020b7f1c",
+      "afterSha256": "ccbe39dd866aeb912cedfade77f99cfdfd78ef329ded14e6fb2fb8d9020b7f1c"
+    },
+    {
+      "path": "public/anatomy/lungs/thumb.webp",
+      "status": "未修改",
+      "beforeSha256": "ef8fb3c33fda1633131e460f8925d3d5b01cc413b12cabec2302c4bb5ed94037",
+      "afterSha256": "ef8fb3c33fda1633131e460f8925d3d5b01cc413b12cabec2302c4bb5ed94037"
+    },
+    {
+      "path": "public/anatomy/pancreas/location.webp",
+      "status": "未修改",
+      "beforeSha256": "d2760205fab4c0bc9e49acd3c174fc5760e72c157fd09073d5709f9bdb8ae390",
+      "afterSha256": "d2760205fab4c0bc9e49acd3c174fc5760e72c157fd09073d5709f9bdb8ae390"
+    },
+    {
+      "path": "public/anatomy/pancreas/organ.webp",
+      "status": "未修改",
+      "beforeSha256": "e82ec8eca1c308df3ff477baa874713563c410882f3d6f63d14a34e45d4c8226",
+      "afterSha256": "e82ec8eca1c308df3ff477baa874713563c410882f3d6f63d14a34e45d4c8226"
+    },
+    {
+      "path": "public/anatomy/pancreas/thumb.webp",
+      "status": "未修改",
+      "beforeSha256": "88d8f206e52b88134c89fea47e064566d3b7bf8b13e950a6f28a4868c055bc0a",
+      "afterSha256": "88d8f206e52b88134c89fea47e064566d3b7bf8b13e950a6f28a4868c055bc0a"
+    },
+    {
+      "path": "public/anatomy/skin/location.webp",
+      "status": "未修改",
+      "beforeSha256": "44a15cb22a439ed488376e3bf9c10912849ef05bcc7c34b892d03f803fa4f3ed",
+      "afterSha256": "44a15cb22a439ed488376e3bf9c10912849ef05bcc7c34b892d03f803fa4f3ed"
+    },
+    {
+      "path": "public/anatomy/skin/organ.webp",
+      "status": "未修改",
+      "beforeSha256": "484aa1d41e9442aa554d39a2c09555fd5e8a474dc0afc6e4a3b08150123d8871",
+      "afterSha256": "484aa1d41e9442aa554d39a2c09555fd5e8a474dc0afc6e4a3b08150123d8871"
+    },
+    {
+      "path": "public/anatomy/skin/thumb.webp",
+      "status": "未修改",
+      "beforeSha256": "fb3758bb32cf2dcae0388848d9b16ce6223e71e4cdd94d4137e2f2b85fea8975",
+      "afterSha256": "fb3758bb32cf2dcae0388848d9b16ce6223e71e4cdd94d4137e2f2b85fea8975"
+    },
+    {
+      "path": "public/atlas/atlas.json",
+      "status": "未修改",
+      "beforeSha256": "c359f4bcd2cba90b7411d66d5e9fc04dc81294d46cd5c1e8b212c824f2e5bbee",
+      "afterSha256": "c359f4bcd2cba90b7411d66d5e9fc04dc81294d46cd5c1e8b212c824f2e5bbee"
+    },
+    {
+      "path": "public/atlas/body-0.bin.gz",
+      "status": "未修改",
+      "beforeSha256": "9dcd239ed44bf5b28cad64d2dc5c02a475570ee5706051f383c7c68d6fbc8b1c",
+      "afterSha256": "9dcd239ed44bf5b28cad64d2dc5c02a475570ee5706051f383c7c68d6fbc8b1c"
+    },
+    {
+      "path": "public/atlas/body-1.bin.gz",
+      "status": "未修改",
+      "beforeSha256": "0382260e39b6b294f52a77f1d28b5d2493b93bfd665f6d1fd01926ef27473a40",
+      "afterSha256": "0382260e39b6b294f52a77f1d28b5d2493b93bfd665f6d1fd01926ef27473a40"
+    },
+    {
+      "path": "public/atlas/body-10.bin.gz",
+      "status": "未修改",
+      "beforeSha256": "24d533fa1da7b52583fd6912722b47130ebff1f505449dee276df0b7107aa5aa",
+      "afterSha256": "24d533fa1da7b52583fd6912722b47130ebff1f505449dee276df0b7107aa5aa"
+    },
+    {
+      "path": "public/atlas/body-11.bin.gz",
+      "status": "未修改",
+      "beforeSha256": "be228aec4eaae7f9ad1b8eb461ed06d6c8e813e9fe64ff894ba48409f25ff878",
+      "afterSha256": "be228aec4eaae7f9ad1b8eb461ed06d6c8e813e9fe64ff894ba48409f25ff878"
+    },
+    {
+      "path": "public/atlas/body-12.bin.gz",
+      "status": "未修改",
+      "beforeSha256": "80eefe006f2372bc79d8ca2388b4f2785a14bff2621d99f4a7b422d63f9eb556",
+      "afterSha256": "80eefe006f2372bc79d8ca2388b4f2785a14bff2621d99f4a7b422d63f9eb556"
+    },
+    {
+      "path": "public/atlas/body-13.bin.gz",
+      "status": "未修改",
+      "beforeSha256": "37fd7a4cd62fb6031eb300a4b947c80c7b00d2751d78ff464147fb444e1a0307",
+      "afterSha256": "37fd7a4cd62fb6031eb300a4b947c80c7b00d2751d78ff464147fb444e1a0307"
+    },
+    {
+      "path": "public/atlas/body-14.bin.gz",
+      "status": "未修改",
+      "beforeSha256": "3968d6e0a1d14f8c39e5ffb1f618c72023f429c41592f6793f0030e60ab3d8b6",
+      "afterSha256": "3968d6e0a1d14f8c39e5ffb1f618c72023f429c41592f6793f0030e60ab3d8b6"
+    },
+    {
+      "path": "public/atlas/body-2.bin.gz",
+      "status": "未修改",
+      "beforeSha256": "603773ea025f556e520ac79cd84f07bede9035d786e196a0e6ed2ca73bb15301",
+      "afterSha256": "603773ea025f556e520ac79cd84f07bede9035d786e196a0e6ed2ca73bb15301"
+    },
+    {
+      "path": "public/atlas/body-3.bin.gz",
+      "status": "未修改",
+      "beforeSha256": "3d7bccd225de90ba4aef4e33f08b6430dc58c929f8dc250217f6fbe2f11e7d53",
+      "afterSha256": "3d7bccd225de90ba4aef4e33f08b6430dc58c929f8dc250217f6fbe2f11e7d53"
+    },
+    {
+      "path": "public/atlas/body-4.bin.gz",
+      "status": "未修改",
+      "beforeSha256": "01be154bea1460e7b6c02729640e40824aa926e4ec5cd76cca2a922694fa9a30",
+      "afterSha256": "01be154bea1460e7b6c02729640e40824aa926e4ec5cd76cca2a922694fa9a30"
+    },
+    {
+      "path": "public/atlas/body-5.bin.gz",
+      "status": "未修改",
+      "beforeSha256": "a1810356e610ad38170c440e5c4fd4e99434152ab76c743616098e1f4ac71624",
+      "afterSha256": "a1810356e610ad38170c440e5c4fd4e99434152ab76c743616098e1f4ac71624"
+    },
+    {
+      "path": "public/atlas/body-6.bin.gz",
+      "status": "未修改",
+      "beforeSha256": "d4ef94ced66b8b61cf640b5b3c206b63bf7cd6c8af9823f8674117d025d0f1bf",
+      "afterSha256": "d4ef94ced66b8b61cf640b5b3c206b63bf7cd6c8af9823f8674117d025d0f1bf"
+    },
+    {
+      "path": "public/atlas/body-7.bin.gz",
+      "status": "未修改",
+      "beforeSha256": "5efdc3ed4d57335f2631a8563ca810d94e9aa70a9081ca55ce41c912be97c3d4",
+      "afterSha256": "5efdc3ed4d57335f2631a8563ca810d94e9aa70a9081ca55ce41c912be97c3d4"
+    },
+    {
+      "path": "public/atlas/body-8.bin.gz",
+      "status": "未修改",
+      "beforeSha256": "4a8c163c3d4029125c551d9299d96aec511c8269ed33c3109f4461ae658c0622",
+      "afterSha256": "4a8c163c3d4029125c551d9299d96aec511c8269ed33c3109f4461ae658c0622"
+    },
+    {
+      "path": "public/atlas/body-9.bin.gz",
+      "status": "未修改",
+      "beforeSha256": "1babeeb1464594a4e6d4689d2d73338d3e3b38fecb8a2f406820308950935e37",
+      "afterSha256": "1babeeb1464594a4e6d4689d2d73338d3e3b38fecb8a2f406820308950935e37"
+    },
+    {
+      "path": "public/cases/anatomy-female.png",
+      "status": "未修改",
+      "beforeSha256": "adaecfc458752cb84b4f00d713f665b825a6d1b18678295a651ff2ff146914b5",
+      "afterSha256": "adaecfc458752cb84b4f00d713f665b825a6d1b18678295a651ff2ff146914b5"
+    },
+    {
+      "path": "public/cases/anatomy-male.png",
+      "status": "未修改",
+      "beforeSha256": "f3e6df0ebb4781e39f90dd02bec6f8db77e68f0deaef97e91f09d366db562720",
+      "afterSha256": "f3e6df0ebb4781e39f90dd02bec6f8db77e68f0deaef97e91f09d366db562720"
+    },
+    {
+      "path": "public/cases/case-appendicitis.png",
+      "status": "未修改",
+      "beforeSha256": "145ae2bf1e693bf8e55b5db73b927225e3fc6376a262d1694f22cbb4c545324b",
+      "afterSha256": "145ae2bf1e693bf8e55b5db73b927225e3fc6376a262d1694f22cbb4c545324b"
+    },
+    {
+      "path": "public/cases/case-cabg.png",
+      "status": "未修改",
+      "beforeSha256": "9141545de62a5e4bca20b3cbc8522a15f687e470e3e1e695f4c92a70ee425bc3",
+      "afterSha256": "9141545de62a5e4bca20b3cbc8522a15f687e470e3e1e695f4c92a70ee425bc3"
+    },
+    {
+      "path": "public/cases/case-liver.png",
+      "status": "未修改",
+      "beforeSha256": "6b71f23f75c275f510f9276181f1d60decabbc0c7140ef76bdfd13f16685dcf5",
+      "afterSha256": "6b71f23f75c275f510f9276181f1d60decabbc0c7140ef76bdfd13f16685dcf5"
+    },
+    {
+      "path": "public/cases/hero-anatomy.png",
+      "status": "未修改",
+      "beforeSha256": "f3e6df0ebb4781e39f90dd02bec6f8db77e68f0deaef97e91f09d366db562720",
+      "afterSha256": "f3e6df0ebb4781e39f90dd02bec6f8db77e68f0deaef97e91f09d366db562720"
+    },
+    {
+      "path": "public/cases/uterus-thumb.png",
+      "status": "未修改",
+      "beforeSha256": "aff49cff99e9711e31fca5c76efd35f34777b321925a56d007921838d6b3eee4",
+      "afterSha256": "aff49cff99e9711e31fca5c76efd35f34777b321925a56d007921838d6b3eee4"
+    },
+    {
+      "path": "public/file.svg",
+      "status": "未修改",
+      "beforeSha256": "2b67812c325c199a02536cdbeea0c593a72f707d323b72ee3e08dbab06753bd4",
+      "afterSha256": "2b67812c325c199a02536cdbeea0c593a72f707d323b72ee3e08dbab06753bd4"
+    },
+    {
+      "path": "public/globe.svg",
+      "status": "未修改",
+      "beforeSha256": "b614b9bf183925957661ac851498fe1d8029fd43a62fbfed86f9e2624a57e7cf",
+      "afterSha256": "b614b9bf183925957661ac851498fe1d8029fd43a62fbfed86f9e2624a57e7cf"
+    },
+    {
+      "path": "public/models/brain.glb",
+      "status": "未修改",
+      "beforeSha256": "2cd5e7178f1e5de707bb97c2c06f6c34fb5aaad28132445c0afcb4f0fd67c811",
+      "afterSha256": "2cd5e7178f1e5de707bb97c2c06f6c34fb5aaad28132445c0afcb4f0fd67c811"
+    },
+    {
+      "path": "public/models/eyeball.glb",
+      "status": "未修改",
+      "beforeSha256": "584337a2efc7d3c03d7326ca930217c4f7e5eca0a32a8cec141c7388ecc8a1c7",
+      "afterSha256": "584337a2efc7d3c03d7326ca930217c4f7e5eca0a32a8cec141c7388ecc8a1c7"
+    },
+    {
+      "path": "public/models/heart.glb",
+      "status": "未修改",
+      "beforeSha256": "ef48b43442dbbe2819d6035f8bbf1391d2c3fefbe842863c9c7c1a22cc6cd748",
+      "afterSha256": "ef48b43442dbbe2819d6035f8bbf1391d2c3fefbe842863c9c7c1a22cc6cd748"
+    },
+    {
+      "path": "public/models/intestine.glb",
+      "status": "未修改",
+      "beforeSha256": "d4423ba0c8f08ac7652396e2530482f874e4964a9c3f1b71440f0493048bea26",
+      "afterSha256": "d4423ba0c8f08ac7652396e2530482f874e4964a9c3f1b71440f0493048bea26"
+    },
+    {
+      "path": "public/models/kidneys.glb",
+      "status": "未修改",
+      "beforeSha256": "e3e0a58372d794d68b181d1d453ff4362da972667c28711e153c5f34064cf165",
+      "afterSha256": "e3e0a58372d794d68b181d1d453ff4362da972667c28711e153c5f34064cf165"
+    },
+    {
+      "path": "public/models/liver.glb",
+      "status": "未修改",
+      "beforeSha256": "e4f11a9c0762eb9dc4309dcd0d5c3e3958ccacab915267da4e7775894b674990",
+      "afterSha256": "e4f11a9c0762eb9dc4309dcd0d5c3e3958ccacab915267da4e7775894b674990"
+    },
+    {
+      "path": "public/models/lungs.glb",
+      "status": "未修改",
+      "beforeSha256": "81617c9fc2f2b7bf1e7d874b89614c89b09f2f68318e64997c68c948cfa9abdc",
+      "afterSha256": "81617c9fc2f2b7bf1e7d874b89614c89b09f2f68318e64997c68c948cfa9abdc"
+    },
+    {
+      "path": "public/models/pancreas.glb",
+      "status": "未修改",
+      "beforeSha256": "e5213bf8ed66e8ed4eb2a9d1c7a6922fb926eac85de8c5979e780ca1abcaf1c3",
+      "afterSha256": "e5213bf8ed66e8ed4eb2a9d1c7a6922fb926eac85de8c5979e780ca1abcaf1c3"
+    },
+    {
+      "path": "public/models/skin.glb",
+      "status": "未修改",
+      "beforeSha256": "8183ffe3527b3f071c41c55e41ffaf673df8d02a1405e95e644ac5d89cd6f5f9",
+      "afterSha256": "8183ffe3527b3f071c41c55e41ffaf673df8d02a1405e95e644ac5d89cd6f5f9"
+    },
+    {
+      "path": "public/next.svg",
+      "status": "未修改",
+      "beforeSha256": "55995dfad6ecb4945a1e856ddca03c5e16aa5bf13fd21b4df6a74ae79357bcfc",
+      "afterSha256": "55995dfad6ecb4945a1e856ddca03c5e16aa5bf13fd21b4df6a74ae79357bcfc"
+    },
+    {
+      "path": "public/vercel.svg",
+      "status": "未修改",
+      "beforeSha256": "f081337b2fee635b455b63275406a3e7f39d6a014e25ad90dab5a67e62a12ac4",
+      "afterSha256": "f081337b2fee635b455b63275406a3e7f39d6a014e25ad90dab5a67e62a12ac4"
+    },
+    {
+      "path": "public/window.svg",
+      "status": "未修改",
+      "beforeSha256": "644768c4aaeb4767bce293344eeb0c125fb804a94d801440424072202d85e3a1",
+      "afterSha256": "644768c4aaeb4767bce293344eeb0c125fb804a94d801440424072202d85e3a1"
+    },
+    {
+      "path": "scripts/gen-case-images.mjs",
+      "status": "修改",
+      "beforeSha256": "b8bf010cea43588dc14800cf9edf965d1e203e9234d883e8fc10f0cd474725e8",
+      "afterSha256": "00b3ba465a5c79c37b0359fefac4d2b98766c5952e4cbfb1dfe63510e223de09",
+      "addedLines": 0,
+      "removedLines": 1
+    },
+    {
+      "path": "scripts/gen-female-anatomy.mjs",
+      "status": "修改",
+      "beforeSha256": "3cfba5bad38c100c3b2a6b5794f2e1e73678413bebb7586a8b708c8efbe9c9ff",
+      "afterSha256": "f82a0931b99743c3b5315bae96dc9569200c6943bb33ebb7367548e1a21b3e2b",
+      "addedLines": 0,
+      "removedLines": 1
+    },
+    {
+      "path": "scripts/gen-hero-anatomy.mjs",
+      "status": "未修改",
+      "beforeSha256": "0baa0bfe01fec43af9412a58b47ee412bebbbc55d66bbd2354af65f8e06323a6",
+      "afterSha256": "0baa0bfe01fec43af9412a58b47ee412bebbbc55d66bbd2354af65f8e06323a6"
+    },
+    {
+      "path": "scripts/gen-uterus-thumb.mjs",
+      "status": "未修改",
+      "beforeSha256": "85c308aea0187cd0b34610b77726622b9b78cb3a5700f05e5a447867c65d2b5b",
+      "afterSha256": "85c308aea0187cd0b34610b77726622b9b78cb3a5700f05e5a447867c65d2b5b"
+    },
+    {
+      "path": "scripts/seed-knowledge.mjs",
+      "status": "新增",
+      "beforeSha256": null,
+      "afterSha256": "46de3cf2fb0368d73bcb552028beac9bf5f738e7b600d4dd19bac69000639ae2",
+      "addedLines": 43,
+      "removedLines": 0
+    },
+    {
+      "path": "scripts/wire-female.mjs",
+      "status": "未修改",
+      "beforeSha256": "534f0ea1376739c504953f2c317de632bc6c68785a0c7995be16702376a719fb",
+      "afterSha256": "534f0ea1376739c504953f2c317de632bc6c68785a0c7995be16702376a719fb"
+    },
+    {
+      "path": "src/app/api/auth/route.ts",
+      "status": "新增",
+      "beforeSha256": null,
+      "afterSha256": "1053784f464ba77c9be58a662223112ad27f2ffd0d30d12613134c45c37ba401",
+      "addedLines": 43,
+      "removedLines": 0
+    },
+    {
+      "path": "src/app/api/chat/route.ts",
+      "status": "修改",
+      "beforeSha256": "d4444b251e84cd465fdd4133173275c85694a7927a98644c08a23a1b9b3a4646",
+      "afterSha256": "6e5a26c6a9cdef8dd23eb10b12f6df0e92b5618b0cd51646695438709bdcdd05",
+      "addedLines": 77,
+      "removedLines": 75
+    },
+    {
+      "path": "src/app/api/health/route.ts",
+      "status": "修改",
+      "beforeSha256": "75333cd9073f6db51cbeb886e54794421b18559e888b71be58a017c2713e31dd",
+      "afterSha256": "489d81907a129745289bfeace108513708e38f0eea7f0f95359a433689f7e01b",
+      "addedLines": 15,
+      "removedLines": 10
+    },
+    {
+      "path": "src/app/api/image/route.ts",
+      "status": "修改",
+      "beforeSha256": "0beddc37c0e3f631a5358db308edecc87b770acf3580649605c8a6ec3e1846f1",
+      "afterSha256": "37a99a9369ddbe7e6d4998a576a27eadb45130db48b218b28e2fea025901a8b7",
+      "addedLines": 23,
+      "removedLines": 36
+    },
+    {
+      "path": "src/app/api/knowledge/route.ts",
+      "status": "修改",
+      "beforeSha256": "5b0fce0be7d38571b8b830244e3b085c930906ae757610a6c353fb4ccaca5793",
+      "afterSha256": "4926b7244b3f981e9376c43085b50335555430a42148a5b04c0dbda5c0802328",
+      "addedLines": 16,
+      "removedLines": 15
+    },
+    {
+      "path": "src/app/api/plans/[id]/feedback/route.ts",
+      "status": "修改",
+      "beforeSha256": "fcd14c675fe816292c399f9fdcd3e3d303e2f9313e0638bf24365ca2a6c6e876",
+      "afterSha256": "7d8d4a03d0b71e76f58a443a38996bf20dd6644304e162dc9ee807e77c8be14d",
+      "addedLines": 21,
+      "removedLines": 136
+    },
+    {
+      "path": "src/app/api/plans/[id]/generate/route.ts",
+      "status": "修改",
+      "beforeSha256": "dc7919365acc108df748125a29e8c52dfffee7657759da48165087f13430c391",
+      "afterSha256": "0db96c4d9fe8a5c6b19901bc972b062f0bd6a417afa7f7183c954cce2d4d3fa6",
+      "addedLines": 16,
+      "removedLines": 124
+    },
+    {
+      "path": "src/app/api/plans/[id]/route.ts",
+      "status": "修改",
+      "beforeSha256": "2347af7a821e8b41f96abbc1309b2b0de8b181f6ed6b60da47e5cfad5f43552a",
+      "afterSha256": "1e058d469c204565a89955023160b7b9c6f6dee0b86341df2777081ad0a0c951",
+      "addedLines": 10,
+      "removedLines": 5
+    },
+    {
+      "path": "src/app/api/plans/route.ts",
+      "status": "修改",
+      "beforeSha256": "2bd591ccf0827294014a07e9675011d1234662300e21de2a806be432ae6447d3",
+      "afterSha256": "9e29be9cdb65a27d1f9a7b65c6980e31c9fd47929497fe9dc4c5d737717b5e87",
+      "addedLines": 24,
+      "removedLines": 32
+    },
+    {
+      "path": "src/app/favicon.ico",
+      "status": "未修改",
+      "beforeSha256": "c28fdd2a4f31e2dc64f653962286da5c82a4cdfc518b242d32812c624e9a19a4",
+      "afterSha256": "c28fdd2a4f31e2dc64f653962286da5c82a4cdfc518b242d32812c624e9a19a4"
+    },
+    {
+      "path": "src/app/globals.css",
+      "status": "未修改",
+      "beforeSha256": "1c10ce215285b608bc84865bfed75128120a665fa442aa4e9a041427c4385384",
+      "afterSha256": "1c10ce215285b608bc84865bfed75128120a665fa442aa4e9a041427c4385384"
+    },
+    {
+      "path": "src/app/layout.tsx",
+      "status": "未修改",
+      "beforeSha256": "378bdf430f4058b53d7ede28d4b2c49654845ae93dffa26077e1c304ef76deab",
+      "afterSha256": "378bdf430f4058b53d7ede28d4b2c49654845ae93dffa26077e1c304ef76deab"
+    },
+    {
+      "path": "src/app/learning/page.tsx",
+      "status": "未修改",
+      "beforeSha256": "0cae58641e13559f0b64e323f870d09d1f82a329c6e9b783a59dcd9efa69e41f",
+      "afterSha256": "0cae58641e13559f0b64e323f870d09d1f82a329c6e9b783a59dcd9efa69e41f"
+    },
+    {
+      "path": "src/app/page.tsx",
+      "status": "未修改",
+      "beforeSha256": "8f428bb8ce66b0bb8347644f3572662258fb44a5a37f4dab2a0d313598b7093d",
+      "afterSha256": "8f428bb8ce66b0bb8347644f3572662258fb44a5a37f4dab2a0d313598b7093d"
+    },
+    {
+      "path": "src/app/planning/page.tsx",
+      "status": "未修改",
+      "beforeSha256": "c14624ab1d85b63d252bc90b53384ec12f47ea0e6e5741f5a15e48b9c5832e32",
+      "afterSha256": "c14624ab1d85b63d252bc90b53384ec12f47ea0e6e5741f5a15e48b9c5832e32"
+    },
+    {
+      "path": "src/components/atlas/AtlasViewer.tsx",
+      "status": "修改",
+      "beforeSha256": "aaee3ebbc9fdf921a3836b94d1cdb2e3fd0a2bf6653c29ff28cde32f878954de",
+      "afterSha256": "ee11874d3c06118c90d346a286f112ef2040ebc38ecca9172ceb530226896149",
+      "addedLines": 81,
+      "removedLines": 51
+    },
+    {
+      "path": "src/components/atlas/atlasData.ts",
+      "status": "修改",
+      "beforeSha256": "7b2d36ca60cbe3d8229266a23e369f109ce97d4db790daf72500b270c1a2f83e",
+      "afterSha256": "7f097781f4608d96976ea33e46cb5cb57d4dafa176e47b44dbc66f7329305178",
+      "addedLines": 54,
+      "removedLines": 3
+    },
+    {
+      "path": "src/components/chat/ChatPanel.tsx",
+      "status": "修改",
+      "beforeSha256": "e50ba9da9203836d4886da90675f5c98bf5ac18942eeb4b920b40e3da58df9dc",
+      "afterSha256": "03b0fd5f4d610824426d09b00e4889bc62d618166774a53e1bfa30fec7fa7c03",
+      "addedLines": 53,
+      "removedLines": 46
+    },
+    {
+      "path": "src/components/learn/Anatomy2D.tsx",
+      "status": "修改",
+      "beforeSha256": "55b53b154babdc9e946ffc69fe4eecab80b5448c9423d5180186c25b9b680c76",
+      "afterSha256": "9063daed083be8044f4f87725078f77004e0aac38d0aa942062a2bc1a917e159",
+      "addedLines": 21,
+      "removedLines": 9
+    },
+    {
+      "path": "src/components/learn/LearnCanvas.tsx",
+      "status": "修改",
+      "beforeSha256": "51f6725636f5a06c96121efa1c1c73eae5b04d2e835d087d6e7f3bdf49234fc2",
+      "afterSha256": "a5592d298fa1df5d58bd9e4afd65a9657686f87d7a1d473202482dc6d1117ba7",
+      "addedLines": 1,
+      "removedLines": 1
+    },
+    {
+      "path": "src/components/learn/LearningCenter.tsx",
+      "status": "修改",
+      "beforeSha256": "b753668131a48a549029ec59c8a4006d2f81a5e26ffa7c8b8b9c9229993fbf6c",
+      "afterSha256": "db609574b82a6df89d0ae7716eafdf09abf1e7f808cc617fbfc6329637d9b3bf",
+      "addedLines": 66,
+      "removedLines": 33
+    },
+    {
+      "path": "src/components/planning/PatientForm.tsx",
+      "status": "未修改",
+      "beforeSha256": "7c6a41d98b2f60f149da9e0c36b96fac621db9dd95ddd3b02884b9c0f5f8d466",
+      "afterSha256": "7c6a41d98b2f60f149da9e0c36b96fac621db9dd95ddd3b02884b9c0f5f8d466"
+    },
+    {
+      "path": "src/components/planning/PlanDocument.tsx",
+      "status": "修改",
+      "beforeSha256": "e8b5b0b64e2a7fc803952dbf73331212ce3d6f050ca8d78421705b2ca0831c80",
+      "afterSha256": "59d40e981c94c6ff0e655c4896ed034291201a06a570455248872b913d6c2283",
+      "addedLines": 12,
+      "removedLines": 5
+    },
+    {
+      "path": "src/components/planning/PlanningWorkspace.tsx",
+      "status": "修改",
+      "beforeSha256": "d4fee24112e0ae7fed1c196e8dd97ce4dfadf72768763cb6209e3cffc2faab42",
+      "afterSha256": "f1d8a8c5bb341bcac03a03af2227669d70750369f62461e74b673c84626e993d",
+      "addedLines": 70,
+      "removedLines": 56
+    },
+    {
+      "path": "src/components/sim/BodyOutline.tsx",
+      "status": "修改",
+      "beforeSha256": "761d6a33c76924e1fdd6d18fa023d547cf9d17204f33cf2c24367ddfb191c95e",
+      "afterSha256": "e2f168e8e3294bb4f88b07ceed9ba8aba6c27b7427297b4731e228453e609c70",
+      "addedLines": 16,
+      "removedLines": 8
+    },
+    {
+      "path": "src/components/sim/BodyOverviewScene.tsx",
+      "status": "未修改",
+      "beforeSha256": "c487f5ca24d2fd9ff8458a56f19c3ce31a75bb2844c08320bb3f48df2e947c53",
+      "afterSha256": "c487f5ca24d2fd9ff8458a56f19c3ce31a75bb2844c08320bb3f48df2e947c53"
+    },
+    {
+      "path": "src/components/sim/FemaleReproductive.tsx",
+      "status": "修改",
+      "beforeSha256": "e7647683be45c5571718005ec3bfb7f42bf6d88ae7651e802e69bd66d879cc9b",
+      "afterSha256": "d696b287d1a9c52370a9a2756eda4e91496a2571ece85f959f9bbf026ae40b11",
+      "addedLines": 2,
+      "removedLines": 1
+    },
+    {
+      "path": "src/components/sim/OrganModel.tsx",
+      "status": "修改",
+      "beforeSha256": "00431fa0ce5fa5d51cf7a47043fbd309d08b1b67e72634c3e2fcffae157b5e3b",
+      "afterSha256": "92428a70cb718479121e6f943218dae4ed34c401ed4aa8fb921e36dc73566c51",
+      "addedLines": 13,
+      "removedLines": 7
+    },
+    {
+      "path": "src/components/sim/SimulationStage.tsx",
+      "status": "修改",
+      "beforeSha256": "12cb38363da3cd10514a0da1adeaa90278524f33722b501615e303a0fb1aa804",
+      "afterSha256": "fdd78fb1896966fb87ea04a3e462913c7ee286f13db43625a9fb20df74466e19",
+      "addedLines": 61,
+      "removedLines": 32
+    },
+    {
+      "path": "src/components/sim/instruments.tsx",
+      "status": "修改",
+      "beforeSha256": "c6d74995485226a31a95071f9299933b06c0f7fe50fcd4fe1db312a914101598",
+      "afterSha256": "0c3d452c514bf48d6d06c093e5551ad3478bb3576d6159d6d52c29982059f7bb",
+      "addedLines": 6,
+      "removedLines": 7
+    },
+    {
+      "path": "src/components/sim/material-utils.ts",
+      "status": "新增",
+      "beforeSha256": null,
+      "afterSha256": "82aa11aa637b7b4f63dc13690b8510a843868065eeaa38faee7a3c81e539d5df",
+      "addedLines": 6,
+      "removedLines": 0
+    },
+    {
+      "path": "src/components/site/AnatomyOverlays.tsx",
+      "status": "未修改",
+      "beforeSha256": "35b0c5390a1d681416e2ab98c7490d353cdb78087a7edaa5e978fc1269261099",
+      "afterSha256": "35b0c5390a1d681416e2ab98c7490d353cdb78087a7edaa5e978fc1269261099"
+    },
+    {
+      "path": "src/components/site/AuthControls.tsx",
+      "status": "新增",
+      "beforeSha256": null,
+      "afterSha256": "430fd6fa53e996225eab55521251b66847cb6e1d45822839d90c1b4f2b761188",
+      "addedLines": 64,
+      "removedLines": 0
+    },
+    {
+      "path": "src/components/site/Header.tsx",
+      "status": "修改",
+      "beforeSha256": "a0067d1c3a785ff0a7d639ccf491e9fe73f96e3a31b807968b2f26e6432bee9c",
+      "afterSha256": "7ddc8910573f580af002e2e0be043e29467b59ad75a66d4cced1e396c660cf62",
+      "addedLines": 14,
+      "removedLines": 11
+    },
+    {
+      "path": "src/components/site/HeroAnatomy.tsx",
+      "status": "未修改",
+      "beforeSha256": "77768e396bfe4e2458aa799a1b6566f81a2b47910b71a2421f67c1d11db62578",
+      "afterSha256": "77768e396bfe4e2458aa799a1b6566f81a2b47910b71a2421f67c1d11db62578"
+    },
+    {
+      "path": "src/lib/agnes.ts",
+      "status": "修改",
+      "beforeSha256": "bc2d48d1340a069feaad801cf27a4f095182b9c669c2ddd080d2619604543b54",
+      "afterSha256": "34600438d56b387e89bac9a89bfe689b35120d40126a59ecd394042b354ede9a",
+      "addedLines": 73,
+      "removedLines": 39
+    },
+    {
+      "path": "src/lib/auth.ts",
+      "status": "新增",
+      "beforeSha256": null,
+      "afterSha256": "7898731a2370d1676cc1d982205ca22459dbb5e5e3f6181266d9c530ba2c2ec3",
+      "addedLines": 57,
+      "removedLines": 0
+    },
+    {
+      "path": "src/lib/http.ts",
+      "status": "新增",
+      "beforeSha256": null,
+      "afterSha256": "f706e3a0637095d27eb35226f263dbc65385589b0b8c09a285ce170515543d05",
+      "addedLines": 29,
+      "removedLines": 0
+    },
+    {
+      "path": "src/lib/knowledge/index.ts",
+      "status": "未修改",
+      "beforeSha256": "cabd9dfc5be08da48b66a93b0ebed20bd426eaf07583925fcd20ff084f3af182",
+      "afterSha256": "cabd9dfc5be08da48b66a93b0ebed20bd426eaf07583925fcd20ff084f3af182"
+    },
+    {
+      "path": "src/lib/knowledge/seed.ts",
+      "status": "未修改",
+      "beforeSha256": "a38bb7e84030e0b5c3ec1af29bbf06850dc828360337d4a55f96f4178cfc6c89",
+      "afterSha256": "a38bb7e84030e0b5c3ec1af29bbf06850dc828360337d4a55f96f4178cfc6c89"
+    },
+    {
+      "path": "src/lib/organ-models.ts",
+      "status": "未修改",
+      "beforeSha256": "5fbf022ac36592ea5ca11ba1ae04962acb851796d1100b6d764810469d1cdcc0",
+      "afterSha256": "5fbf022ac36592ea5ca11ba1ae04962acb851796d1100b6d764810469d1cdcc0"
+    },
+    {
+      "path": "src/lib/plan-generation.ts",
+      "status": "新增",
+      "beforeSha256": null,
+      "afterSha256": "f7c12aed493aca6d0e0954d51d19d1c72e1f81eb79803b33694296b63c0a2e68",
+      "addedLines": 54,
+      "removedLines": 0
+    },
+    {
+      "path": "src/lib/planning-prompt.ts",
+      "status": "修改",
+      "beforeSha256": "397283f6a9e72d9d374c1717c8f275a74fd014aadaf6ba56fc9fddea628a4a71",
+      "afterSha256": "37d66cef5024979dd310edb46ab69457d6ea02e83fb2ed1449753804046300e0",
+      "addedLines": 15,
+      "removedLines": 15
+    },
+    {
+      "path": "src/lib/store/base.ts",
+      "status": "修改",
+      "beforeSha256": "5033338ceb663b6ce7f36af67963307d13f725aae821b9beaebbb9de32d2144b",
+      "afterSha256": "01bf0a344554f83f0d7444dc08d664bfc7e0386b75c2a40a9930c8c6948a4519",
+      "addedLines": 48,
+      "removedLines": 19
+    },
+    {
+      "path": "src/lib/store/index.ts",
+      "status": "修改",
+      "beforeSha256": "b58dc9a0bb7ed0f9544fb616561410dd31a5689aa5b559948ce44e9d07f01ad6",
+      "afterSha256": "bc4f377fcc3af5511dee616d3d52367cb4de9d500ee0004d4e1b9eb6560149f6",
+      "addedLines": 5,
+      "removedLines": 4
+    },
+    {
+      "path": "src/lib/store/memory.ts",
+      "status": "修改",
+      "beforeSha256": "6c93d5630d4c21232b5fcd4fbd4b7d45279770521c4bed6ce9f6fb6c9377829d",
+      "afterSha256": "2f67b4404548e3da46a67c43f78a65cb5e5f89a6ec52fc8ca87672d64c399aff",
+      "addedLines": 85,
+      "removedLines": 74
+    },
+    {
+      "path": "src/lib/store/supabase.ts",
+      "status": "修改",
+      "beforeSha256": "222b85c1f49c9f6bbd2488b1f94211f9db50904ae0c31533fdee3e04484d6762",
+      "afterSha256": "c49b5bb14d9217774b5a5d59c8e632c77e80a2764f19617174717cc65cab8ae0",
+      "addedLines": 84,
+      "removedLines": 137
+    },
+    {
+      "path": "src/lib/types.ts",
+      "status": "修改",
+      "beforeSha256": "fecb2376ba60d368bbb6f81c8867c54d3c8be96fc739e9ed6f95450e7f43f622",
+      "afterSha256": "1db9be0a4135ee28c7a2b1be7c6c9dc23fd6c30990c73660a2c2f56f76af7b40",
+      "addedLines": 6,
+      "removedLines": 1
+    },
+    {
+      "path": "src/lib/validation.ts",
+      "status": "新增",
+      "beforeSha256": null,
+      "afterSha256": "5590064e6b131bc9ebf7a8056518b4d55f883ebb26090f8d19963e5d7f6a57d1",
+      "addedLines": 102,
+      "removedLines": 0
+    },
+    {
+      "path": "supabase/schema.sql",
+      "status": "修改",
+      "beforeSha256": "b05cabc5648c95197fe798efacd05389fd2df46c281caa8e91bc8c52a487cdf9",
+      "afterSha256": "e149935aad70bd2f7e6aa046969affdfe82e1a4f9cfdaf8ae43bd2d7567ee236",
+      "addedLines": 208,
+      "removedLines": 0
+    },
+    {
+      "path": "tests/api-regressions.test.cjs",
+      "status": "新增",
+      "beforeSha256": null,
+      "afterSha256": "923a00fba9c4523358c280d035489921ee3bfa3c39d7ea2c9f2faaf5ebfe1ffb",
+      "addedLines": 55,
+      "removedLines": 0
+    },
+    {
+      "path": "tests/atlas-regression.test.cjs",
+      "status": "新增",
+      "beforeSha256": null,
+      "afterSha256": "0a9ce6030c98fde8745d4118eb8b32540fbfeb28ed98461b406322a35dba6245",
+      "addedLines": 66,
+      "removedLines": 0
+    },
+    {
+      "path": "tests/auth-regressions.test.cjs",
+      "status": "新增",
+      "beforeSha256": null,
+      "afterSha256": "48ffac61e255871afe609d46345b6f9c0d4c853b057f7f1d2b66357303b6b9a0",
+      "addedLines": 47,
+      "removedLines": 0
+    },
+    {
+      "path": "tests/e2e-flow.cjs",
+      "status": "新增",
+      "beforeSha256": null,
+      "afterSha256": "716fbdfc15f1c1e955d4e3c4af5a3535cf7b84ec949810096dc100a102db2b8a",
+      "addedLines": 162,
+      "removedLines": 0
+    },
+    {
+      "path": "tests/e2e-server.cjs",
+      "status": "新增",
+      "beforeSha256": null,
+      "afterSha256": "2887c8e8180f17402dfac4ab555d7d3f9ddd9a1a9360bbcca847aac08859a26e",
+      "addedLines": 125,
+      "removedLines": 0
+    },
+    {
+      "path": "tests/load-ts.cjs",
+      "status": "新增",
+      "beforeSha256": null,
+      "afterSha256": "63263e7fb1bffbb03d0c6a149a4a2d083a25c3c766f4394c0e4e589fcf8f0acb",
+      "addedLines": 37,
+      "removedLines": 0
+    },
+    {
+      "path": "tests/plan-generation-regressions.test.cjs",
+      "status": "新增",
+      "beforeSha256": null,
+      "afterSha256": "de3bca2b07f0b6eb54dd81c02c0fa340a9ff1dc93cc913ecfc5be7f8d2071d7d",
+      "addedLines": 107,
+      "removedLines": 0
+    },
+    {
+      "path": "tests/postgres-check.mjs",
+      "status": "新增",
+      "beforeSha256": null,
+      "afterSha256": "7ef49a2353f101182b70f97629c04d3e8773a88109cf0215aaef337d6b578ecf",
+      "addedLines": 349,
+      "removedLines": 0
+    },
+    {
+      "path": "tests/provider.test.cjs",
+      "status": "新增",
+      "beforeSha256": null,
+      "afterSha256": "d24b6e0b9080441a661bbfd8f22cf034630a5e07695848891b21bbaed4b37dc5",
+      "addedLines": 98,
+      "removedLines": 0
+    },
+    {
+      "path": "tests/simulation-regression.test.cjs",
+      "status": "新增",
+      "beforeSha256": null,
+      "afterSha256": "b8f2516d833c7395f4e04eaa4b8e0c5a351b0a7ddec49e79cd6d8dfa58d94238",
+      "addedLines": 83,
+      "removedLines": 0
+    },
+    {
+      "path": "tests/store.test.cjs",
+      "status": "新增",
+      "beforeSha256": null,
+      "afterSha256": "10699756f175e216e0c42f1b9d91a4a8d0c24c1e0bf4c4a7b087f2e4ecdbf40f",
+      "addedLines": 147,
+      "removedLines": 0
+    },
+    {
+      "path": "tests/ui-regressions.test.cjs",
+      "status": "新增",
+      "beforeSha256": null,
+      "afterSha256": "ef311aa46f1202650263493cfa0aaa2152e6d56be91ee7e705474d0c7b23fe25",
+      "addedLines": 255,
+      "removedLines": 0
+    },
+    {
+      "path": "tsconfig.json",
+      "status": "未修改",
+      "beforeSha256": "5c51df4c59f4510d8c7dadf07a5c32132228826a3b331da5e286207b4df7ef9c",
+      "afterSha256": "5c51df4c59f4510d8c7dadf07a5c32132228826a3b331da5e286207b4df7ef9c"
+    }
+  ],
+  "round2": [
+    {
+      "path": ".gitignore",
+      "status": "未修改",
+      "beforeSha256": "207e265ff4901f9ad9f96d8ce08530e04f9fc600815472a66d0a446096d654cd",
+      "afterSha256": "207e265ff4901f9ad9f96d8ce08530e04f9fc600815472a66d0a446096d654cd"
+    },
+    {
+      "path": "AGENTS.md",
+      "status": "未修改",
+      "beforeSha256": "063098f6cb31bb44c6f8fbea25b3876de7ee1e5f7d00a50dbab506f6415eb7f0",
+      "afterSha256": "063098f6cb31bb44c6f8fbea25b3876de7ee1e5f7d00a50dbab506f6415eb7f0"
+    },
+    {
+      "path": "README.md",
+      "status": "修改",
+      "beforeSha256": "b45902f4bdf8d78cb6dac7134caec864f1ee65b1ab1df160679fde6bde92df0b",
+      "afterSha256": "39a8a3fdb7b2bd477f5f6ef1677a8740b7ed9b46776b7297543fc9a4e58860ef",
+      "addedLines": 13,
+      "removedLines": 4
+    },
+    {
+      "path": "docs/superpowers/plans/2026-10-28-audit-fixes.md",
+      "status": "修改",
+      "beforeSha256": "0285dc623dcab2a2e4383116afe63e2a9c543bc05e06425b357535db537710f1",
+      "afterSha256": "d7642abf53cefc03358ccce444a4630a594d5ef2c4ddc09e76a91bd7edc4ad0d",
+      "addedLines": 11,
+      "removedLines": 0
+    },
+    {
+      "path": "eslint.config.mjs",
+      "status": "未修改",
+      "beforeSha256": "a1a5444c7bc364e72f2c6ee9699f993b50776bbcf061328a47ca0c9b2080fcc1",
+      "afterSha256": "a1a5444c7bc364e72f2c6ee9699f993b50776bbcf061328a47ca0c9b2080fcc1"
+    },
+    {
+      "path": "mackdown.md",
+      "status": "修改",
+      "beforeSha256": "3babed9a23114d56bbc0ab038cf0d7168d75f814c0ef5c979ffaf87eb8b32709",
+      "afterSha256": "aff204f908266663dfbbc8f90b53d4e73dc0df3b3ba487e6d594a86c8b3da529",
+      "addedLines": 69,
+      "removedLines": 1
+    },
+    {
+      "path": "next-env.d.ts",
+      "status": "未修改",
+      "beforeSha256": "1b59d4c6b83807db275d43f3cf2cc8e9323f465fab764eea091cc5becd5bad37",
+      "afterSha256": "1b59d4c6b83807db275d43f3cf2cc8e9323f465fab764eea091cc5becd5bad37"
+    },
+    {
+      "path": "next.config.ts",
+      "status": "未修改",
+      "beforeSha256": "17145a9822ec351b92b8a5f8d3a709a531c8690ed92d397a4405ae084ea9acc7",
+      "afterSha256": "17145a9822ec351b92b8a5f8d3a709a531c8690ed92d397a4405ae084ea9acc7"
+    },
+    {
+      "path": "package-lock.json",
+      "status": "未修改",
+      "beforeSha256": "aecb9da8caae2dbb5709145589d731062c896bce9e7ccb9db2e91366d3b04af6",
+      "afterSha256": "aecb9da8caae2dbb5709145589d731062c896bce9e7ccb9db2e91366d3b04af6"
+    },
+    {
+      "path": "package.json",
+      "status": "未修改",
+      "beforeSha256": "786487b806ad79a2bdb61164610419b94841ca8f3ac06e503a774b9cf8c83c77",
+      "afterSha256": "786487b806ad79a2bdb61164610419b94841ca8f3ac06e503a774b9cf8c83c77"
+    },
+    {
+      "path": "scripts/gen-case-images.mjs",
+      "status": "未修改",
+      "beforeSha256": "00b3ba465a5c79c37b0359fefac4d2b98766c5952e4cbfb1dfe63510e223de09",
+      "afterSha256": "00b3ba465a5c79c37b0359fefac4d2b98766c5952e4cbfb1dfe63510e223de09"
+    },
+    {
+      "path": "scripts/gen-female-anatomy.mjs",
+      "status": "未修改",
+      "beforeSha256": "f82a0931b99743c3b5315bae96dc9569200c6943bb33ebb7367548e1a21b3e2b",
+      "afterSha256": "f82a0931b99743c3b5315bae96dc9569200c6943bb33ebb7367548e1a21b3e2b"
+    },
+    {
+      "path": "scripts/gen-hero-anatomy.mjs",
+      "status": "未修改",
+      "beforeSha256": "0baa0bfe01fec43af9412a58b47ee412bebbbc55d66bbd2354af65f8e06323a6",
+      "afterSha256": "0baa0bfe01fec43af9412a58b47ee412bebbbc55d66bbd2354af65f8e06323a6"
+    },
+    {
+      "path": "scripts/gen-uterus-thumb.mjs",
+      "status": "未修改",
+      "beforeSha256": "85c308aea0187cd0b34610b77726622b9b78cb3a5700f05e5a447867c65d2b5b",
+      "afterSha256": "85c308aea0187cd0b34610b77726622b9b78cb3a5700f05e5a447867c65d2b5b"
+    },
+    {
+      "path": "scripts/seed-knowledge.mjs",
+      "status": "未修改",
+      "beforeSha256": "46de3cf2fb0368d73bcb552028beac9bf5f738e7b600d4dd19bac69000639ae2",
+      "afterSha256": "46de3cf2fb0368d73bcb552028beac9bf5f738e7b600d4dd19bac69000639ae2"
+    },
+    {
+      "path": "scripts/wire-female.mjs",
+      "status": "未修改",
+      "beforeSha256": "534f0ea1376739c504953f2c317de632bc6c68785a0c7995be16702376a719fb",
+      "afterSha256": "534f0ea1376739c504953f2c317de632bc6c68785a0c7995be16702376a719fb"
+    },
+    {
+      "path": "src/app/api/auth/route.ts",
+      "status": "修改",
+      "beforeSha256": "96b3321538e73d53f8ecf2b82b8e8461eadf6eae9c40328045a89ede4265cedc",
+      "afterSha256": "1053784f464ba77c9be58a662223112ad27f2ffd0d30d12613134c45c37ba401",
+      "addedLines": 3,
+      "removedLines": 2
+    },
+    {
+      "path": "src/app/api/chat/route.ts",
+      "status": "未修改",
+      "beforeSha256": "6e5a26c6a9cdef8dd23eb10b12f6df0e92b5618b0cd51646695438709bdcdd05",
+      "afterSha256": "6e5a26c6a9cdef8dd23eb10b12f6df0e92b5618b0cd51646695438709bdcdd05"
+    },
+    {
+      "path": "src/app/api/health/route.ts",
+      "status": "未修改",
+      "beforeSha256": "489d81907a129745289bfeace108513708e38f0eea7f0f95359a433689f7e01b",
+      "afterSha256": "489d81907a129745289bfeace108513708e38f0eea7f0f95359a433689f7e01b"
+    },
+    {
+      "path": "src/app/api/image/route.ts",
+      "status": "未修改",
+      "beforeSha256": "37a99a9369ddbe7e6d4998a576a27eadb45130db48b218b28e2fea025901a8b7",
+      "afterSha256": "37a99a9369ddbe7e6d4998a576a27eadb45130db48b218b28e2fea025901a8b7"
+    },
+    {
+      "path": "src/app/api/knowledge/route.ts",
+      "status": "未修改",
+      "beforeSha256": "4926b7244b3f981e9376c43085b50335555430a42148a5b04c0dbda5c0802328",
+      "afterSha256": "4926b7244b3f981e9376c43085b50335555430a42148a5b04c0dbda5c0802328"
+    },
+    {
+      "path": "src/app/api/plans/[id]/feedback/route.ts",
+      "status": "修改",
+      "beforeSha256": "1e2837aed634f954418e427934517bce6eef4c07608230168e2414ae3f4af8c1",
+      "afterSha256": "7d8d4a03d0b71e76f58a443a38996bf20dd6644304e162dc9ee807e77c8be14d",
+      "addedLines": 4,
+      "removedLines": 1
+    },
+    {
+      "path": "src/app/api/plans/[id]/generate/route.ts",
+      "status": "修改",
+      "beforeSha256": "1ad9e326d51aa82623bb639f3d69d564750ddc977e25e67aa655b19f8550af3f",
+      "afterSha256": "0db96c4d9fe8a5c6b19901bc972b062f0bd6a417afa7f7183c954cce2d4d3fa6",
+      "addedLines": 4,
+      "removedLines": 1
+    },
+    {
+      "path": "src/app/api/plans/[id]/route.ts",
+      "status": "未修改",
+      "beforeSha256": "1e058d469c204565a89955023160b7b9c6f6dee0b86341df2777081ad0a0c951",
+      "afterSha256": "1e058d469c204565a89955023160b7b9c6f6dee0b86341df2777081ad0a0c951"
+    },
+    {
+      "path": "src/app/api/plans/route.ts",
+      "status": "未修改",
+      "beforeSha256": "9e29be9cdb65a27d1f9a7b65c6980e31c9fd47929497fe9dc4c5d737717b5e87",
+      "afterSha256": "9e29be9cdb65a27d1f9a7b65c6980e31c9fd47929497fe9dc4c5d737717b5e87"
+    },
+    {
+      "path": "src/app/favicon.ico",
+      "status": "未修改",
+      "beforeSha256": "c28fdd2a4f31e2dc64f653962286da5c82a4cdfc518b242d32812c624e9a19a4",
+      "afterSha256": "c28fdd2a4f31e2dc64f653962286da5c82a4cdfc518b242d32812c624e9a19a4"
+    },
+    {
+      "path": "src/app/globals.css",
+      "status": "未修改",
+      "beforeSha256": "1c10ce215285b608bc84865bfed75128120a665fa442aa4e9a041427c4385384",
+      "afterSha256": "1c10ce215285b608bc84865bfed75128120a665fa442aa4e9a041427c4385384"
+    },
+    {
+      "path": "src/app/layout.tsx",
+      "status": "未修改",
+      "beforeSha256": "378bdf430f4058b53d7ede28d4b2c49654845ae93dffa26077e1c304ef76deab",
+      "afterSha256": "378bdf430f4058b53d7ede28d4b2c49654845ae93dffa26077e1c304ef76deab"
+    },
+    {
+      "path": "src/app/learning/page.tsx",
+      "status": "未修改",
+      "beforeSha256": "0cae58641e13559f0b64e323f870d09d1f82a329c6e9b783a59dcd9efa69e41f",
+      "afterSha256": "0cae58641e13559f0b64e323f870d09d1f82a329c6e9b783a59dcd9efa69e41f"
+    },
+    {
+      "path": "src/app/page.tsx",
+      "status": "未修改",
+      "beforeSha256": "8f428bb8ce66b0bb8347644f3572662258fb44a5a37f4dab2a0d313598b7093d",
+      "afterSha256": "8f428bb8ce66b0bb8347644f3572662258fb44a5a37f4dab2a0d313598b7093d"
+    },
+    {
+      "path": "src/app/planning/page.tsx",
+      "status": "未修改",
+      "beforeSha256": "c14624ab1d85b63d252bc90b53384ec12f47ea0e6e5741f5a15e48b9c5832e32",
+      "afterSha256": "c14624ab1d85b63d252bc90b53384ec12f47ea0e6e5741f5a15e48b9c5832e32"
+    },
+    {
+      "path": "src/components/atlas/AtlasViewer.tsx",
+      "status": "未修改",
+      "beforeSha256": "ee11874d3c06118c90d346a286f112ef2040ebc38ecca9172ceb530226896149",
+      "afterSha256": "ee11874d3c06118c90d346a286f112ef2040ebc38ecca9172ceb530226896149"
+    },
+    {
+      "path": "src/components/atlas/atlasData.ts",
+      "status": "未修改",
+      "beforeSha256": "7f097781f4608d96976ea33e46cb5cb57d4dafa176e47b44dbc66f7329305178",
+      "afterSha256": "7f097781f4608d96976ea33e46cb5cb57d4dafa176e47b44dbc66f7329305178"
+    },
+    {
+      "path": "src/components/chat/ChatPanel.tsx",
+      "status": "修改",
+      "beforeSha256": "0ed06a4c521e898ca7b00ee32ac114ce3b5494ea4c6b0ca3e685251b133be455",
+      "afterSha256": "03b0fd5f4d610824426d09b00e4889bc62d618166774a53e1bfa30fec7fa7c03",
+      "addedLines": 2,
+      "removedLines": 1
+    },
+    {
+      "path": "src/components/learn/Anatomy2D.tsx",
+      "status": "未修改",
+      "beforeSha256": "9063daed083be8044f4f87725078f77004e0aac38d0aa942062a2bc1a917e159",
+      "afterSha256": "9063daed083be8044f4f87725078f77004e0aac38d0aa942062a2bc1a917e159"
+    },
+    {
+      "path": "src/components/learn/LearnCanvas.tsx",
+      "status": "未修改",
+      "beforeSha256": "a5592d298fa1df5d58bd9e4afd65a9657686f87d7a1d473202482dc6d1117ba7",
+      "afterSha256": "a5592d298fa1df5d58bd9e4afd65a9657686f87d7a1d473202482dc6d1117ba7"
+    },
+    {
+      "path": "src/components/learn/LearningCenter.tsx",
+      "status": "修改",
+      "beforeSha256": "1cec139f38ed86bc2e5838c8f04c7d9473e17373f1961a6906bf0f99a5089b22",
+      "afterSha256": "db609574b82a6df89d0ae7716eafdf09abf1e7f808cc617fbfc6329637d9b3bf",
+      "addedLines": 30,
+      "removedLines": 22
+    },
+    {
+      "path": "src/components/planning/PatientForm.tsx",
+      "status": "未修改",
+      "beforeSha256": "7c6a41d98b2f60f149da9e0c36b96fac621db9dd95ddd3b02884b9c0f5f8d466",
+      "afterSha256": "7c6a41d98b2f60f149da9e0c36b96fac621db9dd95ddd3b02884b9c0f5f8d466"
+    },
+    {
+      "path": "src/components/planning/PlanDocument.tsx",
+      "status": "未修改",
+      "beforeSha256": "59d40e981c94c6ff0e655c4896ed034291201a06a570455248872b913d6c2283",
+      "afterSha256": "59d40e981c94c6ff0e655c4896ed034291201a06a570455248872b913d6c2283"
+    },
+    {
+      "path": "src/components/planning/PlanningWorkspace.tsx",
+      "status": "修改",
+      "beforeSha256": "3ec404d32386f62ffb3ed2e61b9e776155fc791887893192cee6dde209922186",
+      "afterSha256": "f1d8a8c5bb341bcac03a03af2227669d70750369f62461e74b673c84626e993d",
+      "addedLines": 5,
+      "removedLines": 5
+    },
+    {
+      "path": "src/components/sim/BodyOutline.tsx",
+      "status": "未修改",
+      "beforeSha256": "e2f168e8e3294bb4f88b07ceed9ba8aba6c27b7427297b4731e228453e609c70",
+      "afterSha256": "e2f168e8e3294bb4f88b07ceed9ba8aba6c27b7427297b4731e228453e609c70"
+    },
+    {
+      "path": "src/components/sim/BodyOverviewScene.tsx",
+      "status": "未修改",
+      "beforeSha256": "c487f5ca24d2fd9ff8458a56f19c3ce31a75bb2844c08320bb3f48df2e947c53",
+      "afterSha256": "c487f5ca24d2fd9ff8458a56f19c3ce31a75bb2844c08320bb3f48df2e947c53"
+    },
+    {
+      "path": "src/components/sim/FemaleReproductive.tsx",
+      "status": "未修改",
+      "beforeSha256": "d696b287d1a9c52370a9a2756eda4e91496a2571ece85f959f9bbf026ae40b11",
+      "afterSha256": "d696b287d1a9c52370a9a2756eda4e91496a2571ece85f959f9bbf026ae40b11"
+    },
+    {
+      "path": "src/components/sim/OrganModel.tsx",
+      "status": "未修改",
+      "beforeSha256": "92428a70cb718479121e6f943218dae4ed34c401ed4aa8fb921e36dc73566c51",
+      "afterSha256": "92428a70cb718479121e6f943218dae4ed34c401ed4aa8fb921e36dc73566c51"
+    },
+    {
+      "path": "src/components/sim/SimulationStage.tsx",
+      "status": "修改",
+      "beforeSha256": "4f3924ec04711b87d8727da435448e77bf1b57ce33ff26172a0a74cfcbb17bd7",
+      "afterSha256": "fdd78fb1896966fb87ea04a3e462913c7ee286f13db43625a9fb20df74466e19",
+      "addedLines": 16,
+      "removedLines": 2
+    },
+    {
+      "path": "src/components/sim/instruments.tsx",
+      "status": "未修改",
+      "beforeSha256": "0c3d452c514bf48d6d06c093e5551ad3478bb3576d6159d6d52c29982059f7bb",
+      "afterSha256": "0c3d452c514bf48d6d06c093e5551ad3478bb3576d6159d6d52c29982059f7bb"
+    },
+    {
+      "path": "src/components/sim/material-utils.ts",
+      "status": "未修改",
+      "beforeSha256": "82aa11aa637b7b4f63dc13690b8510a843868065eeaa38faee7a3c81e539d5df",
+      "afterSha256": "82aa11aa637b7b4f63dc13690b8510a843868065eeaa38faee7a3c81e539d5df"
+    },
+    {
+      "path": "src/components/site/AnatomyOverlays.tsx",
+      "status": "未修改",
+      "beforeSha256": "35b0c5390a1d681416e2ab98c7490d353cdb78087a7edaa5e978fc1269261099",
+      "afterSha256": "35b0c5390a1d681416e2ab98c7490d353cdb78087a7edaa5e978fc1269261099"
+    },
+    {
+      "path": "src/components/site/AuthControls.tsx",
+      "status": "未修改",
+      "beforeSha256": "430fd6fa53e996225eab55521251b66847cb6e1d45822839d90c1b4f2b761188",
+      "afterSha256": "430fd6fa53e996225eab55521251b66847cb6e1d45822839d90c1b4f2b761188"
+    },
+    {
+      "path": "src/components/site/Header.tsx",
+      "status": "未修改",
+      "beforeSha256": "7ddc8910573f580af002e2e0be043e29467b59ad75a66d4cced1e396c660cf62",
+      "afterSha256": "7ddc8910573f580af002e2e0be043e29467b59ad75a66d4cced1e396c660cf62"
+    },
+    {
+      "path": "src/components/site/HeroAnatomy.tsx",
+      "status": "未修改",
+      "beforeSha256": "77768e396bfe4e2458aa799a1b6566f81a2b47910b71a2421f67c1d11db62578",
+      "afterSha256": "77768e396bfe4e2458aa799a1b6566f81a2b47910b71a2421f67c1d11db62578"
+    },
+    {
+      "path": "src/lib/agnes.ts",
+      "status": "修改",
+      "beforeSha256": "b307b23a27e25500c9003bc9d47313b8d8c917a378912f80cf86bb6bd33d89cd",
+      "afterSha256": "34600438d56b387e89bac9a89bfe689b35120d40126a59ecd394042b354ede9a",
+      "addedLines": 42,
+      "removedLines": 12
+    },
+    {
+      "path": "src/lib/auth.ts",
+      "status": "修改",
+      "beforeSha256": "6bb1c7a13aae0620b4837762ef114a5d7d3f505dcf50438dc1591afd7e9bce63",
+      "afterSha256": "7898731a2370d1676cc1d982205ca22459dbb5e5e3f6181266d9c530ba2c2ec3",
+      "addedLines": 10,
+      "removedLines": 2
+    },
+    {
+      "path": "src/lib/http.ts",
+      "status": "未修改",
+      "beforeSha256": "f706e3a0637095d27eb35226f263dbc65385589b0b8c09a285ce170515543d05",
+      "afterSha256": "f706e3a0637095d27eb35226f263dbc65385589b0b8c09a285ce170515543d05"
+    },
+    {
+      "path": "src/lib/knowledge/index.ts",
+      "status": "未修改",
+      "beforeSha256": "cabd9dfc5be08da48b66a93b0ebed20bd426eaf07583925fcd20ff084f3af182",
+      "afterSha256": "cabd9dfc5be08da48b66a93b0ebed20bd426eaf07583925fcd20ff084f3af182"
+    },
+    {
+      "path": "src/lib/knowledge/seed.ts",
+      "status": "未修改",
+      "beforeSha256": "a38bb7e84030e0b5c3ec1af29bbf06850dc828360337d4a55f96f4178cfc6c89",
+      "afterSha256": "a38bb7e84030e0b5c3ec1af29bbf06850dc828360337d4a55f96f4178cfc6c89"
+    },
+    {
+      "path": "src/lib/organ-models.ts",
+      "status": "未修改",
+      "beforeSha256": "5fbf022ac36592ea5ca11ba1ae04962acb851796d1100b6d764810469d1cdcc0",
+      "afterSha256": "5fbf022ac36592ea5ca11ba1ae04962acb851796d1100b6d764810469d1cdcc0"
+    },
+    {
+      "path": "src/lib/plan-generation.ts",
+      "status": "未修改",
+      "beforeSha256": "f7c12aed493aca6d0e0954d51d19d1c72e1f81eb79803b33694296b63c0a2e68",
+      "afterSha256": "f7c12aed493aca6d0e0954d51d19d1c72e1f81eb79803b33694296b63c0a2e68"
+    },
+    {
+      "path": "src/lib/planning-prompt.ts",
+      "status": "修改",
+      "beforeSha256": "93e3b5579cfafa9f6a33113342cca43abc8f0e2d654b2f6b64e5830edafa32d6",
+      "afterSha256": "37d66cef5024979dd310edb46ab69457d6ea02e83fb2ed1449753804046300e0",
+      "addedLines": 14,
+      "removedLines": 14
+    },
+    {
+      "path": "src/lib/store/base.ts",
+      "status": "未修改",
+      "beforeSha256": "01bf0a344554f83f0d7444dc08d664bfc7e0386b75c2a40a9930c8c6948a4519",
+      "afterSha256": "01bf0a344554f83f0d7444dc08d664bfc7e0386b75c2a40a9930c8c6948a4519"
+    },
+    {
+      "path": "src/lib/store/index.ts",
+      "status": "未修改",
+      "beforeSha256": "bc4f377fcc3af5511dee616d3d52367cb4de9d500ee0004d4e1b9eb6560149f6",
+      "afterSha256": "bc4f377fcc3af5511dee616d3d52367cb4de9d500ee0004d4e1b9eb6560149f6"
+    },
+    {
+      "path": "src/lib/store/memory.ts",
+      "status": "未修改",
+      "beforeSha256": "2f67b4404548e3da46a67c43f78a65cb5e5f89a6ec52fc8ca87672d64c399aff",
+      "afterSha256": "2f67b4404548e3da46a67c43f78a65cb5e5f89a6ec52fc8ca87672d64c399aff"
+    },
+    {
+      "path": "src/lib/store/supabase.ts",
+      "status": "未修改",
+      "beforeSha256": "c49b5bb14d9217774b5a5d59c8e632c77e80a2764f19617174717cc65cab8ae0",
+      "afterSha256": "c49b5bb14d9217774b5a5d59c8e632c77e80a2764f19617174717cc65cab8ae0"
+    },
+    {
+      "path": "src/lib/types.ts",
+      "status": "未修改",
+      "beforeSha256": "1db9be0a4135ee28c7a2b1be7c6c9dc23fd6c30990c73660a2c2f56f76af7b40",
+      "afterSha256": "1db9be0a4135ee28c7a2b1be7c6c9dc23fd6c30990c73660a2c2f56f76af7b40"
+    },
+    {
+      "path": "src/lib/validation.ts",
+      "status": "未修改",
+      "beforeSha256": "5590064e6b131bc9ebf7a8056518b4d55f883ebb26090f8d19963e5d7f6a57d1",
+      "afterSha256": "5590064e6b131bc9ebf7a8056518b4d55f883ebb26090f8d19963e5d7f6a57d1"
+    },
+    {
+      "path": "supabase/schema.sql",
+      "status": "未修改",
+      "beforeSha256": "e149935aad70bd2f7e6aa046969affdfe82e1a4f9cfdaf8ae43bd2d7567ee236",
+      "afterSha256": "e149935aad70bd2f7e6aa046969affdfe82e1a4f9cfdaf8ae43bd2d7567ee236"
+    },
+    {
+      "path": "tests/api-regressions.test.cjs",
+      "status": "未修改",
+      "beforeSha256": "923a00fba9c4523358c280d035489921ee3bfa3c39d7ea2c9f2faaf5ebfe1ffb",
+      "afterSha256": "923a00fba9c4523358c280d035489921ee3bfa3c39d7ea2c9f2faaf5ebfe1ffb"
+    },
+    {
+      "path": "tests/atlas-regression.test.cjs",
+      "status": "未修改",
+      "beforeSha256": "0a9ce6030c98fde8745d4118eb8b32540fbfeb28ed98461b406322a35dba6245",
+      "afterSha256": "0a9ce6030c98fde8745d4118eb8b32540fbfeb28ed98461b406322a35dba6245"
+    },
+    {
+      "path": "tests/auth-regressions.test.cjs",
+      "status": "新增",
+      "beforeSha256": null,
+      "afterSha256": "48ffac61e255871afe609d46345b6f9c0d4c853b057f7f1d2b66357303b6b9a0",
+      "addedLines": 47,
+      "removedLines": 0
+    },
+    {
+      "path": "tests/e2e-flow.cjs",
+      "status": "修改",
+      "beforeSha256": "d8fd15d78627c7cdd3471938e8163230f9f03cd4f70143fef4bbc88b91301877",
+      "afterSha256": "716fbdfc15f1c1e955d4e3c4af5a3535cf7b84ec949810096dc100a102db2b8a",
+      "addedLines": 10,
+      "removedLines": 1
+    },
+    {
+      "path": "tests/e2e-server.cjs",
+      "status": "修改",
+      "beforeSha256": "85f186f2face3babff76c8245b166370d5c62d757a0448a0eece65ff0c4d6738",
+      "afterSha256": "2887c8e8180f17402dfac4ab555d7d3f9ddd9a1a9360bbcca847aac08859a26e",
+      "addedLines": 5,
+      "removedLines": 4
+    },
+    {
+      "path": "tests/load-ts.cjs",
+      "status": "未修改",
+      "beforeSha256": "63263e7fb1bffbb03d0c6a149a4a2d083a25c3c766f4394c0e4e589fcf8f0acb",
+      "afterSha256": "63263e7fb1bffbb03d0c6a149a4a2d083a25c3c766f4394c0e4e589fcf8f0acb"
+    },
+    {
+      "path": "tests/plan-generation-regressions.test.cjs",
+      "status": "新增",
+      "beforeSha256": null,
+      "afterSha256": "de3bca2b07f0b6eb54dd81c02c0fa340a9ff1dc93cc913ecfc5be7f8d2071d7d",
+      "addedLines": 107,
+      "removedLines": 0
+    },
+    {
+      "path": "tests/postgres-check.mjs",
+      "status": "新增",
+      "beforeSha256": null,
+      "afterSha256": "7ef49a2353f101182b70f97629c04d3e8773a88109cf0215aaef337d6b578ecf",
+      "addedLines": 349,
+      "removedLines": 0
+    },
+    {
+      "path": "tests/provider.test.cjs",
+      "status": "修改",
+      "beforeSha256": "60b622d614b7f6adaceafa5c970bf0dff531ec46756fb80843438b9623b7dc9d",
+      "afterSha256": "d24b6e0b9080441a661bbfd8f22cf034630a5e07695848891b21bbaed4b37dc5",
+      "addedLines": 30,
+      "removedLines": 1
+    },
+    {
+      "path": "tests/simulation-regression.test.cjs",
+      "status": "修改",
+      "beforeSha256": "15b0932a323c5f49b1b31f3f2411cb493e3a732f05c379a426f8b0136474f385",
+      "afterSha256": "b8f2516d833c7395f4e04eaa4b8e0c5a351b0a7ddec49e79cd6d8dfa58d94238",
+      "addedLines": 59,
+      "removedLines": 0
+    },
+    {
+      "path": "tests/store.test.cjs",
+      "status": "未修改",
+      "beforeSha256": "10699756f175e216e0c42f1b9d91a4a8d0c24c1e0bf4c4a7b087f2e4ecdbf40f",
+      "afterSha256": "10699756f175e216e0c42f1b9d91a4a8d0c24c1e0bf4c4a7b087f2e4ecdbf40f"
+    },
+    {
+      "path": "tests/ui-regressions.test.cjs",
+      "status": "修改",
+      "beforeSha256": "6671cd4da7fbde70d0714f31ca74b3d9e02853f3978672a5d9851516a4a4d62b",
+      "afterSha256": "ef311aa46f1202650263493cfa0aaa2152e6d56be91ee7e705474d0c7b23fe25",
+      "addedLines": 120,
+      "removedLines": 2
+    },
+    {
+      "path": "tsconfig.json",
+      "status": "未修改",
+      "beforeSha256": "5c51df4c59f4510d8c7dadf07a5c32132228826a3b331da5e286207b4df7ef9c",
+      "afterSha256": "5c51df4c59f4510d8c7dadf07a5c32132228826a3b331da5e286207b4df7ef9c"
+    }
+  ]
+}

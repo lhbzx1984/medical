@@ -5,6 +5,7 @@
 import * as THREE from "three";
 import { useEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
+import { setEmissiveIntensity } from "./material-utils";
 
 function build(): THREE.Group {
   const g = new THREE.Group();
@@ -117,7 +118,7 @@ export function FemaleReproductive({
     if (highlight) {
       t.current += dt;
       const pulse = 0.25 + Math.sin(t.current * 3.4) * 0.15;
-      for (const m of matsRef.current) m.emissiveIntensity = pulse;
+      setEmissiveIntensity(matsRef.current, pulse);
     }
   });
 

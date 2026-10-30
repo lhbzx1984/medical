@@ -1,0 +1,72 @@
+
+> medplan-atlas@0.1.0 test
+> node --test tests/*.test.cjs
+
+✔ same-origin forms use the public Host header even when Next uses an internal URL (214.8874ms)
+✔ anonymous callers cannot list patient plans (70.1689ms)
+✔ all ten supported organs include the uterus in AI and region validation (12.8847ms)
+✔ unsupported AI focus organs cannot silently become intestine or skin simulations (15.6694ms)
+✔ request validation rejects null and scalar patient names as client errors (47.7159ms)
+(node:42992) [THREE_CJS_DEPRECATED] DeprecationWarning: `require("three")` is deprecated and will be removed.
+Replace `const THREE = require("three")` with `import * as THREE from "three"`.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ atlas metadata recovers after a temporary request failure (117.6479ms)
+✔ atlas chunk retries a failed request and decompresses the successful response (47.689ms)
+✔ atlas pointer picking ignores hidden front structure and follows exploded structure (28.996ms)
+✔ Auth service failures and provider throttling retain their status instead of accusing credentials (455.6767ms)
+✔ only verified app metadata grants roles and malformed display names fall back to email (24.7938ms)
+✔ expired sessions remain unauthorized rather than service failures (25.4226ms)
+✔ cancelling Auth checks remains cancellation when the SDK wraps the fetch error (21.6972ms)
+✔ malformed simulation steps are rejected instead of fabricated into playable steps (122.5827ms)
+✔ simulation normalization preserves explicitly empty instrument lists (49.6036ms)
+✔ invalid AI simulation uses the existing plan-derived fallback (91.9951ms)
+✔ generate shares one deadline across both AI calls and never commits an expired result (123.7228ms)
+✔ feedback shares one deadline across both AI calls and never commits an expired result (68.5974ms)
+✔ text calls always have a bounded abort signal (111.0653ms)
+✔ ending a streaming iterator cancels its upstream body (29.5756ms)
+✔ provider SSE errors are surfaced instead of a successful empty answer (19.1283ms)
+✔ the DONE event terminates the upstream protocol (19.415ms)
+✔ an upstream EOF without DONE rejects instead of completing a partial answer (21.2189ms)
+✔ invalid provider image fields are rejected before image persistence (76.0344ms)
+✔ malformed non-streaming provider responses are reported as upstream errors (14.3459ms)
+✔ malformed SSE objects are surfaced as upstream errors (12.5823ms)
+(node:56240) [THREE_CJS_DEPRECATED] DeprecationWarning: `require("three")` is deprecated and will be removed.
+Replace `const THREE = require("three")` with `import * as THREE from "three"`.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ manual simulation preview shows operation phase before playback starts (0.8315ms)
+✔ pause preserves playback time and resume completes only the remaining duration (0.1971ms)
+✔ resuming a paused final simulation step does not jump back to the beginning (92.851ms)
+✔ a completed simulation replays from the first step (74.7871ms)
+✔ invalid historical simulation data shows an error without mounting a 3D stage (216.5369ms)
+✔ memory store exposes atomic case creation instead of separate writes (3.7563ms)
+✔ concurrent plan commits yield one version and no partial feedback or simulation (0.8363ms)
+✔ foreign owner cannot commit or reuse another owner chat session (1.1115ms)
+✔ Supabase child query failure is surfaced rather than empty history (21.4682ms)
+✔ Supabase knowledge search quotes filter punctuation and preserves literal LIKE characters (4.1977ms)
+✔ Supabase commits use one RPC and translate stale version conflicts (0.9095ms)
+✔ rate limits are atomic and separated by user and action (0.3849ms)
+✔ expired rate limit windows become available again (0.187ms)
+✔ Supabase rate limit consumes the shared database counter (0.6355ms)
+✔ knowledge seeding uses stable IDs and preserves edited seeded entries (85.3686ms)
+✔ historical version without a matching simulation never plays the latest simulation (192.1795ms)
+✔ guidance context and session identity follow the selected case and version (89.6384ms)
+✔ an invalid historical focus organ reaches the simulation error instead of crashing its workspace (74.3892ms)
+✔ invalid historical model content renders a useful error instead of crashing (34.3841ms)
+✔ valid historical content still renders the procedure and its steps (39.5614ms)
+✔ stomach and breast labels preserve their own identities instead of selecting intestine or skin (16.91ms)
+✔ an external sex update keeps the visible closeup and tutor context on an available organ (27.0504ms)
+✔ an external sex update clears overview selections and their tutor context (47.0802ms)
+✔ an external sex update cannot reuse an atlas structure from the other sex (23.5765ms)
+✔ local sex buttons and mode changes preserve matching model and tutor contexts (29.019ms)
+✔ image generation blocks simultaneous chat and is cancelled when its panel unmounts (15.8987ms)
+✔ a streamed error preserves partial output and tells the user what failed (26.9647ms)
+✔ chat history stays within the server message count and JSON byte limits (30.2428ms)
+✔ a question after cancellation retains completed history without sending the failure as an answer (19.5065ms)
+ℹ tests 54
+ℹ suites 0
+ℹ pass 54
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1497.3084

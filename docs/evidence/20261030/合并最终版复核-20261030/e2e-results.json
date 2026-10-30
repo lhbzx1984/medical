@@ -1,0 +1,83 @@
+{
+  "date": "2026-10-30T14:38:32.689Z",
+  "environment": "Production Next.js + loopback Auth token issuer + PostgREST-subset translator over PGlite running supabase/schema.sql as role authenticated; AI endpoints are stubs. Not a real Supabase, GoTrue, PostgREST or AI service.",
+  "passed": 19,
+  "checks": [
+    {
+      "name": "页面和健康接口可访问",
+      "passed": true
+    },
+    {
+      "name": "匿名请求被拒绝",
+      "passed": true
+    },
+    {
+      "name": "登录写入 HttpOnly 会话，错误凭据和跨站写入被拒绝",
+      "passed": true
+    },
+    {
+      "name": "建病例、生成 v1 和同版本模拟",
+      "passed": true
+    },
+    {
+      "name": "专家修订原子保存，身份来自登录账号",
+      "passed": true
+    },
+    {
+      "name": "学习聊天、历史版本指导与图片保存",
+      "passed": true
+    },
+    {
+      "name": "登录服务故障和限流保留真实错误含义",
+      "passed": true
+    },
+    {
+      "name": "知识库写入权限与病例所有者隔离",
+      "passed": true
+    },
+    {
+      "name": "非法 JSON、字段类型与请求上限被明确拒绝",
+      "passed": true
+    },
+    {
+      "name": "坏模型输出不创建版本、模拟或孤立反馈",
+      "passed": true
+    },
+    {
+      "name": "并发生成只有一个成功，版本不重复",
+      "passed": true
+    },
+    {
+      "name": "模拟服务失败时使用原有规则生成可播放脚本",
+      "passed": true
+    },
+    {
+      "name": "上游失败和数据库子查询失败不会伪装成功",
+      "passed": true
+    },
+    {
+      "name": "截断回答和错误图像类型不保存为成功结果",
+      "passed": true
+    },
+    {
+      "name": "取消流式请求会取消上游且不保存半条对话",
+      "passed": true
+    },
+    {
+      "name": "同一账号超过图像额度收到 429，其他账号不受影响",
+      "passed": true
+    },
+    {
+      "name": "病例编辑、历史、归档与定稿",
+      "passed": true
+    },
+    {
+      "name": "学习自测接口按账号保存且拒绝跨站和非法答案",
+      "passed": true
+    },
+    {
+      "name": "退出登录清除会话",
+      "passed": true
+    }
+  ]
+}

@@ -4,6 +4,7 @@
 //   chunk 内每个 Part 依次排列 [positions: f32×3V][normals: u16×3V, 4字节对齐][indices: u32×I]
 // 坐标单位为米、Y 轴向上，成人站立参考姿势。
 "use client";
+import * as THREE from "three";
 
 export interface AtlasPart {
   id: string;
@@ -79,6 +80,9 @@ export function loadAtlasJson(): Promise<AtlasJson> {
     g.__atlasJson = fetch("/atlas/atlas.json").then((r) => {
       if (!r.ok) throw new Error(`atlas.json 加载失败 (${r.status})`);
       return r.json() as Promise<AtlasJson>;
+    }).catch((error) => {
+      delete g.__atlasJson;
+      throw error;
     });
   }
   return g.__atlasJson;
@@ -98,7 +102,10 @@ export function loadChunkBuffer(i: number): Promise<ArrayBuffer> {
     const ds = new DecompressionStream("gzip");
     const stream = (await res.blob()).stream().pipeThrough(ds);
     return new Response(stream).arrayBuffer();
-  })();
+  })().catch((error) => {
+    g.__atlasChunks?.delete(i);
+    throw error;
+  });
   g.__atlasChunks.set(i, p);
   return p;
 }
@@ -167,6 +174,50 @@ export function buildChunkGeometry(json: AtlasJson, chunkIdx: number, buf: Array
   return { chunk: chunkIdx, base, positions, normals, indices, partIds };
 }
 
+/** GPU 隐藏和位移必须同时用于 CPU 拾取；只复用网格缓冲，不增加绘制批次。 */
+export function createAtlasRaycast(
+  parts: AtlasPart[],
+  chunk: number,
+  state: Float32Array,
+  offsets: Float32Array,
+  getExplode: () => number
+): THREE.Mesh["raycast"] {
+  let start = 0;
+  const ranges = parts.flatMap((part, gi) => {
+    if (part.chunk !== chunk) return [];
+    const range = { gi, start, count: part.indexCount, box: new THREE.Box3(
+      new THREE.Vector3(...part.bounds[0] as [number, number, number]),
+      new THREE.Vector3(...part.bounds[1] as [number, number, number])
+    ) };
+    start += part.indexCount;
+    return [range];
+  });
+  const translation = new THREE.Matrix4();
+  const box = new THREE.Box3();
+  const offset = new THREE.Vector3();
+  return function (this: THREE.Mesh, raycaster, intersections) {
+    const geometry = this.geometry;
+    const originalRange = { ...geometry.drawRange };
+    const proxy = new THREE.Mesh(geometry, this.material);
+    try {
+      for (const range of ranges) {
+        const o = range.gi * 4;
+        if (state[o] < 0.5) continue;
+        offset.set(offsets[o], offsets[o + 1], offsets[o + 2]).multiplyScalar(getExplode());
+        proxy.matrixWorld.copy(this.matrixWorld).multiply(translation.makeTranslation(offset));
+        box.copy(range.box).applyMatrix4(proxy.matrixWorld);
+        if (!raycaster.ray.intersectsBox(box)) continue;
+        geometry.setDrawRange(range.start, range.count);
+        const hits: THREE.Intersection[] = [];
+        THREE.Mesh.prototype.raycast.call(proxy, raycaster, hits);
+        for (const hit of hits) intersections.push({ ...hit, object: this });
+      }
+    } finally {
+      geometry.setDrawRange(originalRange.start, originalRange.count);
+    }
+  };
+}
+
 /** part 中心点（世界坐标，米） */
 export function partCenter(p: AtlasPart): [number, number, number] {
   return [
@@ -185,9 +236,9 @@ export function explodeOffset(p: AtlasPart): [number, number, number] {
   let dz = c[2] - center[2];
   let len = Math.hypot(dx, dy, dz);
   if (len < 1e-4) {
-    dx = (Math.random() - 0.5) * 0.01;
+    dx = 0;
     dy = 0.01;
-    dz = (Math.random() - 0.5) * 0.01;
+    dz = 0;
     len = Math.hypot(dx, dy, dz);
   }
   const dist = Math.max(len * 0.62, 0.03);

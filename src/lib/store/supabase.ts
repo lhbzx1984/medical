@@ -17,18 +17,19 @@ import { DataStore, id, NewPatient, now } from "./base";
 type Row = Record<string, unknown>;
 
 export class CaseNotFoundError extends Error {
-  constructor() { super("未找到该病例"); }
+  constructor() { super("未找到该病例"); this.name = "CaseNotFoundError"; }
 }
 
 export class RevisionConflictError extends Error {
-  constructor() { super("规划已被更新，请刷新后重试"); }
+  constructor() { super("规划已被更新，请刷新后重试"); this.name = "RevisionConflictError"; }
 }
 
 export class SupabaseStore implements DataStore {
   readonly kind = "supabase" as const;
   private sb: SupabaseClient;
 
-  constructor(client: SupabaseClient) {
+  /** actor 由服务器验证的会话得出，反馈署名不采信请求体。 */
+  constructor(client: SupabaseClient, readonly actor: { id: string; name: string } = { id: "", name: "登录用户" }) {
     this.sb = client;
   }
 
@@ -341,7 +342,11 @@ export class SupabaseStore implements DataStore {
   // ── 知识库 ──
   async listKnowledge(q?: string): Promise<KnowledgeEntry[]> {
     let query = this.tbl("knowledge_entries").select("*").order("created_at", { ascending: true });
-    if (q) query = query.or(`title.ilike.%${q}%,content.ilike.%${q}%`);
+    if (q) {
+      // Escape LIKE first, then the quoted PostgREST value so punctuation stays search text.
+      const literal = q.replace(/[\\%_]/g, "\\$&").replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+      query = query.or(`title.ilike."%${literal}%",content.ilike."%${literal}%"`);
+    }
     const { data, error } = await query;
     if (error) throw new Error(error.message);
     return (data ?? []).map((r: Row) => ({

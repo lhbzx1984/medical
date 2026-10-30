@@ -1,20 +1,15 @@
 // 流式对话代理（agnes-2.5-flash）。
 // 两种角色：learning = 医学学习导师；guidance = 手术指导顾问。
-// API Key 仅在服务端使用；对话记录写入数据存储（Supabase 或演示存储）。
+// API Key 仅在服务端使用；对话记录写入当前登录用户名下（Supabase RLS）。
 import { NextRequest } from "next/server";
 import { agnesChatStream, agnesConfigured, iterateAgnesDelta, AgnesError } from "@/lib/agnes";
-import { getStore } from "@/lib/store";
 import { ORGANS, matchOrgan } from "@/lib/organ-models";
 import type { ChatContext, ChatMsg } from "@/lib/types";
+import { ORGAN_IDS } from "@/lib/types";
+import { apiError, ApiError, assertSameOrigin, requireStore } from "@/lib/http";
+import { readJson, object, textField, integerField, enumField } from "@/lib/validation";
 
 export const maxDuration = 300;
-
-interface ChatRequestBody {
-  mode?: "learning" | "guidance";
-  sessionId?: string;
-  messages: ChatMsg[];
-  context?: ChatContext;
-}
 
 function learningSystem(ctx: ChatContext): string {
   const organ = ctx.organId ? ORGANS[matchOrgan(ctx.organId)] : undefined;
@@ -50,89 +45,80 @@ function guidanceSystem(ctx: ChatContext): string {
 }
 
 export async function POST(req: NextRequest) {
-  let body: ChatRequestBody;
   try {
-    body = (await req.json()) as ChatRequestBody;
-  } catch {
-    return Response.json({ error: "请求体不是合法 JSON" }, { status: 400 });
-  }
-
-  if (!body || typeof body !== "object" || !Array.isArray(body.messages) ||
-      body.messages.length > 100 || body.messages.some((m) => !m ||
-        (m.role !== "user" && m.role !== "assistant") ||
-        typeof m.content !== "string" || m.content.length > 16000) ||
-      (body.sessionId !== undefined && (typeof body.sessionId !== "string" || body.sessionId.length > 128)) ||
-      (body.context !== undefined && (!body.context || typeof body.context !== "object" || Array.isArray(body.context) ||
-        Object.values(body.context).some((v) => typeof v !== "string" || v.length > 16000)))) {
-    return Response.json({ error: "对话请求格式不正确或内容过长" }, { status: 400 });
-  }
-
-  const mode = body.mode === "guidance" ? "guidance" : "learning";
-  const history = (body.messages ?? [])
-    .filter((m) => m.role === "user" || m.role === "assistant")
-    .slice(-24); // 控制上下文长度
-
-  if (!history.length) {
-    return Response.json({ error: "messages 不能为空" }, { status: 400 });
-  }
-  if (!agnesConfigured()) {
-    return Response.json(
-      { error: "AGNES_API_KEY 未配置：请在 .env.local 中设置后重启服务" },
-      { status: 500 }
-    );
-  }
-
-  const system = mode === "learning" ? learningSystem(body.context ?? {}) : guidanceSystem(body.context ?? {});
-  const payload: ChatMsg[] = [{ role: "system", content: system }, ...history];
-
-  // 持久化（不阻塞主流程的错误）
-  const store = await getStore();
-  if (!store) return Response.json({ error: "请先登录" }, { status: 401 });
-  if (!(await store.consumeAiQuota("chat"))) {
-    return Response.json({ error: "请求过于频繁，请稍后再试" }, { status: 429 });
-  }
-
-  const sessionId = body.sessionId;
-  const lastUser = [...history].reverse().find((m) => m.role === "user");
-
-  const upstream = await agnesChatStream(payload, { temperature: 0.7, maxTokens: 4096 });
-
-  const encoder = new TextEncoder();
-  let assistantText = "";
-
-  const stream = new ReadableStream<Uint8Array>({
-    async start(controller) {
-      try {
-        for await (const delta of iterateAgnesDelta(upstream)) {
-          assistantText += delta;
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ delta })}\n\n`));
+    assertSameOrigin(req);
+    const store = await requireStore();
+    const body = await readJson(req);
+    const mode = enumField(body.mode ?? "learning", ["learning", "guidance"], "mode") as "learning" | "guidance";
+    if (!Array.isArray(body.messages) || !body.messages.length || body.messages.length > 24) {
+      throw new ApiError("messages 必须包含 1 到 24 条消息", 400);
+    }
+    const history: ChatMsg[] = body.messages.map((value) => {
+      const m = object(value);
+      return { role: enumField(m.role, ["user", "assistant"], "role") as "user" | "assistant",
+        content: textField(m, "content", 12000) };
+    });
+    const lastUser = history[history.length - 1];
+    if (lastUser.role !== "user") throw new ApiError("最后一条消息必须是用户提问", 400);
+    const sessionId = textField(body, "sessionId", 100, true) || crypto.randomUUID();
+    const rawContext = body.context === undefined ? {} : object(body.context);
+    let context: ChatContext;
+    if (mode === "guidance") {
+      // 病例上下文由服务端按登录用户的权限加载，不信任客户端自带的摘要。
+      const planId = textField(rawContext, "planId", 100);
+      const detail = await store.getPlanDetail(planId);
+      if (!detail) throw new ApiError("未找到该病例或无权访问", 404);
+      const versionNo = rawContext.planVersion === undefined ? detail.plan.currentVersion
+        : integerField(rawContext.planVersion, 0, Number.MAX_SAFE_INTEGER, "planVersion");
+      const version = detail.versions.find((v) => v.version === versionNo);
+      if (versionNo && !version) throw new ApiError("未找到该方案版本", 404);
+      context = { planId, planVersion: versionNo, planTitle: `${detail.plan.title}（v${versionNo}）`,
+        planSummary: version ? JSON.stringify(version.content) : detail.patient.medicalRecord };
+    } else {
+      context = { organName: textField(rawContext, "organName", 300, true),
+        organId: rawContext.organId === undefined ? undefined : enumField(rawContext.organId, ORGAN_IDS, "organId") };
+    }
+    if (!agnesConfigured()) throw new ApiError("AGNES_API_KEY 未配置，请配置后重启服务", 503);
+    if (!(await store.consumeAiQuota("chat"))) throw new ApiError("请求过于频繁，请稍后再试", 429);
+    await store.ensureChatSession(sessionId, mode, lastUser.content.slice(0, 30));
+    const abort = new AbortController();
+    const signal = AbortSignal.any([req.signal, abort.signal]);
+    const system = mode === "learning" ? learningSystem(context) : guidanceSystem(context);
+    const upstream = await agnesChatStream([{ role: "system", content: system }, ...history],
+      { temperature: 0.7, maxTokens: 4096, signal });
+    const encoder = new TextEncoder();
+    let cancelled = false;
+    const stream = new ReadableStream<Uint8Array>({
+      async start(controller) {
+        const send = (data: object) => controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
+        let assistantText = "";
+        try {
+          for await (const delta of iterateAgnesDelta(upstream)) {
+            if (cancelled) break;
+            assistantText += delta;
+            if (assistantText.length > 64000) throw new AgnesError("对话服务返回内容过长");
+            send({ delta });
+          }
+          if (!cancelled) {
+            signal.throwIfAborted();
+            if (!assistantText.trim()) throw new AgnesError("对话服务返回了空回答，请重试");
+            await store.addChatMessages(sessionId, [
+              { role: "user", content: lastUser.content }, { role: "assistant", content: assistantText },
+            ]);
+            send({ done: true });
+          }
+        } catch (error) {
+          if (!cancelled) send({ error: error instanceof AgnesError ? error.message
+            : error instanceof Error && error.name === "TimeoutError" ? "对话服务响应超时，请重试"
+            : "回答中断或保存失败，请重试" });
+        } finally {
+          if (!cancelled) controller.close();
         }
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ done: true })}\n\n`));
-      } catch (e) {
-        const msg = e instanceof AgnesError ? e.message : "流式响应中断";
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: msg })}\n\n`));
-      } finally {
-        controller.close();
-        if (sessionId && lastUser) {
-          store
-            .ensureChatSession(sessionId, mode, lastUser.content.slice(0, 30))
-            .then(() =>
-              store.addChatMessages(sessionId, [
-                { role: "user", content: lastUser.content },
-                { role: "assistant", content: assistantText },
-              ])
-            )
-            .catch(() => {});
-        }
-      }
-    },
-  });
-
-  return new Response(stream, {
-    headers: {
-      "Content-Type": "text/event-stream; charset=utf-8",
-      "Cache-Control": "no-cache, no-transform",
-      Connection: "keep-alive",
-    },
-  });
+      },
+      cancel() { cancelled = true; abort.abort(); },
+    });
+    return new Response(stream, { headers: {
+      "Content-Type": "text/event-stream; charset=utf-8", "Cache-Control": "no-cache, no-transform",
+    } });
+  } catch (error) { return apiError(error); }
 }

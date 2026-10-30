@@ -1,0 +1,56 @@
+{
+  "date": "2026-10-30",
+  "subject": "合并最终版：远程 main 8f3ea17 与本地最终版 97be433 合并后的工作树（在临时克隆中验证）",
+  "evidenceNotes": "【已被取代】本目录是当时代码上的复核（92 项测试、19 组流程）；其后修复了 4 个路由在认证服务故障时的处理并调整了 tsconfig/ESLint 排除项，最终代码上的结果在 合并最终版终验-20261030。同日较早的一次完整链路运行和浏览器截图在 合并最终版验证-20261030。三处没有互相覆盖。",
+  "results": {
+    "typecheck": { "command": "npx tsc --noEmit --incremental false", "exit": 0, "log": "tsc.log" },
+    "eslint": {
+      "command": "npx eslint",
+      "exit": 0,
+      "errors": 0,
+      "warnings": 0,
+      "log": "lint.log",
+      "firstRun": "lint-首次-11个问题.log：8 个 no-require-imports 错误来自 docs/archive 里的归档脚本，3 个未使用变量警告来自新增的 e2e 脚本。处理：eslint.config.mjs 忽略 docs/archive/**（归档脚本不运行），并清理 e2e 脚本里的未使用变量；之后重跑为 0/0。"
+    },
+    "unitTests": {
+      "command": "npm test（node --test --test-concurrency=1 tests/*.test.cjs）",
+      "exit": 0,
+      "tests": 92,
+      "pass": 92,
+      "fail": 0,
+      "skipped": 0,
+      "log": "unit-tests.log",
+      "perFileLog": "unit-tests-逐文件.log",
+      "perFile": {
+        "admin": 1, "api-regressions": 10, "archive": 1, "assign": 1, "atlas-regression": 6, "audit": 1,
+        "auth-regressions": 8, "chat-route": 9, "diagnosis": 1, "edit": 1, "finalize": 1, "knowledge": 1,
+        "plan-generation-regressions": 12, "provider": 10, "quiz": 1, "quota": 1, "simulation-regression": 5,
+        "store": 7, "ui-regressions": 15
+      },
+      "sqlTests": "admin、archive、assign、audit、diagnosis、edit、finalize、knowledge、quiz、quota 共 10 个文件，各 1 个测试，在 PGlite 中直接执行 supabase/schema.sql",
+      "knownWarning": "测试加载器 require('three') 触发 THREE_CJS_DEPRECATED 废弃提示（既有；生产代码使用 ESM）"
+    },
+    "productionBuild": {
+      "command": "npm run build",
+      "exit": 0,
+      "log": "build.log",
+      "note": "构建后没有再改动 src、public、supabase、package.json；其后只改了测试脚本、ESLint 配置和文档。"
+    },
+    "endToEnd": {
+      "command": "node tests/e2e-server.cjs（后台）+ npm run test:e2e",
+      "checks": 19,
+      "passed": 19,
+      "failed": 0,
+      "log": "e2e.log",
+      "result": "e2e-results.json",
+      "environment": "生产构建的 Next.js + 回环地址上的合成登录令牌服务 + PostgREST 子集翻译器（在 PGlite 中以 authenticated 角色执行 supabase/schema.sql）+ AI 桩。不是真实 Supabase、GoTrue、PostgREST 或 AI 服务。"
+    }
+  },
+  "notVerified": [
+    "真实 Supabase（登录、PostgREST、行级安全在真实服务上的行为、多连接并发、多实例）",
+    "真实 Agnes 模型的输出质量、超时与计费取消",
+    "390/768/1024/1280 像素多视口与手机真机触控在合并后的页面上的复查（合并后只在 1280×720 视口的应用内浏览器里查看了登录、病例、3D 模拟、学习中心、胃特写和账号菜单）",
+    "所有 GPU 与浏览器的逐项视觉与性能",
+    "医学内容的专业审核"
+  ]
+}

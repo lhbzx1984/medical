@@ -4,7 +4,7 @@
 // 流程：录入病历与初步方案 → AI 生成结构化规划（知识库增强）→ 3D 模拟（人体→器官）
 //       → 专家反馈 → AI 修订出新版本 → 再模拟，全程版本可追溯。
 import dynamic from "next/dynamic";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { PlanDetail, SimulationRun, SurgicalPlan } from "@/lib/types";
 import { ORGANS, matchOrgan } from "@/lib/organ-models";
 import PatientForm, { CaseFormValue } from "./PatientForm";
@@ -57,22 +57,30 @@ export default function PlanningWorkspace() {
   const [playing, setPlaying] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [chatOpen, setChatOpen] = useState(true);
+  const [chatOpen, setChatOpen] = useState(false);
+  const activeRequest = useRef<AbortController | null>(null);
 
   // 专家反馈表单
-  const [expertName, setExpertName] = useState("李主任");
   const [comment, setComment] = useState("");
 
-  const loadPlans = useCallback(async () => {
-    const res = await fetch("/api/plans");
+  const fetchPlans = useCallback(async (signal?: AbortSignal) => {
+    const res = await fetch("/api/plans", { signal });
     const data = (await res.json()) as { plans?: SurgicalPlan[]; error?: string };
-    if (!res.ok) { setError(data.error ?? "加载病例失败"); return; }
-    setPlans(data.plans ?? []);
+    if (!res.ok) throw new Error(data.error ?? "加载病例列表失败");
+    return data.plans ?? [];
   }, []);
+  const loadPlans = useCallback(async () => { setPlans(await fetchPlans()); }, [fetchPlans]);
 
   useEffect(() => {
-    void loadPlans();
-  }, [loadPlans]);
+    const controller = new AbortController();
+    void fetchPlans(controller.signal).then(setPlans).catch((e) => {
+      if (!controller.signal.aborted) setError(e instanceof Error ? e.message : String(e));
+    });
+    return () => {
+      controller.abort();
+      activeRequest.current?.abort();
+    };
+  }, [fetchPlans]);
 
   const selectPlan = useCallback(async (id: string) => {
     setBusy("加载病例…");
@@ -87,7 +95,8 @@ export default function PlanningWorkspace() {
       setVersionIdx(Math.max(0, data.versions.length - 1));
       setStepIdx(0);
       setPlaying(false);
-      setTab(data.versions.length ? "plan" : "plan");
+      setTab("plan");
+      setComment("");
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -98,10 +107,11 @@ export default function PlanningWorkspace() {
   const refreshDetail = useCallback(async (planId: string) => {
     const res = await fetch(`/api/plans/${planId}`);
     const data = (await res.json()) as PlanDetail & { error?: string };
-    if (res.ok) {
-      setDetail(data);
-      setVersionIdx(Math.max(0, data.versions.length - 1));
-    }
+    if (!res.ok) throw new Error(data.error ?? "刷新病例失败");
+    setDetail(data);
+    setVersionIdx(Math.max(0, data.versions.length - 1));
+    setStepIdx(0);
+    setPlaying(false);
     return data;
   }, []);
 
@@ -189,8 +199,10 @@ export default function PlanningWorkspace() {
     setBusy("AI 正在生成手术规划（含知识库检索与模拟编排）…");
     setError(null);
     setTab("plan");
+    const controller = new AbortController();
+    activeRequest.current = controller;
     try {
-      const res = await fetch(`/api/plans/${id}/generate`, { method: "POST" });
+      const res = await fetch(`/api/plans/${id}/generate`, { method: "POST", signal: controller.signal });
       const data = (await res.json()) as { error?: string };
       if (!res.ok) throw new Error(data.error ?? "生成失败");
       await refreshDetail(id);
@@ -199,18 +211,26 @@ export default function PlanningWorkspace() {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       setBusy(null);
+      if (activeRequest.current === controller) activeRequest.current = null;
     }
   };
 
   const submitFeedback = async () => {
     if (!detail || !comment.trim()) return;
+    if (!currentVersion || currentVersion.version !== detail.plan.currentVersion) {
+      setError("请切换到最新版本后提交反馈，历史版本仅供查阅。");
+      return;
+    }
     setBusy("专家反馈修订中（AI 重新规划并编排模拟）…");
     setError(null);
+    const controller = new AbortController();
+    activeRequest.current = controller;
     try {
       const res = await fetch(`/api/plans/${detail.plan.id}/feedback`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ expertName, comment, version: currentVersion?.version }),
+        body: JSON.stringify({ comment, version: currentVersion.version }),
+        signal: controller.signal,
       });
       const data = (await res.json()) as { error?: string };
       if (!res.ok) throw new Error(data.error ?? "反馈提交失败");
@@ -221,6 +241,7 @@ export default function PlanningWorkspace() {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       setBusy(null);
+      if (activeRequest.current === controller) activeRequest.current = null;
     }
   };
 
@@ -228,29 +249,26 @@ export default function PlanningWorkspace() {
   const simulation: SimulationRun | null = useMemo(() => {
     if (!detail) return null;
     const v = currentVersion?.version;
-    return (
-      [...detail.simulations].reverse().find((s) => s.version === v) ??
-      detail.simulations[detail.simulations.length - 1] ??
-      null
-    );
+    return [...detail.simulations].reverse().find((s) => s.version === v) ?? null;
   }, [detail, currentVersion]);
-  const focusOrgan = ORGANS[matchOrgan(simulation?.focusOrgan ?? "skin")];
+  const focusOrgan = typeof simulation?.focusOrgan === "string" ? ORGANS[matchOrgan(simulation.focusOrgan)] : null;
 
   const planContext = useMemo(() => {
     if (!detail) return undefined;
-    const latest = detail.versions[detail.versions.length - 1];
     return {
-      planTitle: `${detail.plan.title}（v${latest?.version ?? 0}）`,
-      planSummary: latest
-        ? `诊断：${latest.content.diagnosis}；拟施术式：${latest.content.procedureName}；方案摘要：${latest.content.summary}`
+      planId: detail.plan.id,
+      planVersion: currentVersion?.version,
+      planTitle: `${detail.plan.title}（v${currentVersion?.version ?? 0}）`,
+      planSummary: currentVersion
+        ? `诊断：${currentVersion.content?.diagnosis ?? ""}；拟施术式：${currentVersion.content?.procedureName ?? ""}；方案摘要：${currentVersion.content?.summary ?? ""}`
         : `患者：${detail.patient.name}；病历：${detail.patient.medicalRecord.slice(0, 200)}`,
     };
-  }, [detail]);
+  }, [detail, currentVersion]);
 
   return (
-    <div className="mx-auto flex h-[calc(100vh-56px-49px)] max-w-[1720px] gap-3 p-3">
+    <div className="mx-auto flex min-h-[calc(100dvh-56px-49px)] max-w-[1720px] flex-col gap-3 p-3 md:h-[calc(100dvh-56px-49px)] md:flex-row">
       {/* 左侧：病例列表 */}
-      <aside className="panel hidden w-60 shrink-0 flex-col overflow-hidden md:flex">
+      <aside aria-label="病例列表" className="panel flex max-h-52 w-full shrink-0 flex-col overflow-hidden md:max-h-none md:w-60">
         <div className="border-b border-[var(--line)] p-3">
           <button
             className="btn btn-primary w-full"
@@ -294,7 +312,7 @@ export default function PlanningWorkspace() {
             <div className="px-2 py-6 text-center text-[12px] text-[var(--muted)]">没有符合条件的病例</div>
           )}
           {filteredPlans.map((p) => {
-            const st = STATUS_LABEL[p.status];
+            const st = STATUS_LABEL[p.status] ?? STATUS_LABEL.draft;
             return (
               <button
                 key={p.id}
@@ -325,10 +343,14 @@ export default function PlanningWorkspace() {
       </aside>
 
       {/* 主区 */}
-      <main className="flex min-w-0 flex-1 flex-col">
+      <main className="flex min-h-[440px] min-w-0 flex-1 flex-col md:min-h-0">
+        {error && (
+          <div role="alert" className="panel mb-3 border-red-900/60 bg-[#2a1215] px-4 py-2.5 text-[13px] text-red-200">
+            {error}
+          </div>
+        )}
         {editing && detail ? (
           <div className="min-h-0 flex-1 overflow-y-auto p-1">
-            {error && <p role="alert" className="panel mb-3 p-3 text-red-400">{error}</p>}
             <PatientForm key={detail.plan.id} initialValue={{ patientName: detail.patient.name,
               gender: detail.patient.gender, age: String(detail.patient.age || ""),
               medicalRecord: detail.patient.medicalRecord, preliminaryPlan: detail.patient.preliminaryPlan }}
@@ -385,7 +407,7 @@ export default function PlanningWorkspace() {
                       ✨ AI 生成手术规划
                     </button>
                   ) : (
-                    <div className="flex items-center gap-1">
+                    <div className="flex max-w-full flex-wrap items-center gap-1">
                       {detail.versions.map((v, i) => (
                         <button
                           key={v.id}
@@ -415,14 +437,16 @@ export default function PlanningWorkspace() {
                     </div>
                   )}
                   <button
-                    className="btn !py-1 !text-[12px] lg:hidden"
+                    className="btn !py-1 !text-[12px] xl:hidden"
                     onClick={() => setChatOpen((o) => !o)}
+                    aria-expanded={chatOpen}
+                    aria-controls="guidance-panel"
                   >
                     {chatOpen ? "收起顾问" : "指导顾问"}
                   </button>
                 </div>
               </div>
-              <div className="mt-2 flex border-b border-[var(--line)]">
+              <div className="mt-2 flex overflow-x-auto border-b border-[var(--line)]">
                 <button
                   className={`tab ${tab === "plan" ? "active" : ""}`}
                   onClick={() => setTab("plan")}
@@ -439,7 +463,7 @@ export default function PlanningWorkspace() {
                   onClick={() => setTab("sim")}
                 >
                   🫀 3D 模拟
-                  {simulation ? ` · ${focusOrgan.nameZh}` : ""}
+                  {focusOrgan ? ` · ${focusOrgan.nameZh}` : ""}
                 </button>
                 <button
                   className={`tab ${tab === "feedback" ? "active" : ""}`}
@@ -454,12 +478,6 @@ export default function PlanningWorkspace() {
             {/* 内容区 */}
             <div className="min-h-0 flex-1 overflow-y-auto pr-0.5">
               {detail.plan.status === "finalized" && <p className="panel mb-3 p-3 text-sm">已定稿{detail.plan.finalizedVersion ? `：v${detail.plan.finalizedVersion}` : ""}。如需修改，请先撤销定稿。</p>}
-              {error && (
-                <div className="panel mb-3 border-red-900/60 bg-[#2a1215] px-4 py-2.5 text-[13px] text-red-200">
-                  {error}
-                </div>
-              )}
-
               {tab === "plan" &&
                 (currentVersion ? (
                   <PlanDocument
@@ -522,16 +540,8 @@ export default function PlanningWorkspace() {
                         </span>
                       )}
                     </div>
-                    <div className="mb-3 grid gap-3 sm:grid-cols-[180px_1fr]">
-                      <div>
-                        <label className="label">专家姓名</label>
-                        <input
-                          className="input"
-                          value={expertName}
-                          onChange={(e) => setExpertName(e.target.value)}
-                          placeholder="如：李主任"
-                        />
-                      </div>
+                    <p className="mb-3 text-[12px] text-[var(--muted)]">专家身份以登录账号为准。{currentVersion?.version !== detail.plan.currentVersion && "请切换到最新版本后提交反馈，历史版本仅供查阅。"}</p>
+                    <div className="mb-3">
                       <div>
                         <label className="label">反馈意见（切口选择、步骤顺序、风险防范…）</label>
                         <textarea
@@ -601,9 +611,11 @@ export default function PlanningWorkspace() {
       </main>
 
       {/* 右侧：手术指导顾问 */}
-      {chatOpen && detail && (
-        <aside className="panel hidden w-[360px] shrink-0 flex-col overflow-hidden lg:flex">
+      {detail && (
+        <aside id="guidance-panel" aria-label="手术指导顾问" className={`panel ${chatOpen ? "fixed inset-x-3 bottom-4 top-20 z-40 flex" : "hidden"} shrink-0 flex-col overflow-hidden xl:static xl:flex xl:w-[360px]`}>
+          <button className="btn m-2 self-end xl:hidden" onClick={() => setChatOpen(false)}>关闭顾问</button>
           <ChatPanel
+            key={`${detail.plan.id}-${currentVersion?.version ?? 0}`}
             mode="guidance"
             context={planContext}
             className="h-full"
@@ -626,6 +638,7 @@ export default function PlanningWorkspace() {
               <div className="mt-0.5 text-[12px] text-[var(--muted)]">
                 智能体思考中 · 全程知识库增强
               </div>
+              {(busy.includes("生成") || busy.includes("修订")) && <button className="btn mt-3" onClick={() => activeRequest.current?.abort()}>停止本次生成</button>}
             </div>
           </div>
         </div>

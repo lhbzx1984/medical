@@ -2,7 +2,6 @@
 // 男性复用 hero-anatomy.png → anatomy-male.png
 import fs from "node:fs";
 
-const root = import.meta.url;
 const casesDir = new URL("../public/cases/", import.meta.url);
 fs.mkdirSync(casesDir, { recursive: true });
 

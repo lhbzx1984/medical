@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { getAdminStore } from "@/lib/admin";
+import { apiError, assertSameOrigin } from "@/lib/http";
 
 // The privileged client is created only after a server-side administrator check.
 function adminClient() {
@@ -22,6 +23,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  try { assertSameOrigin(req); } catch (error) { return apiError(error); }
   const auth = await getAdminStore();
   if ("error" in auth) return Response.json({ error: auth.error }, { status: auth.status });
   const client = adminClient();

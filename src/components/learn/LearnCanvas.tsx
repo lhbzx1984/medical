@@ -2,7 +2,7 @@
 
 // 学习中心 3D 画布：全身概览（真实肤色外皮 + 可点击器官标注）与器官特写两种模式。
 // 概览中点击文字标注 / 3D 器官 → 外皮淡出并聚焦该器官；点空白处恢复外皮。
-import { Suspense, useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";

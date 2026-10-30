@@ -1,0 +1,7 @@
+Q0 limit not enforced                                   -> quota-window: exit 1 (detected) AssertionError [ERR_ASSERTION]: the sixth plan call in one window is refused
+Q1 cleanup ignores the owner                            -> quota-window: exit 1 (detected) AssertionError [ERR_ASSERTION]: cleanup only touches the caller's own records
+Q2 cleanup removes the previous window                  -> quota-window: exit 1 (detected) AssertionError [ERR_ASSERTION]: each window keeps its own count
+C1 row level security off on chat_sessions              -> chat-isolation: exit 1 (detected) AssertionError [ERR_ASSERTION]: chat_sessions is invisible to another account
+C2 chat_messages open to every signed-in account        -> chat-isolation: exit 1 (detected) AssertionError [ERR_ASSERTION]: chat_messages is invisible to another account
+C3 generated_images open to every signed-in account     -> chat-isolation: exit 1 (detected) AssertionError [ERR_ASSERTION]: generated_images is invisible to another account
+schema.sql restored: True

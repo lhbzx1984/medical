@@ -1,56 +1,31 @@
 // 病例（病人 + 初步方案）与手术规划列表。
 import { NextRequest } from "next/server";
-import { getStore } from "@/lib/store";
-
+import { apiError, assertSameOrigin, requireStore } from "@/lib/http";
+import { readJson, textField, integerField, enumField } from "@/lib/validation";
 
 export async function GET() {
-  const store = await getStore();
-  if (!store) return Response.json({ error: "请先登录" }, { status: 401 });
-  const plans = await store.listPlans();
-  return Response.json({ plans, store: store.kind });
+  try {
+    const store = await requireStore();
+    return Response.json({ plans: await store.listPlans(), store: store.kind });
+  } catch (error) { return apiError(error); }
 }
 
 export async function POST(req: NextRequest) {
-  let body: {
-    patientName?: string;
-    gender?: string;
-    age?: number;
-    medicalRecord?: string;
-    preliminaryPlan?: string;
-    title?: string;
-  };
   try {
-    body = await req.json();
-  } catch {
-    return Response.json({ error: "请求体不是合法 JSON" }, { status: 400 });
-  }
-  if (!body || typeof body !== "object" || typeof body.patientName !== "string" || !body.patientName.trim()) {
-    return Response.json({ error: "患者姓名不能为空" }, { status: 400 });
-  }
-  if ((body.gender !== undefined && typeof body.gender !== "string") ||
-      (body.age !== undefined && (!Number.isInteger(body.age) || body.age < 0 || body.age > 150)) ||
-      (body.medicalRecord !== undefined && typeof body.medicalRecord !== "string") ||
-      (body.preliminaryPlan !== undefined && typeof body.preliminaryPlan !== "string") ||
-      (body.title !== undefined && typeof body.title !== "string")) {
-    return Response.json({ error: "病例字段格式不正确" }, { status: 400 });
-  }
-  if (body.patientName.length > 200 || (body.gender?.length ?? 0) > 50 ||
-      (body.medicalRecord?.length ?? 0) > 50000 || (body.preliminaryPlan?.length ?? 0) > 50000 ||
-      (body.title?.length ?? 0) > 500) {
-    return Response.json({ error: "病例字段过长" }, { status: 400 });
-  }
-  const store = await getStore();
-  if (!store) return Response.json({ error: "请先登录" }, { status: 401 });
-  const patient = await store.createPatient({
-    name: body.patientName.trim(),
-    gender: body.gender,
-    age: body.age,
-    medicalRecord: body.medicalRecord,
-    preliminaryPlan: body.preliminaryPlan,
-  });
-  const plan = await store.createPlan({
-    patientId: patient.id,
-    title: body.title,
-  });
-  return Response.json({ patient, plan }, { status: 201 });
+    assertSameOrigin(req);
+    const store = await requireStore();
+    const body = await readJson(req);
+    const input = {
+      name: textField(body, "patientName", 200),
+      gender: enumField(body.gender ?? "", ["", "男", "女"], "gender"),
+      age: integerField(body.age ?? 0, 0, 130, "age"),
+      medicalRecord: textField(body, "medicalRecord", 20000),
+      preliminaryPlan: textField(body, "preliminaryPlan", 10000, true),
+    };
+    const title = textField(body, "title", 200, true) || undefined;
+    // 病人与规划是两次写入；数据库不授予应用用户删除病人的权限，规划写入失败时无法在此回滚。
+    const patient = await store.createPatient(input);
+    const plan = await store.createPlan({ patientId: patient.id, title });
+    return Response.json({ patient, plan }, { status: 201 });
+  } catch (error) { return apiError(error); }
 }

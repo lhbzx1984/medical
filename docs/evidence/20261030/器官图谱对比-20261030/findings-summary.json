@@ -1,0 +1,67 @@
+{
+  "date": "2026-10-30",
+  "scope": "只读对比：肺、肾、胰、肠、脑、眼球在手术模拟“人体层面”的摆放与 BodyParts3D 精细图谱的差异。用户要求只报告、先不改",
+  "modified": "无。没有修改任何代码、模型、测试或图谱；下列建议值均未应用",
+  "method": "compare-organs.mjs：解码各 GLB 顶点（meshopt + int16 量化，套用节点变换；stomach.glb 未压缩，按 float32 读取），按 OrganModel 的规则（包围盒中心放在 bodyPosition，最长边缩放到 bodySize）算出在人体中的位置与尺寸，与图谱对应结构（atlas.json 各部件顶点）的包围盒比较。有残端的模型另算去残端主体：按高度分 40 层，两端宽度不足模型宽度三分之一的层视为残端（与第 15 节肝的方法相同）。正面/侧面 20×20 剪影重合度（IoU）只对明显不对称的器官有判别力。head-checks.mjs：脑、眼朝向与图谱头部和 BodyOutline 轮廓对比",
+  "validation": "对照组：肝去残端后与图谱中心相差 0.0 / 0.0 / 0.0 cm，胃 0.0 / 0.0 / 0.0 cm",
+  "axes": "米；+X 为患者左侧，+Y 向上，+Z 向前；差值为 渲染 − 图谱，顺序 x / y / z",
+  "organs": {
+    "kidneys": {
+      "current": { "bodyPosition": [0, 1.14, -0.048], "bodySize": 0.24 },
+      "atlas": { "structures": "Left kidney + Right kidney", "centre": [0.0014, 1.1068, -0.0143], "size": [0.178, 0.1236, 0.0521] },
+      "difference": "去掉下方输尿管残端（图谱的肾不含输尿管）后，主体中心 0 / +4.2 / −3.4 cm（偏高、偏后）；左右宽 0.24 对 0.178，约大 35%",
+      "notFixableByPlacement": "模型两肾等高；图谱右肾比左肾低约 1.8 cm",
+      "suggested": { "bodyPosition": [0, 1.1, -0.014], "bodySize": 0.178, "note": "y 比图谱中心低 0.007，抵消输尿管残端" },
+      "verdict": "可按图谱直接对齐"
+    },
+    "pancreas": {
+      "current": { "bodyPosition": [0.0, 1.105, -0.005], "bodySize": 0.2 },
+      "atlas": { "structures": "Pancreas", "centre": [0.0124, 1.1193, 0.0209], "size": [0.1206, 0.0737, 0.051] },
+      "difference": "中心 −1.2 / −1.4 / −2.6 cm（偏右、偏低、偏后）；最长边 0.2 对 0.121，约大 65%",
+      "orientation": "正确：胰头在患者右侧（正面 IoU 0.80，左右镜像 0.34）",
+      "note": "模型下方较窄部分是胰头，图谱同样有，按整个包围盒比较，不去残端",
+      "suggested": { "bodyPosition": [0.012, 1.119, 0.021], "bodySize": 0.121 },
+      "verdict": "可按图谱直接对齐"
+    },
+    "intestine": {
+      "current": { "bodyPosition": [0, 0.995, 0.01], "bodySize": 0.32 },
+      "atlas": { "structures": "空肠、回肠各段，阑尾，回盲部，升/横/降结肠，直肠；图谱无盲肠、乙状结肠网格，十二指肠单列", "centre": [-0.0048, 0.9891, 0.0041], "size": [0.244, 0.3074, 0.1856] },
+      "difference": "中心 +0.5 / +0.6 / +0.6 cm；尺寸 +4.0 / +1.3 / −4.9 cm（模型更宽更薄）；正面 IoU 0.91",
+      "verdict": "基本吻合，无需修改"
+    },
+    "lungs": {
+      "current": { "bodyPosition": [0, 1.295, 0.0], "bodySize": 0.34 },
+      "atlas": "没有肺实质网格。间接参照：气道树（内界）中心 [0.003, 1.338, −0.001]、尺寸 [0.239, 0.271, 0.158]；第 1—10 肋（外界）x −0.137～0.136、y 1.101～1.449、z −0.096～0.098；膈 y 1.064～1.271",
+      "difference": "渲染宽 0.313、厚 0.213，比肋骨外包围盒宽约 4 cm、厚约 2 cm（两侧各伸出肋骨外缘约 2 cm）；去气管残端后肺主体 y 1.125～1.405，中心 1.265（肋骨中心 1.275），肺尖比第 1 肋最高点低约 4.4 cm",
+      "suggested": "需先定规则，例如缩到肋骨内侧：bodySize 约 0.27～0.28；未给定值",
+      "verdict": "无法直接对齐，需用户定规则"
+    },
+    "brain": {
+      "current": { "bodyPosition": [0, 1.585, -0.01], "bodySize": 0.2 },
+      "atlas": { "structures": "82 个脑部件（皮层回/叶、白质、深部核团、小脑、脑干）", "centre": [-0.0007, 1.6256, -0.0203], "size": [0.1408, 0.1659, 0.18] },
+      "orientation": "模型绕竖直轴转了 90°：最低 10% 部分（脑干、小脑）图谱在 x 0.00、z −0.24（中线偏后），模型在 x +0.32、z −0.03（偏向患者左侧），即模型前方朝患者右侧。转 90° 后比例 0.82 : 0.92 : 1.00 与图谱 0.78 : 0.92 : 1.00 一致，剪影 IoU 正面 0.93 对 0.88、侧面 0.89 对 0.84",
+      "difference": "中心低 4.1 cm（去脑干残端后低 3.1 cm）；最长边 0.2 对图谱 0.180",
+      "suggestedIfAtlas": "绕 Y 轴 +90°（OrganModel 已支持 rotation 属性，但目前没有地方传入，且会影响器官层面与学习中心特写），bodySize 0.18，中心按图谱 1.626",
+      "verdict": "需用户决定：朝向修正会影响所有视图；高度取决于头部轮廓的处理"
+    },
+    "eyeball": {
+      "current": { "bodyPosition": [0.034, 1.652, 0.06], "bodySize": 0.05 },
+      "atlas": { "structures": "Left sclera + Left cornea", "centre": [0.0291, 1.5962, 0.0524], "size": [0.0263, 0.0262, 0.0272] },
+      "difference": "中心 +0.5 / +5.6 / +0.8 cm；最长边 0.05 对 0.027，约 1.85 倍",
+      "orientation": "模型 +X 端有一段偏后的窄突出（像视神经），−X 端圆钝：前后轴在左右方向，与脑相同",
+      "headOutlineNote": "高度与轮廓头部一致：图谱眼高 1.596 + 轮廓头部偏高约 0.06 ≈ 1.656，目前 1.652",
+      "verdict": "需用户决定：尺寸可按图谱缩小；朝向与高度同脑"
+    },
+    "heart": {
+      "note": "附带，未要求：与图谱心腔中心相差 0.0 / −0.8 / +0.3 cm；图谱没有心室壁网格，尺寸不可比"
+    }
+  },
+  "headOutline": {
+    "source": "src/components/sim/BodyOutline.tsx 的 PROFILE（车削体，半径同时代表宽和深）对比图谱 Skin 网格",
+    "atlas": { "skinTop": 1.719, "narrowestNeck": [1.52, 0.058], "widestHead": [1.64, 0.08], "mandibleY": [1.5, 1.584], "clavicleTop": 1.433 },
+    "outline": { "top": 1.78, "narrowestNeck": [1.56, 0.06], "widestHead": [1.7, 0.1] },
+    "conclusion": "轮廓的颈部和头部比图谱高约 4—6 cm，颈部更长；躯干器官已按图谱放置，头部器官若也按图谱放，会在轮廓头部中偏低"
+  },
+  "atlasDataQuirk": "Right cornea 的顶点横跨两眼（x −0.038～0.031）；Right sclera 在 atlas.json 中记的包围盒（x 到 0.031）与其顶点（x 到 −0.017）不一致。对比只用左眼，不受影响；图谱未改",
+  "files": ["report.txt（逐器官数字与剪影）", "comparison.json（原始数值）", "朝向与头部检查.txt", "compare-organs.mjs", "head-checks.mjs"]
+}

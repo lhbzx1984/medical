@@ -1,0 +1,178 @@
+{
+  "date": "2026-10-30",
+  "method": "Real in-app browser viewport overrides; synthetic local services",
+  "checks": [
+    {
+      "page": "learning",
+      "panel": {
+        "bottom": 828,
+        "height": 748,
+        "left": 12,
+        "right": 368,
+        "top": 80,
+        "width": 356,
+        "x": 12,
+        "y": 80
+      },
+      "scrollWidth": 380,
+      "viewport": 380
+    },
+    {
+      "controls": {
+        "bottom": 963.6666717529296,
+        "height": 895,
+        "left": 12,
+        "right": 236,
+        "top": 68.66667175292969,
+        "width": 224,
+        "x": 12,
+        "y": 68.66667175292969
+      },
+      "page": "learning",
+      "scrollWidth": 758,
+      "viewport": 758
+    },
+    {
+      "chat": {
+        "bottom": 707.6666717529297,
+        "height": 639,
+        "left": 642,
+        "right": 1002,
+        "top": 68.66667175292969,
+        "width": 360,
+        "x": 642,
+        "y": 68.66667175292969
+      },
+      "page": "learning",
+      "scrollWidth": 1014,
+      "viewport": 1014
+    },
+    {
+      "caseList": {
+        "bottom": 259.0833435058594,
+        "height": 190.4166717529297,
+        "left": 12,
+        "right": 368,
+        "top": 68.66667175292969,
+        "width": 356,
+        "x": 12,
+        "y": 68.66667175292969
+      },
+      "page": "planning",
+      "scrollWidth": 380,
+      "viewport": 380
+    },
+    {
+      "page": "planning-simulation",
+      "scrollWidth": 380,
+      "viewport": 380
+    },
+    {
+      "page": "planning-simulation",
+      "scrollWidth": 758,
+      "viewport": 758
+    },
+    {
+      "canvas": {
+        "bottom": 738.6666870117188,
+        "height": 498.6666870117187,
+        "left": 264.66668701171875,
+        "right": 327.3333549499512,
+        "top": 240,
+        "width": 62.66666793823242,
+        "x": 264.66668701171875,
+        "y": 240
+      },
+      "page": "planning-simulation",
+      "scrollWidth": 1014,
+      "viewport": 1014
+    },
+    {
+      "canvas": {
+        "bottom": 698.3333587646484,
+        "height": 505.6666870117187,
+        "left": 264.66668701171875,
+        "right": 709.3333740234375,
+        "top": 192.6666717529297,
+        "width": 444.6666870117187,
+        "x": 264.66668701171875,
+        "y": 192.6666717529297
+      },
+      "page": "planning-simulation-after-layout-fix",
+      "scrollWidth": 1014,
+      "viewport": 1014
+    },
+    {
+      "chat": {
+        "bottom": 739.6666717529297,
+        "height": 671,
+        "left": 898,
+        "right": 1258,
+        "top": 68.66667175292969,
+        "width": 360,
+        "x": 898,
+        "y": 68.66667175292969
+      },
+      "page": "planning-wide-desktop",
+      "scrollWidth": 1270,
+      "viewport": 1270
+    },
+    {
+      "chat": {
+        "bottom": 0,
+        "height": 0,
+        "left": 0,
+        "right": 0,
+        "top": 0,
+        "width": 0,
+        "x": 0,
+        "y": 0
+      },
+      "page": "learning-final-layout",
+      "scrollWidth": 758,
+      "viewport": 758
+    },
+    {
+      "chat": {
+        "bottom": 0,
+        "height": 0,
+        "left": 0,
+        "right": 0,
+        "top": 0,
+        "width": 0,
+        "x": 0,
+        "y": 0
+      },
+      "page": "learning-final-layout",
+      "scrollWidth": 1014,
+      "viewport": 1014
+    },
+    {
+      "chat": {
+        "bottom": 839.6666717529297,
+        "height": 771,
+        "left": 898,
+        "right": 1258,
+        "top": 68.66667175292969,
+        "width": 360,
+        "x": 898,
+        "y": 68.66667175292969
+      },
+      "page": "learning-final-layout",
+      "scrollWidth": 1270,
+      "viewport": 1270
+    }
+  ],
+  "observed": [
+    "390 learning controls and tutor open/close",
+    "390 login and case selection",
+    "390 guidance answer",
+    "paused final step resumes as step 3",
+    "1024 simulation canvas 62.67px before, 444.67px after",
+    "1280 fixed guidance panel",
+    "cross-tab sex update uterus to heart synchronizes model and tutor"
+  ],
+  "limitations": [
+    "No physical touch device or all-GPU validation"
+  ]
+}

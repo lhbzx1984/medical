@@ -1,0 +1,10 @@
+outline row 300: edges 418..620, half-width 101.0 px -> 637.2 px/m
+outline row 320: edges 411..627, half-width 108.0 px -> 637.2 px/m
+outline row 340: edges 403..634, half-width 115.5 px -> 639.3 px/m
+scale at outline 637.9 px/m, camera z 1.093 m, scale at liver 651.6 px/m
+check shoulder corner 1.46: predicted row 284.4
+check neck narrowest 1.56: predicted row 220.6
+vessel stub top row 383 -> y 1.303 m
+liver body top row 406 -> y 1.268 m
+liver bottom row 516 -> y 1.099 m
+liver columns 446..577 -> width 0.201 m (ring rows 440-458 left out)

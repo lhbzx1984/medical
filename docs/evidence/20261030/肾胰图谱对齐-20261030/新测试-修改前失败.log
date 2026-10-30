@@ -1,0 +1,41 @@
+(node:26584) [THREE_CJS_DEPRECATED] DeprecationWarning: `require("three")` is deprecated and will be removed.
+Replace `const THREE = require("three")` with `import * as THREE from "three"`.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ atlas metadata recovers after a temporary request failure (68.0765ms)
+✔ atlas chunk retries a failed request and decompresses the successful response (25.2871ms)
+✔ atlas pointer picking ignores hidden front structure and follows exploded structure (11.3568ms)
+✔ overview organ x positions match their atlas structures (+X is the patient left) (17.1079ms)
+✔ overview liver body matches the atlas liver in centre and longest side (vessel stub left out) (97.7933ms)
+✖ overview kidneys and pancreas match their atlas structures in centre and longest side (ureter stubs left out) (135.2415ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 5
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 631.0241
+
+✖ failing tests:
+
+test at tests\atlas-regression.test.cjs:125:1
+✖ overview kidneys and pancreas match their atlas structures in centre and longest side (ureter stubs left out) (135.2415ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+  + [
+  +   'kidneys centre 0,1.149,-0.048, longest side 0.24; atlas centre 0.001,1.107,-0.014, longest side 0.178',
+  +   'pancreas centre 0,1.105,-0.005, longest side 0.2; atlas centre 0.012,1.119,0.021, longest side 0.121'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (<工作区>\medical-main\tests\atlas-regression.test.cjs:167:10)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [ 'kidneys centre 0,1.149,-0.048, longest side 0.24; atlas centre 0.001,1.107,-0.014, longest side 0.178', 'pancreas centre 0,1.105,-0.005, longest side 0.2; atlas centre 0.012,1.119,0.021, longest side 0.121' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }

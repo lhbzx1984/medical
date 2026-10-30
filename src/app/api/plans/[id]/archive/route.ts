@@ -1,9 +1,9 @@
-import { getStore } from "@/lib/store";
-import { CaseNotFoundError, RevisionConflictError } from "@/lib/store/supabase";
+import { CaseNotFoundError, RevisionConflictError, type SupabaseStore } from "@/lib/store/supabase";
+import { apiError, assertSameOrigin, requireStore } from "@/lib/http";
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const store = await getStore();
-  if (!store) return Response.json({ error: "请先登录" }, { status: 401 });
+  let store: SupabaseStore;
+  try { assertSameOrigin(req); store = await requireStore(); } catch (error) { return apiError(error); }
   const body = await req.json().catch(() => null);
   if (!body || typeof body.archived !== "boolean" || typeof body.expectedUpdatedAt !== "string" ||
       !Number.isFinite(Date.parse(body.expectedUpdatedAt))) {
@@ -14,7 +14,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   } catch (error) {
     if (error instanceof RevisionConflictError) return Response.json({ error: error.message }, { status: 409 });
     if (error instanceof CaseNotFoundError) return Response.json({ error: error.message }, { status: 404 });
-    throw error;
+    return apiError(error);
   }
   return Response.json({ ok: true });
 }

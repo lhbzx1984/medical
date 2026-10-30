@@ -1,7 +1,8 @@
 // 3D 器官模型注册表。
 // GLB 资产来自 thebuggeddev/anatomy（Meshopt 压缩），缩略图来自其器官图集。
+// 例外：stomach.glb 由 scripts/extract-stomach-glb.mjs 从 BodyParts3D 精细图谱（FJ2564）转换，缩略图为其实际渲染。
 // bodyPosition / bodySize 用于「人体概览」场景中的解剖学摆放：
-//   坐标系为 Y 轴向上、单位米、标准站立人体身高约 1.75m，面朝 +Z。
+//   坐标系为 Y 轴向上、单位米、标准站立人体身高约 1.75m，面朝 +Z；+X 为患者左侧（与精细图谱一致）。
 import { ORGAN_IDS, type OrganId } from "./types";
 
 export interface OrganInfo {
@@ -62,7 +63,8 @@ export const ORGANS: Record<OrganId, OrganInfo> = {
     glb: "/models/heart.glb",
     thumb: "/anatomy/heart/thumb.webp",
     organImg: "/anatomy/heart/organ.webp",
-    bodyPosition: [-0.015, 1.3, 0.025],
+    // x 取自精细图谱心腔与心房壁的包围盒中心（偏患者左侧）
+    bodyPosition: [0.017, 1.3, 0.025],
     bodySize: 0.15,
   },
   lungs: {
@@ -86,8 +88,10 @@ export const ORGANS: Record<OrganId, OrganInfo> = {
     glb: "/models/liver.glb",
     thumb: "/anatomy/liver/thumb.webp",
     organImg: "/anatomy/liver/organ.webp",
-    bodyPosition: [0.055, 1.14, 0.01],
-    bodySize: 0.26,
+    // 取自精细图谱各肝段的包围盒中心与最大边长（米）：右叶在患者右侧，左叶越过中线，故 x 略偏右。
+    // 本模型顶部约 17.5% 是下腔静脉等血管残端，包围盒中心比肝实质中心高约 1.8 cm，故 y 比图谱中心 1.184 高 0.018。
+    bodyPosition: [-0.01, 1.202, 0.023],
+    bodySize: 0.21,
   },
   pancreas: {
     id: "pancreas",
@@ -98,8 +102,9 @@ export const ORGANS: Record<OrganId, OrganInfo> = {
     glb: "/models/pancreas.glb",
     thumb: "/anatomy/pancreas/thumb.webp",
     organImg: "/anatomy/pancreas/organ.webp",
-    bodyPosition: [0.0, 1.105, -0.005],
-    bodySize: 0.2,
+    // 取自精细图谱胰腺的包围盒中心与最大边长（米）：胰头在患者右侧、胰尾伸向左侧，故 x 略偏左。
+    bodyPosition: [0.012, 1.119, 0.021],
+    bodySize: 0.121,
   },
   kidneys: {
     id: "kidneys",
@@ -110,8 +115,10 @@ export const ORGANS: Record<OrganId, OrganInfo> = {
     glb: "/models/kidneys.glb",
     thumb: "/anatomy/kidneys/thumb.webp",
     organImg: "/anatomy/kidneys/organ.webp",
-    bodyPosition: [0, 1.14, -0.048],
-    bodySize: 0.24,
+    // 取自精细图谱左右肾的包围盒中心与最大边长（米，最大边为左右宽）。
+    // 本模型下方带输尿管残端（图谱的肾不含输尿管），包围盒中心比肾主体中心低约 0.7 cm，故 y 比图谱中心 1.107 低 0.007。
+    bodyPosition: [0, 1.1, -0.014],
+    bodySize: 0.178,
   },
   intestine: {
     id: "intestine",
@@ -124,6 +131,19 @@ export const ORGANS: Record<OrganId, OrganInfo> = {
     organImg: "/anatomy/intestine/organ.webp",
     bodyPosition: [0, 0.995, 0.01],
     bodySize: 0.32,
+  },
+  stomach: {
+    id: "stomach",
+    nameZh: "胃",
+    nameEn: "Stomach",
+    system: "消化系统",
+    brief: "连接食管与十二指肠的肌性消化器官，具有储存食物、混合与初步消化的功能；可分为贲门、胃底、胃体与幽门部。",
+    glb: "/models/stomach.glb",
+    thumb: "/anatomy/stomach/thumb.webp",
+    organImg: "/anatomy/stomach/organ.webp",
+    // 取自精细图谱中胃 FJ2564 的包围盒中心与最大边长（米）
+    bodyPosition: [0.038, 1.176, 0.038],
+    bodySize: 0.135,
   },
   skin: {
     id: "skin",
@@ -168,6 +188,7 @@ export const REGION_BY_ORGAN: Record<OrganId, string> = {
   pancreas: "腹腔",
   kidneys: "腹膜后",
   intestine: "腹腔",
+  stomach: "腹腔",
   skin: "体表",
   uterus: "盆腔",
 };
@@ -194,7 +215,8 @@ export function matchOrgan(raw: string): OrganId {
     [/pancrea|胰/i, "pancreas"],
     [/kidney|肾|renal|尿/i, "kidneys"],
     [/uterus|子宫|卵巢|ovar|输卵管|阴道|宫颈|妇科/i, "uterus"],
-    [/intestin|肠|胃|digest|阑尾|appendix|colon|直肠/i, "intestine"],
+    [/intestin|肠|digest|阑尾|appendix|colon|直肠/i, "intestine"],
+    [/stomach|gastric|胃/i, "stomach"],
     [/skin|皮肤|体表|表面/i, "skin"],
   ];
   for (const [re, id] of table) if (re.test(v) || re.test(raw ?? "")) return id;

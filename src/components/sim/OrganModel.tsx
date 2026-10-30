@@ -6,6 +6,7 @@ import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { useEffect, useMemo, useRef } from "react";
 import type { OrganInfo } from "@/lib/organ-models";
+import { setEmissiveIntensity } from "./material-utils";
 
 export interface OrganModelProps {
   organ: OrganInfo;
@@ -49,7 +50,12 @@ export function OrganModel({
     const wrap = new THREE.Group();
     wrap.add(clone);
     wrap.scale.setScalar(s);
-    return wrap;
+    const originalMaterials = new Map<THREE.Mesh, THREE.Material | THREE.Material[]>();
+    clone.traverse((object) => {
+      const mesh = object as THREE.Mesh;
+      if (mesh.isMesh) originalMaterials.set(mesh, mesh.material);
+    });
+    return { object: wrap, originalMaterials };
   }, [scene, organ.bodySize, targetSize]);
 
   // 材质克隆与基础状态（外壳/调暗）。
@@ -57,7 +63,7 @@ export function OrganModel({
   //    数组会导致渲染器 0 次绘制（three.js 的 material 数组按 geometry.groups 分组绘制）。
   useEffect(() => {
     const mats: THREE.MeshStandardMaterial[] = [];
-    normalized.traverse((o) => {
+    normalized.object.traverse((o) => {
       const mesh = o as THREE.Mesh;
       if (!mesh.isMesh) return;
       const make = (m: THREE.Material) => {
@@ -84,13 +90,13 @@ export function OrganModel({
         if (mm instanceof THREE.MeshStandardMaterial) mats.push(mm);
         return mm;
       };
-      mesh.material = Array.isArray(mesh.material)
-        ? mesh.material.map(make)
-        : make(mesh.material);
+      const original = normalized.originalMaterials.get(mesh)!;
+      mesh.material = Array.isArray(original) ? original.map(make) : make(original);
       mesh.castShadow = false;
       mesh.receiveShadow = false;
     });
     matsRef.current = mats;
+    return () => mats.forEach((material) => material.dispose());
   }, [normalized, shell, dimmed, highlight]);
 
   // 高亮脉冲
@@ -102,7 +108,7 @@ export function OrganModel({
     if (highlight) {
       t.current += dt;
       const pulse = 0.22 + Math.sin(t.current * 3.4) * 0.16;
-      for (const m of matsRef.current) m.emissiveIntensity = pulse;
+      setEmissiveIntensity(matsRef.current, pulse);
     }
   });
 
@@ -115,7 +121,7 @@ export function OrganModel({
         onClick as never
       }
     >
-      <primitive object={normalized} />
+      <primitive object={normalized.object} />
     </group>
   );
 }

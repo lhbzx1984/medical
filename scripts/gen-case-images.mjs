@@ -1,7 +1,6 @@
 // 生成虚拟病人案例插图（agnes-image-2.5-flash）→ public/cases/*.png
 // 用法: node scripts/gen-case-images.mjs
 import fs from "node:fs";
-import path from "node:path";
 
 const env = fs.readFileSync(new URL("../.env.local", import.meta.url), "utf8");
 const KEY = env.match(/AGNES_API_KEY=(.+)/)?.[1]?.trim();

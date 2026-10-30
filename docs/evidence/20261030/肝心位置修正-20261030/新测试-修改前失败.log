@@ -1,0 +1,52 @@
+(node:14308) [THREE_CJS_DEPRECATED] DeprecationWarning: `require("three")` is deprecated and will be removed.
+Replace `const THREE = require("three")` with `import * as THREE from "three"`.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ atlas metadata recovers after a temporary request failure (69.5172ms)
+✔ atlas chunk retries a failed request and decompresses the successful response (26.6652ms)
+✔ atlas pointer picking ignores hidden front structure and follows exploded structure (11.2102ms)
+✖ overview organ x positions match their atlas structures (+X is the patient left) (20.5168ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 3
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 392.598
+
+✖ failing tests:
+
+test at tests\atlas-regression.test.cjs:70:1
+✖ overview organ x positions match their atlas structures (+X is the patient left) (20.5168ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+  + [
+  +   [
+  +     'liver',
+  +     0.055,
+  +     -0.01
+  +   ],
+  +   [
+  +     'heart',
+  +     -0.015,
+  +     0.017
+  +   ]
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (<工作区>\medical-main\tests\atlas-regression.test.cjs:85:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [ [ 'liver', 0.055, -0.01 ], [ 'heart', -0.015, 0.017 ] ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }

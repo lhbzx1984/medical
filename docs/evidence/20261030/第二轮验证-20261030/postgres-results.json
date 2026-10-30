@@ -1,0 +1,147 @@
+{
+  "startedAt": "2026-10-30T02:50:58.204Z",
+  "schemaPath": "<工作区>\\medical-main\\supabase\\schema.sql",
+  "schemaSha256": "e149935aad70bd2f7e6aa046969affdfe82e1a4f9cfdaf8ae43bd2d7567ee236",
+  "engine": "PGlite (actual PostgreSQL WASM, in-memory)",
+  "harness": "Only auth.users, auth.uid(), test roles and Supabase-like table grants are supplied; schema.sql executes unchanged.",
+  "limitations": [
+    "Single PostgreSQL connection; no multi-session lock contention or multi-instance concurrency verified.",
+    "No Supabase cloud, PostgREST transport, JWT signature validation or live service connectivity verified.",
+    "RLS checks use SET ROLE and a synthetic JWT subject; cloud PostgreSQL version, default privileges and legacy policies still require deployment verification."
+  ],
+  "checks": [
+    {
+      "name": "schema.sql executes unchanged on PostgreSQL",
+      "passed": true
+    },
+    {
+      "name": "service role creates linked patient and owner-bound plan",
+      "passed": true
+    },
+    {
+      "name": "create_case rolls back patient when plan owner foreign key fails",
+      "passed": true
+    },
+    {
+      "name": "create_case rejects empty names without side effects",
+      "passed": true
+    },
+    {
+      "name": "commit_plan atomically creates version and simulation and advances plan",
+      "passed": true
+    },
+    {
+      "name": "late invalid feedback rolls back inserted version and simulation",
+      "passed": true
+    },
+    {
+      "name": "expert refinement preserves feedback target version and advances plan",
+      "passed": true
+    },
+    {
+      "name": "stale expected version is rejected without modifying history",
+      "passed": true
+    },
+    {
+      "name": "foreign and null owner cannot commit another owner plan",
+      "passed": true
+    },
+    {
+      "name": "invalid plan and simulation step payloads leave no partial state",
+      "passed": true
+    },
+    {
+      "name": "plan_versions unique index rejects duplicate plan/version without changing original",
+      "passed": true
+    },
+    {
+      "name": "simulations unique index rejects duplicate plan/version without changing original",
+      "passed": true
+    },
+    {
+      "name": "chat session is idempotent for its owner and rejects owner takeover",
+      "passed": true
+    },
+    {
+      "name": "chat append rejects foreign owner and rolls back a partially invalid batch",
+      "passed": true
+    },
+    {
+      "name": "rate limit enforces cap and separates users and actions",
+      "passed": true
+    },
+    {
+      "name": "rate limit resets an expired stored window and rejects invalid limits",
+      "passed": true
+    },
+    {
+      "name": "all browser roles really have table privileges and no RLS bypass",
+      "passed": true
+    },
+    {
+      "name": "patients RLS permits owner reads, hides foreign rows and denies browser writes",
+      "passed": true
+    },
+    {
+      "name": "surgical_plans RLS permits owner reads, hides foreign rows and denies browser writes",
+      "passed": true
+    },
+    {
+      "name": "plan_versions RLS permits owner reads, hides foreign rows and denies browser writes",
+      "passed": true
+    },
+    {
+      "name": "plan_feedback RLS permits owner reads, hides foreign rows and denies browser writes",
+      "passed": true
+    },
+    {
+      "name": "simulations RLS permits owner reads, hides foreign rows and denies browser writes",
+      "passed": true
+    },
+    {
+      "name": "knowledge_entries RLS permits owner reads, hides foreign rows and denies browser writes",
+      "passed": true
+    },
+    {
+      "name": "chat_sessions RLS permits owner reads, hides foreign rows and denies browser writes",
+      "passed": true
+    },
+    {
+      "name": "chat_messages RLS permits owner reads, hides foreign rows and denies browser writes",
+      "passed": true
+    },
+    {
+      "name": "generated_images RLS permits owner reads, hides foreign rows and denies browser writes",
+      "passed": true
+    },
+    {
+      "name": "rate_limit_windows RLS permits owner reads, hides foreign rows and denies browser writes",
+      "passed": true
+    },
+    {
+      "name": "anon cannot call any privileged RPC, even with valid owner arguments",
+      "passed": true
+    },
+    {
+      "name": "authenticated cannot call any privileged RPC, even with valid owner arguments",
+      "passed": true
+    },
+    {
+      "name": "schema rerun preserves all existing data and privileges",
+      "passed": true
+    },
+    {
+      "name": "legacy duplicate plan_versions aborts schema migration and preserves all original rows",
+      "passed": true
+    },
+    {
+      "name": "legacy duplicate simulations aborts schema migration and preserves all original rows",
+      "passed": true
+    }
+  ],
+  "postgresVersion": "PostgreSQL 18.6 (PGlite 0.5.13) on wasm32-unknown-emscripten, compiled by emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) 6.0.5 (1db513782be24469589d7cb8a1f1834e9a33f271), 32-bit",
+  "finishedAt": "2026-10-30T02:51:01.058Z",
+  "passed": 32,
+  "failed": 0,
+  "ok": true
+}

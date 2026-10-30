@@ -1,0 +1,5 @@
+step	exit	seconds	command
+test	0	2	npm test
+lint	0	4	npm run lint
+tsc	0	3	node node_modules/typescript/bin/tsc --noEmit --incremental false
+build	0	6	npm run build

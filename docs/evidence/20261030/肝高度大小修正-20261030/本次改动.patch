@@ -1,0 +1,59 @@
+--- a/medical-main/src/lib/organ-models.ts
++++ b/medical-main/src/lib/organ-models.ts
+@@ -88,9 +88,10 @@
+     glb: "/models/liver.glb",
+     thumb: "/anatomy/liver/thumb.webp",
+     organImg: "/anatomy/liver/organ.webp",
+-    // x 取自精细图谱各肝段的包围盒中心：右叶在患者右侧，左叶越过中线，故中心略偏右
+-    bodyPosition: [-0.01, 1.14, 0.01],
+-    bodySize: 0.26,
++    // 取自精细图谱各肝段的包围盒中心与最大边长（米）：右叶在患者右侧，左叶越过中线，故 x 略偏右。
++    // 本模型顶部约 17.5% 是下腔静脉等血管残端，包围盒中心比肝实质中心高约 1.8 cm，故 y 比图谱中心 1.184 高 0.018。
++    bodyPosition: [-0.01, 1.202, 0.023],
++    bodySize: 0.21,
+   },
+   pancreas: {
+     id: "pancreas",
+--- a/medical-main/tests/atlas-regression.test.cjs
++++ b/medical-main/tests/atlas-regression.test.cjs
+@@ -84,3 +84,40 @@
+     .filter(([, x, atlas]) => Math.abs(x - atlas) > 0.01);
+   assert.deepEqual(off, []);
+ });
++
++test('overview liver body matches the atlas liver in centre and longest side (vessel stub left out)', async () => {
++  const { ORGANS } = loadTs('src/lib/organ-models.ts');
++  const { parts } = JSON.parse(fs.readFileSync(path.join(__dirname, '../public/atlas/atlas.json'), 'utf8'));
++  const segments = parts.filter((p) => /^(Hepatovenous segment|Caudate lobe of liver$)/.test(p.name));
++  const atlas = [0, 1, 2].map((k) => [Math.min(...segments.map((p) => p.bounds[0][k])), Math.max(...segments.map((p) => p.bounds[1][k]))]);
++  // Decode liver.glb positions (meshopt, int16 quantisation, node transform): the box OrganModel normalises.
++  const { MeshoptDecoder } = await import('three/examples/jsm/libs/meshopt_decoder.module.js');
++  await MeshoptDecoder.ready;
++  const glb = fs.readFileSync(path.join(__dirname, '../public/models/liver.glb'));
++  const jsonLength = glb.readUInt32LE(12);
++  const gltf = JSON.parse(glb.subarray(20, 20 + jsonLength).toString('utf8'));
++  const accessor = gltf.accessors[gltf.meshes[0].primitives[0].attributes.POSITION];
++  const { count, byteStride, byteOffset = 0, byteLength, mode, filter } = gltf.bufferViews[accessor.bufferView].extensions.EXT_meshopt_compression;
++  const raw = new Uint8Array(count * byteStride);
++  MeshoptDecoder.decodeGltfBuffer(raw, count, byteStride, glb.subarray(28 + jsonLength + byteOffset, 28 + jsonLength + byteOffset + byteLength), mode, filter);
++  const view = new DataView(raw.buffer);
++  const { translation, scale } = gltf.nodes[0];
++  const points = Array.from({ length: count }, (_, i) => [0, 1, 2].map((k) =>
++    Math.max(view.getInt16((accessor.byteOffset ?? 0) + i * byteStride + 2 * k, true) / 32767, -1) * scale[k] + translation[k]));
++  const bounds = (pts) => [0, 1, 2].map((k) => pts.reduce(([lo, hi], p) => [Math.min(lo, p[k]), Math.max(hi, p[k])], [Infinity, -Infinity]));
++  const box = bounds(points);
++  // The model carries vessel stubs (vena cava, an artery) above the liver: height slices narrower than a third of its width are vessel, not liver.
++  const row = (p) => Math.min(39, Math.floor(((p[1] - box[1][0]) / (box[1][1] - box[1][0])) * 40));
++  const widths = Array.from({ length: 40 }, () => [Infinity, -Infinity]);
++  for (const p of points) { const w = widths[row(p)]; w[0] = Math.min(w[0], p[0]); w[1] = Math.max(w[1], p[0]); }
++  const liverRows = widths.flatMap(([lo, hi], i) => (hi - lo > (box[0][1] - box[0][0]) / 3 ? [i] : []));
++  const body = bounds(points.filter((p) => row(p) >= liverRows[0] && row(p) <= liverRows.at(-1)));
++  // OrganModel centres the whole box on bodyPosition and scales its longest side to bodySize.
++  const s = ORGANS.liver.bodySize / Math.max(...box.map(([lo, hi]) => hi - lo));
++  const centre = body.map(([lo, hi], k) => +(ORGANS.liver.bodyPosition[k] + ((lo + hi) / 2 - (box[k][0] + box[k][1]) / 2) * s).toFixed(3));
++  const longest = +(Math.max(...body.map(([lo, hi]) => hi - lo)) * s).toFixed(3);
++  const atlasCentre = atlas.map(([lo, hi]) => +((lo + hi) / 2).toFixed(3));
++  const atlasLongest = +Math.max(...atlas.map(([lo, hi]) => hi - lo)).toFixed(3);
++  assert.ok(centre.every((v, k) => Math.abs(v - atlasCentre[k]) <= 0.01) && Math.abs(longest - atlasLongest) <= 0.01,
++    `liver body centre ${centre}, longest side ${longest}; atlas centre ${atlasCentre}, longest side ${atlasLongest}`);
++});

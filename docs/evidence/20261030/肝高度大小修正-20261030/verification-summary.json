@@ -1,0 +1,59 @@
+{
+  "date": "2026-10-30",
+  "scope": "按精细图谱对齐手术模拟“人体层面”中肝的高度、前后位置和大小（mackdown.md 第 14 节记为未修改的问题），用户在本会话中确认修改",
+  "rootCause": "肝的 y、z、bodySize 是手工估计值，未取自图谱；且 liver.glb 顶部带下腔静脉等血管残端，OrganModel 按整个包围盒居中，若直接用图谱包围盒中心，肝实质会偏低约 1.8 cm",
+  "atlasReference": {
+    "structures": "public/atlas/atlas.json 中 Hepatovenous segment * 与 Caudate lobe of liver（10 个），bounds 并集",
+    "min": [-0.1151, 1.1061, -0.0567],
+    "max": [0.0944, 1.2613, 0.1024],
+    "center": [-0.0104, 1.1837, 0.0229],
+    "size": [0.2095, 0.1552, 0.1591],
+    "longestSide": 0.2095
+  },
+  "modelMeasurement": {
+    "file": "medical-main/public/models/liver.glb（Tripo 生成的单一网格，EXT_meshopt_compression + KHR_mesh_quantization）",
+    "method": "用 three 自带 MeshoptDecoder 解码 214401 个顶点并套用节点变换；按高度分 40 层，宽度不足模型宽度三分之一的层视为血管残端",
+    "boxSize": [0.9932, 0.9998, 0.5123],
+    "liverBody": "高度 0—0.825（模型单位），顶部约 17.5% 为血管残端；肝实质中心比包围盒中心低 0.0875 个模型单位，x、z 不受影响",
+    "liverBodyProportions": "宽 0.993 : 高 0.825 : 厚 0.512；图谱为 0.2095 : 0.1552 : 0.1591，模型较高较薄，等比缩放无法三边同时吻合，取最长边（宽）对齐"
+  },
+  "changes": [
+    { "path": "medical-main/src/lib/organ-models.ts",
+      "liver": { "before": { "bodyPosition": [-0.01, 1.14, 0.01], "bodySize": 0.26 }, "after": { "bodyPosition": [-0.01, 1.202, 0.023], "bodySize": 0.21 } },
+      "note": "y = 图谱中心 1.184 + 血管残端偏移 0.0875 × (0.21 / 0.9998) ≈ 0.018；z 取图谱中心 0.023（与胃相同，整个中心取自图谱）；bodySize 取图谱最长边 0.2095 ≈ 0.21；x 不变。注释改为说明取值来源和血管残端",
+      "sha256Before": "4ba24d267cf2e524466248cbeeec73e4fb4dea6984bc205028c9036be87ffb6c", "sha256After": "bb9213a58114bcab90593ba3ad0222f9acf433de8a4b02cc4a5d62dc61475b0e" },
+    { "path": "medical-main/tests/atlas-regression.test.cjs",
+      "note": "新增 1 个测试：解码 liver.glb，去掉血管残端后，按 OrganModel 的居中与缩放算出肝实质在人体中的中心和最长边，须与图谱相差不超过 1 cm。修改产品代码前运行，按预期失败（新测试-修改前失败.log：中心 -0.01,1.117,0.01、最长边 0.258；图谱 -0.01,1.184,0.023、0.209）。之后只把测试注释里的“vena cava stub”改成“vessel stubs (vena cava, an artery)”，判断逻辑未变",
+      "sha256Before": "7448972ea17f42f4619cdc39b19d4303aade15fdb901cefa600aff9b37af0906", "sha256After": "160355abafe36d8c2621d72640b196309242239177bccc39df1835c7e98875d6" }
+  ],
+  "unit": { "command": "npm test", "exitCode": 0, "passed": 58, "failed": 0 },
+  "lint": { "command": "npm run lint", "exitCode": 0, "errors": 0, "warnings": 0 },
+  "typescript": { "command": "node node_modules/typescript/bin/tsc --noEmit --incremental false", "exitCode": 0 },
+  "build": { "command": "npm run build", "exitCode": 0, "note": "确认构建产物中肝为 bodyPosition:[-.01,1.202,.023],bodySize:.21，旧值已不存在" },
+  "http": { "environment": "Production Next.js with synthetic local Auth/REST/RPC/AI", "exitCode": 0, "passed": 17, "failed": 0 },
+  "finalRun": "注释修正后，test、lint、tsc、build、HTTP 流程全部重跑，以上为最终结果",
+  "browser": {
+    "method": "应用内浏览器，生产构建 + 本地合成服务（MEDPLAN_TEST_OUTPUT 指向 浏览器检查/），合成肝病例；默认视角截图后，水平拖动转到正面、垂直拖动把相机放平",
+    "measurement": "浏览器检查/measure-frontal.py 读取 模拟-人体层面-肝-修改后-正面.jpg：以人形轮廓（LatheGeometry 直线段）肩—胸段的已知半宽标定比例尺（3 行一致，约 638 px/m），换算肝的上下缘高度，结果在 浏览器检查/正面测量.txt",
+    "checks": [
+      "肝实质上缘 1.268 m（预期 1.270，图谱 1.261）；下缘 1.099 m（预期 1.097，图谱 1.106）；中心约 1.184 m，与图谱中心一致",
+      "血管残端顶端 1.303 m（预期 1.307）；肝宽约 0.201 m（预期 0.209，左叶尖端较暗，可能未计入）",
+      "标定自检：肩部拐点预测第 284 行（截图约 282—286 行），颈部最窄处预测第 221 行（截图约 225 行）",
+      "默认视角：肝比修改前显得略小，轮廓在画面中相对下移，即肝在躯干中位置升高（对照 肝心位置修正-20261030/模拟-人体层面-肝-修正后-默认视角.jpg）",
+      "器官层面（步骤 2）正常渲染，该视图固定尺寸 1.35，不受 bodySize 影响",
+      "控制台 error 为 0"
+    ]
+  },
+  "notChanged": [
+    "肝模型的比例与图谱不同（较高较薄）：最长边对齐后，肝实质上下缘各比图谱多出约 0.7—0.9 cm（实测 0.7，计算 0.9），厚度约 0.107 m（图谱 0.159 m）；未改模型",
+    "心、胃及其他器官的位置未改；概览场景同时显示全部器官的入口目前不可达（学习中心概览为 2D 图，手术模拟只显示患部器官），故未检查器官之间的穿插",
+    "学习中心特写与器官层面使用固定尺寸，不受影响"
+  ],
+  "limitations": [
+    "Real Supabase and Agnes deferred by user",
+    "Only one viewport (about 800 px wide); no physical phone",
+    "No medical review"
+  ],
+  "testServersStopped": true,
+  "temporaryFiles": "工作区根目录临时 .claude/launch.json 已删除（该目录原本不存在，一并删除）"
+}

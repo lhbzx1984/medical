@@ -1,0 +1,23 @@
+
+<临时克隆>\docs\archive\local-line-20261030\e2e-flow.local-line.cjs
+  2:16  error  A `require()` style import is forbidden  @typescript-eslint/no-require-imports
+  3:12  error  A `require()` style import is forbidden  @typescript-eslint/no-require-imports
+  4:14  error  A `require()` style import is forbidden  @typescript-eslint/no-require-imports
+
+<临时克隆>\docs\archive\local-line-20261030\e2e-server.local-line.cjs
+  2:14  error  A `require()` style import is forbidden  @typescript-eslint/no-require-imports
+  3:12  error  A `require()` style import is forbidden  @typescript-eslint/no-require-imports
+  4:14  error  A `require()` style import is forbidden  @typescript-eslint/no-require-imports
+  5:19  error  A `require()` style import is forbidden  @typescript-eslint/no-require-imports
+  6:20  error  A `require()` style import is forbidden  @typescript-eslint/no-require-imports
+
+<临时克隆>\tests\e2e-flow.cjs
+  74:15  warning  'updatedAt' is defined but never used  @typescript-eslint/no-unused-vars
+
+<临时克隆>\tests\e2e-server.cjs
+  203:24  warning  '_reset' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  203:44  warning  '_clear' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+✖ 11 problems (8 errors, 3 warnings)
+
+eslint exit: 1

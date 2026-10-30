@@ -1,0 +1,95 @@
+{
+  "date": "2026-10-31",
+  "subject": "合并最终版（远程 main 8f3ea17 与本地最终版 97be433 合并后的树）在临时克隆中的最终验证，包含合并时新增的 2 个 SQL 测试",
+  "evidenceNotes": "本目录是最终树上的权威结果。同一合并任务较早的三个目录互不覆盖：合并最终版验证-20261030（合并后第一次完整链路与浏览器截图）、合并最终版复核-20261030（92 项时的复核，已标【已被取代】）、合并最终版终验-20261030（93 项、认证故障修复后；已被本目录取代，目录内另有说明文件）。运行时间为 2026-10-31 01:17—01:21（本机时钟）。",
+  "changesSincePreviousRun": [
+    "新增 tests/quota-window.test.cjs：AI 配额 600 秒窗口滚动、旧窗口计数保留、超过一天的记录清理（补回随被取代的限流实现一起不再适用的用例）",
+    "新增 tests/chat-isolation.test.cjs：对话、消息、插图记录的所有者隔离，已有会话编号不能被接管，匿名角色被拒（补回“他人不能复用别人的对话”的用例）",
+    "src、public、supabase、package.json 与其余测试没有改动；其间只改了文档"
+  ],
+  "results": {
+    "typecheck": {
+      "command": "npx tsc --noEmit --incremental false",
+      "exit": 0,
+      "log": "tsc.log"
+    },
+    "eslint": {
+      "command": "npx eslint",
+      "exit": 0,
+      "errors": 0,
+      "warnings": 0,
+      "log": "lint.log"
+    },
+    "unitTests": {
+      "command": "npm test -- --test-reporter=tap（node --test --test-concurrency=1 tests/*.test.cjs）",
+      "exit": 0,
+      "tests": 95,
+      "pass": 95,
+      "fail": 0,
+      "skipped": 0,
+      "log": "unit-tests.log",
+      "perFileLog": "unit-tests-逐文件.log",
+      "perFile": {
+        "admin": 1,
+        "api-regressions": 10,
+        "archive": 1,
+        "assign": 1,
+        "atlas-regression": 6,
+        "audit": 1,
+        "auth-regressions": 9,
+        "chat-isolation": 1,
+        "chat-route": 9,
+        "diagnosis": 1,
+        "edit": 1,
+        "finalize": 1,
+        "knowledge": 1,
+        "plan-generation-regressions": 12,
+        "provider": 10,
+        "quiz": 1,
+        "quota": 1,
+        "quota-window": 1,
+        "simulation-regression": 5,
+        "store": 7,
+        "ui-regressions": 15
+      },
+      "sqlTests": "admin、archive、assign、audit、chat-isolation、diagnosis、edit、finalize、knowledge、quiz、quota、quota-window 共 12 个文件，各 1 个测试，在 PGlite 中直接执行 supabase/schema.sql；其余 83 项为回归测试",
+      "knownWarning": "测试加载器 require('three') 触发 THREE_CJS_DEPRECATED 废弃提示（既有；生产代码使用 ESM）"
+    },
+    "newTestMutationChecks": {
+      "log": "新测试-破坏检查.log",
+      "method": "临时改坏 supabase/schema.sql（测试后立即恢复并核对与索引一致），新测试必须失败",
+      "quota-window": [
+        "去掉上限判断 → 第六次调用仍被放行，测试失败",
+        "清理不限账号 → 误删他人记录，测试失败",
+        "清理删到上一个窗口 → 窗口计数丢失，测试失败"
+      ],
+      "chat-isolation": [
+        "chat_sessions 关闭行级安全 → 他人可见，测试失败",
+        "chat_messages 对所有登录账号开放 → 测试失败",
+        "generated_images 对所有登录账号开放 → 测试失败"
+      ],
+      "result": "6 项破坏全部被检出，schema.sql 已恢复"
+    },
+    "productionBuild": {
+      "command": "npm run build",
+      "exit": 0,
+      "log": "build.log"
+    },
+    "endToEnd": {
+      "command": "node tests/e2e-server.cjs（后台）+ node tests/e2e-flow.cjs，由辅助脚本启动并在结束后停止服务",
+      "checks": 19,
+      "passed": 19,
+      "failed": 0,
+      "log": "e2e.log",
+      "result": "e2e-results.json",
+      "environment": "生产构建的 Next.js + 回环地址上的合成登录令牌服务 + PostgREST 子集翻译器（在 PGlite 中以 authenticated 角色执行 supabase/schema.sql）+ AI 桩。不是真实 Supabase、GoTrue、PostgREST 或 AI 服务。"
+    }
+  },
+  "notVerified": [
+    "真实 Supabase（登录、PostgREST、行级安全在真实服务上的行为、多连接并发、多实例）",
+    "真实 Agnes 模型的输出质量、超时与计费取消",
+    "390/768/1024 像素多视口与手机真机触控在合并后的页面上的复查（合并后只在 1280×720 视口的应用内浏览器里查看了登录、病例、3D 模拟、学习中心、胃特写和账号菜单；截图在 合并最终版验证-20261030）",
+    "所有 GPU 与浏览器的逐项视觉与性能",
+    "医学内容的专业审核"
+  ]
+}

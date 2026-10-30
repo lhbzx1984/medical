@@ -1,0 +1,18 @@
+
+> medplan-atlas@0.1.0 build
+> next build
+
+▲ Next.js 16.4.3 (Turbopack)
+✓ Running next.config.ts took 64ms
+- Cache Components enabled
+- Partial Prefetching enabled
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 2.7s
+  Running TypeScript ...
+docs/evidence/20261030/肝心位置修正-20261030/修改前/organ-models.ts(6,41): error TS2307: Cannot find module './types' or its corresponding type declarations.
+docs/evidence/20261030/肝高度大小修正-20261030/修改前/organ-models.ts(6,41): error TS2307: Cannot find module './types' or its corresponding type declarations.
+docs/evidence/20261030/肾胰图谱对齐-20261030/修改前/organ-models.ts(6,41): error TS2307: Cannot find module './types' or its corresponding type declarations.
+Failed to type check.
+
+build exit: 1

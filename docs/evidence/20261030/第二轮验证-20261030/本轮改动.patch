@@ -1,0 +1,1500 @@
+diff --git a/README.md b/README.md
+--- a/README.md
++++ b/README.md
+@@ -6,7 +6,7 @@
+ 
+ > ⚠️ 本系统为教学演示用途，所有 AI 生成内容不构成临床决策依据。
+ 
+-2026-10-28 修复说明见 [`mackdown.md`](mackdown.md)，按原审查的 20 项问题记录代码修改、验证结果和仍需完成的配置。本项目继续使用现有 Next.js 架构。
++2026-10-30 第二轮修复说明见 [`mackdown.md`](mackdown.md)，保留原审查 20 项问题，并补充本轮修复、未修改事项和逐行增删补丁。[全部文件改动清单](../审查结果/第二轮验证-20261030/全部改动清单.md) 分别标记累计和本轮状态。本项目继续使用现有 Next.js 架构。
+ 
+ ## 功能总览
+ 
+@@ -161,7 +161,7 @@
+ | `GET/POST /api/knowledge` | 登录查询 / 维护账号新增 |
+ | `GET /api/health` | 配置状态（存储类型 / 模型 / 检索器） |
+ 
+-JSON 请求体限制 128 KB，并按字段检查类型、长度与枚举。匿名访问受保护接口返回 401，角色不足返回 403，超限返回 429。每账号每 60 秒：病例创建 10 次、生成 5 次、修订 5 次、对话 20 次、插图 5 次、知识新增 10 次；数据库模式使用共享计数器。AI 调用有 240 秒上限，并接收客户端取消信号；已开始的对话流通过 SSE 报错。
++JSON 请求体限制 128 KB，并按字段检查类型、长度与枚举。匿名访问受保护接口返回 401，角色不足返回 403，超限返回 429。每账号每 60 秒：病例创建 10 次、生成 5 次、修订 5 次、对话 20 次、插图 5 次、知识新增 10 次；数据库模式使用共享计数器。每次 AI 调用有 240 秒上限，生成/修订的两轮调用从路由入口共用 270 秒预算，并接收客户端取消信号；已开始的对话流通过 SSE 报错。登录服务故障返回 503、登录限流返回 429，不会伪装为账号密码错误。
+ 
+ ## 项目结构
+ 
+@@ -223,7 +223,7 @@
+ npm run build
+ ```
+ 
+-本轮 34 项自动回归全部通过，ESLint 无错误或警告，独立类型检查及生产构建通过；覆盖匿名访问、输入与方案校验、原子提交及并发冲突、数据库错误、会话隔离、器官标注、图谱重试和拾取、模拟进度及暂停恢复。实际验证记录与完整链路范围见 [`mackdown.md`](mackdown.md)。
++截至第二轮，54 项自动回归全部通过，ESLint 无错误或警告，独立类型检查及生产构建通过；覆盖匿名访问、输入与方案校验、原子提交及并发冲突、数据库错误、会话隔离、跨标签性别状态、器官标注、图谱重试和拾取、模拟进度及末步暂停恢复。实际验证记录与完整链路范围见 [`mackdown.md`](mackdown.md)。测试加载器仍会显示既有 Three.js CommonJS 废弃提示，生产代码使用 ESM。
+ 
+ 本地完整链路测试（仅合成数据，不访问真实服务）：
+ 
+@@ -236,7 +236,16 @@
+ npm run test:e2e
+ ```
+ 
+-网站端口为 `4401`，模拟服务端口为 `4402`，均仅监听 `127.0.0.1`；首次测试会清空该模拟服务自己的测试数据。16 组流程检查已通过。本地夹具使用 MemoryStore 模拟数据库返回，不能证明 PostgreSQL 锁、RLS 和事务已在真实云端运行。
++网站端口为 `4401`，模拟服务端口为 `4402`，均仅监听 `127.0.0.1`；首次测试会清空该模拟服务自己的测试数据。17 组流程检查已通过。可在两个终端分别设置 `$env:MEDPLAN_TEST_OUTPUT='../审查结果/第二轮验证-20261030'`，将结果写入本轮目录，保留此前证据。
++
++数据库另有 32 项独立检查：直接运行 `schema.sql`，用本地 PostgreSQL WASM 引擎验证事务回滚、唯一索引、所有者、RLS、RPC 权限与迁移保护。临时引擎放在项目外，未改应用依赖：
++
++```powershell
++npm install --prefix "../审查结果/第二轮验证-20261030/sql-runtime" --save-exact @electric-sql/pglite@0.5.13
++node tests/postgres-check.mjs --pglite-dir "../审查结果/第二轮验证-20261030/sql-runtime" --output "../审查结果/第二轮验证-20261030"
++```
++
++本地 HTTP 夹具使用 MemoryStore 模拟数据库返回；独立 SQL 检查使用单连接 PostgreSQL。二者通过均不能证明真实 Supabase、JWT 签名或多实例并发已经联通。390/768/1024/1280 像素浏览器检查已执行；1024 下导师/顾问改为按钮打开，1280 起固定显示，避免挤压 3D 视口。手机真机触控与所有 GPU 仍待验收。
+ 
+ 真实服务验收需在完成自己的 Auth、SQL 和知识种子配置后执行：登录 → 新建合成病例 → 生成 v1 → 检查对应模拟 → 专家修订 v2 → 切回 v1 检查顾问上下文 → 学习问答及插图 → 用另一个账号确认看不到该病例。再核验错误输入、失败重试和限流。原 README 中的真实 Agnes 耗时记录属于此前开发描述，本轮没有凭证，不能据此认定修复后的真实云端链路已通过。
+ 
+diff --git a/docs/superpowers/plans/2026-10-28-audit-fixes.md b/docs/superpowers/plans/2026-10-28-audit-fixes.md
+--- a/docs/superpowers/plans/2026-10-28-audit-fixes.md
++++ b/docs/superpowers/plans/2026-10-28-audit-fixes.md
+@@ -33,3 +33,14 @@
+ 最终验收：34 项回归通过、ESLint 0 错误和 0 警告、独立 TypeScript 检查与生产构建通过；真实生产应用连接本机合成 Auth/REST/RPC/AI 的 HTTP 流程 16 组通过。浏览器复测登录、版本文档、模拟选步、顾问、胃与乳腺标注、图谱搜索和爆炸控制。最终复核还补充修复了公开 Host 与内部 URL 的同源误判、搜索语法转义、流式截断、非法图像类型和枚举外器官替换。
+ 
+ 仍未验收真实云数据库事务/RLS、真实 Supabase Auth、真实 Agnes、多实例和 390/768/1024 像素/手机触控全量交互；这些边界、部署顺序和证据均在 mackdown.md 记录。未执行远程迁移或清理旧数据。
++
++## 2026-10-30 第二轮实施与验收
++
++基于用户“进行下一步的处理，最后重新编辑 md，全部标出改动”的指令继续。已将当前 76 个源码、测试、配置和文档文件备份至审查结果/第二轮基线-20261030，保留首轮与原始 ZIP。
++
++- [x] 检查页面/模拟/聊天状态及接口边界，仅修复有复现证据的剩余问题，先红绿回归。
++- [x] 补做 schema.sql 的本地 PostgreSQL 执行验证，区分本地 SQL 与真实 Supabase 服务、多实例验收；不迁移远端数据。
++- [x] 重新执行测试、lint、类型、构建与本地完整 HTTP 流程，检查关键浏览器交互。
++- [x] 更新 mackdown.md 与 README，记录本轮和累计修改、未修改与未验事项，生成对原始 ZIP 和本轮备份的全量文件清单及带 +/- 标记的补丁。
++
++第二轮最终结果：54 项回归、17 组本地 HTTP、32 项实际 PostgreSQL WASM 检查通过；lint、类型、构建通过。浏览器验证 390/768/1024/1280 尺寸、末步恢复和双标签性别同步；修复 1024 画布从约63像素被挤压的问题，复测恢复约445像素。用户明确先做其他，真实密钥与云服务暂缓；无远程迁移或部署。全部改与未改逐文件归档到第二轮验证目录，完整补丁标注 +/-。
+diff --git a/mackdown.md b/mackdown.md
+--- a/mackdown.md
++++ b/mackdown.md
+@@ -1,6 +1,8 @@
+ # MedPlan Atlas · 修复与后续开发说明
+ 
+-更新日期：2026-10-28。对应本地 `medical-main` 项目及原《网站技术审查与修改记录》的问题 01—20。
++更新日期：2026-10-30（第二轮）。对应本地 `medical-main` 项目及原《网站技术审查与修改记录》的问题 01—20。
++
++**本轮新增修复、验证和未修改事项见第 8 节。全部文件的累计与本轮状态见 [全部改动清单](../审查结果/第二轮验证-20261030/全部改动清单.md)，具体每行增删见 [累计补丁](../审查结果/第二轮验证-20261030/累计改动.patch) 和 [本轮补丁](../审查结果/第二轮验证-20261030/本轮改动.patch)。`+` 为新增，`-` 为删除；清单中所有改动均有【修改/新增】标记，未改文件也逐一列出。**
+ 
+ 本轮已在原有代码上修复可在本地确认的问题，保留 Next.js、React、Three.js、Agnes 与 DataStore 分层。没有迁移 NestJS，没有重新制作网站，没有安装新的运行时依赖，也没有部署到线上或改动远程数据库。
+ 
+@@ -98,6 +100,8 @@
+ 
+ ## 6. 实际验证记录
+ 
++以下是 2026-10-28 首轮记录，保留作前后对比；2026-10-30 第二轮的最终结果见第 8.2 节。
++
+ 最终执行结果：`npm test` **34/34 通过**；`npm run lint` **0 错误、0 警告**；`tsc --noEmit --incremental false` **通过**；`npm run build` **通过**。回归包括 API、Store、供应商传输、UI、图谱与模拟六个范围。相关关键回归先观察失败，再对原实现修复。
+ 
+ | 验证范围 | 已有证据 | 能说明什么 |
+@@ -139,3 +143,67 @@
+ | 后续资源补充 | 胃与乳腺模型、历史模拟重编排 | 当前明确提示无专用模型或无对应模拟；获得可靠资产或明确业务需求后再接入，避免用错误器官充当替代 |
+ 
+ 本文列的是已确认问题的修复结果和已知限制，不是“不会再有 Bug”的保证。后续应沿用现有模块继续增量修复，避免为未落实需求新增平行功能。
++
++## 8. 2026-10-30 第二轮：本次改了哪里、没有改哪里
++
++### 8.1 【本轮修改】问题、文件和结果
++
++本轮开始前另存 76 个源码、测试、配置和文档文件至 `审查结果/第二轮基线-20261030`，未覆盖首轮备份。用户明确先处理本地工作，真实密钥和云服务联调暂缓；没有创建或覆盖 `.env.local`。
++
++| 标记 | 问题与修改后的行为 | 本轮修改文件 |
++| --- | --- | --- |
++| **【本轮修改】** | Auth 服务不可用或被限流时，原来一律报账号密码错误/登录过期。现在分别返回 503/429；真正无效会话仍返回 401；SDK 包装的取消仍按取消处理 | `src/lib/auth.ts`、`src/app/api/auth/route.ts` |
++| **【本轮修改】** | 账号元数据的姓名为对象时会进入反馈记录并造成页面错误。现在仅接收非空字符串姓名，否则使用账号邮箱；角色仍只读取服务端验证的 app_metadata | `src/lib/auth.ts` |
++| **【本轮修改】** | 两轮 AI 原来各自获得 240 秒，可能超过路由 300 秒上限。生成、修订从入口开始共用 270 秒总预算，并在提交前检查；单次上游仍有 240 秒限制 | `src/app/api/plans/[id]/generate/route.ts`、`feedback/route.ts` |
++| **【本轮修改】** | null、数字、空对象及坏字段原来被强制转成“有效”模拟步骤。现在统一校验步骤、时长、视图、动作及器械列表；生成失败继续复用原方案推导脚本，不编造空步骤；明确的空器械列表保留 | `src/lib/planning-prompt.ts` |
++| **【本轮修改】** | 供应商返回 null、非法 JSON、错误 choices/delta 结构时，原来可能抛内部类型错误或静默跳过。现在按上游错误处理；图像只接受绝对 HTTP/HTTPS 地址或格式有效的 Base64，拒绝 javascript/file/相对路径等错误结果 | `src/lib/agnes.ts` |
++| **【本轮修改】** | 最后一个模拟步骤暂停后，再播放原来跳回第一步。现在暂停续播与完成后重播分别处理；完成后仍从首步播放 | `src/components/sim/SimulationStage.tsx` |
++| **【本轮修改】** | 坏历史模拟数组、子项或器官字段可能在页面/3D 内崩溃。现在复用同一模拟校验，显示错误并保留历史，避免挂载错误 3D；没有对应脚本仍显示空态 | `SimulationStage.tsx`、`src/components/planning/PlanningWorkspace.tsx` |
++| **【本轮修改】** | 取消、失败及空白助手回答原来会在下一次提问时作为正常历史发回 AI。现在界面保留提示，请求历史仅发送有效内容，既有完整对话保留 | `src/components/chat/ChatPanel.tsx` |
++| **【本轮修改】** | 其他标签页切换性别后，当前页子宫特写、概览选择或图谱上下文可能残留；图谱未选结构也会继承上一次器官。现在按性别和模式派生有效选择，画布、标题、导师上下文同步；性别切换重建已有图谱内部选择与聊天会话 | `src/components/learn/LearningCenter.tsx` |
++| **【本轮修改】** | 1024 像素下固定顾问与左右步骤栏同时挤压，3D 画布实测仅 62.67 像素。将导师/顾问固定栏断点移到 1280，较窄尺寸通过原按钮打开；1024 模拟画布恢复至 444.67 像素，宽桌面仍固定显示 | `PlanningWorkspace.tsx`、`LearningCenter.tsx` |
++| **【本轮新增/修改】** | 为以上真实失败增加回归，覆盖旧行为失败后再验证修复；HTTP 夹具增加 Auth 故障场景，生成结果使用协议有效的本机图像地址；可指定输出目录以保留上一轮证据 | `tests/auth-regressions.test.cjs`、`plan-generation-regressions.test.cjs`、`provider.test.cjs`、`simulation-regression.test.cjs`、`ui-regressions.test.cjs`、`e2e-server.cjs`、`e2e-flow.cjs` |
++| **【本轮新增】** | 直接执行现有 schema.sql，补齐此前仅靠模拟 Store 不能证明的本地事务与权限检查 | `tests/postgres-check.mjs` |
++| **【本轮文档修改】** | 保留原开发大纲、首轮问题编号和证据，补充本轮状态及全量增删比对 | `README.md`、`mackdown.md`、原审查 Markdown 状态索引、原实施计划 |
++
++### 8.2 【本轮验证】实际结果与证据
++
++最终结果：**54/54 项回归、17/17 组本地 HTTP 流程、32/32 项独立 SQL 检查通过**；ESLint 0 错误/0 警告，独立类型检查与正式构建通过。所有结果以 `审查结果/第二轮验证-20261030` 中的实际日志为准，旧 Three.js 测试加载废弃提示仍保留。证据：[单元回归日志](../审查结果/第二轮验证-20261030/unit-tests.log)、[HTTP 结果](../审查结果/第二轮验证-20261030/e2e-results.json)、[构建日志](../审查结果/第二轮验证-20261030/build.log)。
++
++**浏览器实际验证：**390 像素下登录、病例选择、版本查看、顾问回答、模拟步骤入口和导师/模型选择面板可用；末步暂停后恢复仍显示第 3/3 步。768、1024 和 1280 断点测量无页面横向溢出；1024 下顾问可打开/关闭，1280 固定栏可见。使用两个真实本地标签页验证：一页选择女性子宫，另一页切男性后，第一页面的器官标题与导师同步变为心脏，没有保留子宫上下文。所查页面控制台未记录 error。证据：[尺寸与交互记录](../审查结果/第二轮验证-20261030/browser-results.json)、[1024 画布修复后截图](../审查结果/第二轮验证-20261030/1024模拟修复后.png)、[390 顾问截图](../审查结果/第二轮验证-20261030/390规划顾问.png)、[跨标签同步截图](../审查结果/第二轮验证-20261030/跨标签性别同步.png)。这是浏览器视口检查，不等同手机真机或所有器械的医学视觉验收。
++
++**数据库脚本：32/32 通过。** 使用仅安装在审查结果临时目录中的 PGlite 0.5.13（PostgreSQL 18.6），没有增加应用依赖。原始 `schema.sql` 未改写执行；仅由夹具提供测试账号表、角色和 auth.uid()。验证包括：病例中途失败回滚、反馈晚发生错误时版本/模拟全部回滚、基础版本冲突、唯一索引、所有者隔离、10 张表 RLS 读写、5 个 RPC 对浏览器角色拒绝、限流、重复执行脚本不丢数据，以及旧重复版本使整次升级中止。证据：[SQL 结果](../审查结果/第二轮验证-20261030/postgres-results.json)。
++
++总预算会中断上游 AI 并在提交前拒绝过期结果；本轮没有改写 Store 内部等待/取消机制。已开始并完成的数据库事务不会因客户端随后停止而自动撤销，不能把“停止请求”理解为“删除已保存版本”。
++
++复跑数据库验证（临时引擎与应用依赖分开）：
++
++```powershell
++npm install --prefix "../审查结果/第二轮验证-20261030/sql-runtime" --save-exact @electric-sql/pglite@0.5.13
++node tests/postgres-check.mjs --pglite-dir "../审查结果/第二轮验证-20261030/sql-runtime" --output "../审查结果/第二轮验证-20261030"
++```
++
++### 8.3 【未修改】与【待处理】明确区分
++
++| 标记 | 本轮没有改动的内容 | 原因与后续条件 |
++| --- | --- | --- |
++| **【已验证，本轮未修改】** | `supabase/schema.sql`、`src/lib/store/` | 本地 SQL 执行验证未发现需要改写的缺陷，保留首轮事务与权限实现；不为体现工作量重写 |
++| **【本轮未修改】** | `package.json`、`package-lock.json`、Next/TS/ESLint 配置 | 复用现有依赖与检查，临时 SQL 引擎位于项目外，不进入运行时依赖 |
++| **【未修改】** | public 下的模型、图片、网格和图谱数据；首页、全局主题及无关组件 | 本轮没有资产重做或页面重建；全量比对核对资源与原 ZIP 一致 |
++| **【首轮保留，本轮未修改】** | 首轮已加入的登录界面、病例所有权、并发事务、种子导入、图谱拾取/重试等 | 仍是现有实现的一部分，累计变更清单会显示首轮修改，不把它们误记为本轮新做 |
++| **【按用户要求暂缓】** | 真实 Supabase/Agnes 密钥、账号配置、远程 SQL、线上部署 | 用户要求先处理其他内容；未连接真实服务或触碰远端数据 |
++| **【仍需验证】** | 云端 RLS/历史策略、真实 JWT、Supabase/PostgREST 联通、多连接并发与多实例限流、真实 Agnes 效果/取消计费 | 本地 PostgreSQL WASM 单连接不能替代这些条件；在真实测试环境配置后验收 |
++| **【仍需验证】** | 手机触控、所有 GPU/浏览器/器械的逐项视觉与性能 | 浏览器尺寸检查只证明所测入口和布局，不等同真机和全量硬件验收 |
++| **【未新增功能】** | 跨账号专家授权、会话自动刷新、聊天历史恢复、知识审核/来源审计、历史模拟单独重编排 | 这些需要明确业务规则，现阶段保留现有行为和说明，不搭建平行模块 |
++| **【未补齐资源/内容】** | 胃/乳腺独立 3D 资产、旧坏版本及旧错误器官映射、医学知识专业审核 | 无可靠资产或医学审核依据，不自动改造医疗内容，也不删除旧记录 |
++
++### 8.4 【全部标记】完整文件与逐行改动
++
++当前全量文件清单共 143 个条目：相对原始 ZIP，累计 **修改 35、新增 23、未修改 85、删除 0**；相对第二轮备份，本轮 **修改 18、新增 3、未修改 58、删除 0**（public 资源不在该源码备份内，另已核对与原始 ZIP 完全一致）。自动生成的 next-env.d.ts 也如实列出，不当作新增业务模块。
++
++- [全部文件清单](../审查结果/第二轮验证-20261030/全部改动清单.md)：逐个列出原 ZIP 和当前项目的所有纳入比对文件，分别标出累计和本轮【修改】【新增】【未修改】，包含未修改资源。
++- [累计全部增删补丁](../审查结果/第二轮验证-20261030/累计改动.patch)：从下载的原始 ZIP 到当前版本，所有文本改动用 `+`/`-` 标出。
++- [仅本轮增删补丁](../审查结果/第二轮验证-20261030/本轮改动.patch)：从第二轮修改前备份到当前版本，区分上一轮已有成果。
++- [SHA256 明细](../审查结果/第二轮验证-20261030/file-changes.json)：完整前后哈希与状态；依赖、构建缓存、临时 SQL 引擎和密钥不纳入业务改动。
++
++本轮没有删除原有业务文件，也没有将原 Word 报告冒充为最新版本。原 Word 仍是修复前证据，最新说明以本 Markdown 为准。
+diff --git a/src/app/api/auth/route.ts b/src/app/api/auth/route.ts
+--- a/src/app/api/auth/route.ts
++++ b/src/app/api/auth/route.ts
+@@ -1,4 +1,4 @@
+-import { authClient, authConfigured, assertSameOrigin, requireActor, sessionCookie } from "@/lib/auth";
++import { authClient, authConfigured, authFailure, assertSameOrigin, requireActor, sessionCookie } from "@/lib/auth";
+ import { apiError, ApiError } from "@/lib/http";
+ import { readJson, textField } from "@/lib/validation";
+ import { connection } from "next/server";
+@@ -27,7 +27,8 @@
+       throw new ApiError("请输入有效的密码", 400);
+     }
+     const { data, error } = await authClient(req.signal).auth.signInWithPassword({ email, password });
+-    if (error || !data.session) throw new ApiError("登录失败，请核对账号和密码", 401);
++    req.signal.throwIfAborted();
++    if (error || !data.session) throw authFailure(error, "登录失败，请核对账号和密码");
+     return Response.json({ authenticated: true }, {
+       headers: { "Set-Cookie": sessionCookie(data.session.access_token, data.session.expires_in) },
+     });
+diff --git a/src/app/api/plans/[id]/feedback/route.ts b/src/app/api/plans/[id]/feedback/route.ts
+--- a/src/app/api/plans/[id]/feedback/route.ts
++++ b/src/app/api/plans/[id]/feedback/route.ts
+@@ -14,6 +14,8 @@
+   { params }: { params: Promise<{ id: string }> }
+ ) {
+   try {
++    // 修订与模拟共用总预算，不能每次调用重新计算 240 秒。
++    const signal = AbortSignal.any([req.signal, AbortSignal.timeout(270_000)]);
+     const actor = await requireActor(req, "expert");
+     const body = await readJson(req);
+     const comment = textField(body, "comment", 5000);
+@@ -26,6 +28,7 @@
+       throw new ApiError("当前查看的方案已过期，请选择最新版本后反馈", 409);
+     }
+     await limitAction(store, actor.id, "plan-refine", 5);
+-    return Response.json(await generatePlan(detail, actor, req.signal, comment));
++    signal.throwIfAborted();
++    return Response.json(await generatePlan(detail, actor, signal, comment));
+   } catch (error) { return apiError(error); }
+ }
+diff --git a/src/app/api/plans/[id]/generate/route.ts b/src/app/api/plans/[id]/generate/route.ts
+--- a/src/app/api/plans/[id]/generate/route.ts
++++ b/src/app/api/plans/[id]/generate/route.ts
+@@ -13,12 +13,15 @@
+   { params }: { params: Promise<{ id: string }> }
+ ) {
+   try {
++    // 两轮 AI 共用总预算，为 300 秒路由上限内的提交和响应留出时间。
++    const signal = AbortSignal.any([req.signal, AbortSignal.timeout(270_000)]);
+     const actor = await requireActor(req);
+     const { id } = await params;
+     const store = getStore();
+     const detail = await store.getPlanDetail(id, actor.id);
+     if (!detail) return Response.json({ error: "未找到该手术规划或无权访问" }, { status: 404 });
+     await limitAction(store, actor.id, "plan-generate", 5);
+-    return Response.json(await generatePlan(detail, actor, req.signal));
++    signal.throwIfAborted();
++    return Response.json(await generatePlan(detail, actor, signal));
+   } catch (error) { return apiError(error); }
+ }
+diff --git a/src/components/chat/ChatPanel.tsx b/src/components/chat/ChatPanel.tsx
+--- a/src/components/chat/ChatPanel.tsx
++++ b/src/components/chat/ChatPanel.tsx
+@@ -52,7 +52,8 @@
+     try {
+       const payload = {
+         mode, sessionId, context,
+-        messages: history.slice(-24).map(({ role, content: c }) => ({ role, content: c.slice(0, 12000) })),
++        messages: history.filter((m) => !m.error && m.content.trim()).slice(-24)
++          .map(({ role, content: c }) => ({ role, content: c.slice(0, 12000) })),
+       };
+       // Keep the newest question while staying below the server's request byte limit.
+       while (payload.messages.length > 1 && new TextEncoder().encode(JSON.stringify(payload)).byteLength > 120 * 1024) {
+diff --git a/src/components/learn/LearningCenter.tsx b/src/components/learn/LearningCenter.tsx
+--- a/src/components/learn/LearningCenter.tsx
++++ b/src/components/learn/LearningCenter.tsx
+@@ -27,6 +27,7 @@
+ const ChatPanel = dynamic(() => import("@/components/chat/ChatPanel"), { ssr: false });
+ 
+ type ViewMode = "overview" | "organ" | "atlas";
++type Sex = "male" | "female";
+ 
+ function subscribeSex(onChange: () => void) {
+   window.addEventListener("storage", onChange);
+@@ -37,7 +38,7 @@
+   };
+ }
+ 
+-function storedSex(): "male" | "female" {
++function storedSex(): Sex {
+   try { return localStorage.getItem("mp-sex") === "female" ? "female" : "male"; } catch { return "male"; }
+ }
+ 
+@@ -45,36 +46,39 @@
+   const [mode, setMode] = useState<ViewMode>("overview");
+   const [organId, setOrganId] = useState<OrganId>("heart");
+   /** 概览中选中的器官（null = 外皮实体状态） */
+-  const [selectedId, setSelectedId] = useState<OverviewId | null>(null);
+-  const [structCtx, setStructCtx] = useState<StructureInfo | null>(null);
++  const [selected, setSelected] = useState<{ id: OverviewId; sex: Sex } | null>(null);
++  const [structure, setStructure] = useState<{ info: StructureInfo; sex: Sex } | null>(null);
+   const sex = useSyncExternalStore(subscribeSex, storedSex, () => "male" as const);
+   const [controlsOpen, setControlsOpen] = useState(false);
+   const [chatOpen, setChatOpen] = useState(false);
+ 
+-  const switchSex = useCallback((v: "male" | "female") => {
++  const switchSex = useCallback((v: Sex) => {
+     try { localStorage.setItem("mp-sex", v); } catch {}
+     window.dispatchEvent(new Event("medplan-sex"));
+-    setSelectedId(null);
+-    setStructCtx(null);
++    setSelected(null);
++    setStructure(null);
+     if (v === "male" && organId === "uterus") setOrganId("heart");
+   }, [organId]);
+ 
+-  const organ = ORGANS[organId];
++  const chosenOrgan = ORGANS[organId];
++  const organ = chosenOrgan.femaleOnly && sex !== "female" ? ORGANS.heart : chosenOrgan;
++  const selectedId = mode === "overview" && selected?.sex === sex ? selected.id : null;
++  const structCtx = mode === "atlas" && structure?.sex === sex ? structure.info : null;
+   const overviewTarget = selectedId ? overviewStructure(selectedId) : null;
+ 
+   /** 左栏卡片 / 特写按钮 → 器官特写模式 */
+   const openCloseup = useCallback((id: OrganId) => {
+     setOrganId(id);
+-    setStructCtx(null);
+-    setSelectedId(null);
++    setStructure(null);
++    setSelected(null);
+     setMode("organ");
+     setControlsOpen(false);
+   }, []);
+ 
+   /** 概览中点击标注 / 3D 器官 → 选中并聚焦（保持概览，外皮淡出） */
+   const focusOrgan = useCallback((id: OverviewId) => {
+-    setSelectedId(id);
+-  }, []);
++    setSelected({ id, sex });
++  }, [sex]);
+ 
+   const chatContext = useMemo(() => {
+     if (structCtx) {
+@@ -88,6 +92,9 @@
+     }
+     if (mode === "overview") {
+       return { organName: "全身概览（完整人体）" };
++    }
++    if (mode === "atlas") {
++      return { organName: "精细人体图谱（未选择结构）" };
+     }
+     return { organId: organ.id, organName: `${organ.nameZh}（${organ.nameEn}）` };
+   }, [structCtx, organ, mode, overviewTarget]);
+@@ -133,8 +140,8 @@
+               onClick={() => {
+                 setMode(id);
+                 setControlsOpen(false);
+-                if (id !== "atlas") setStructCtx(null);
+-                if (id !== "overview") setSelectedId(null);
++                if (id !== "atlas") setStructure(null);
++                if (id !== "overview") setSelected(null);
+               }}
+               className={`rounded-lg border p-2.5 text-left transition-colors ${
+                 mode === id
+@@ -157,7 +164,7 @@
+               key={o.id}
+               onClick={() => openCloseup(o.id)}
+               className={`group overflow-hidden rounded-lg border transition-colors ${
+-                organId === o.id && mode !== "atlas"
++                organ.id === o.id && mode !== "atlas"
+                   ? "border-[var(--accent)] bg-[var(--chip-bg)]"
+                   : "border-[var(--line)] hover:bg-[var(--btn-bg-hover)]"
+               }`}
+@@ -190,7 +197,7 @@
+                 ? `器官特写 · ${organ.nameZh}（${organ.nameEn}）`
+                 : "全身概览 · 点击文字标注查看器官"}
+           </span>
+-          <button className="btn ml-auto !px-2 !py-1 lg:hidden" aria-expanded={chatOpen} aria-controls="learning-chat" onClick={() => setChatOpen((open) => !open)}>AI 导师</button>
++          <button className="btn ml-auto !px-2 !py-1 xl:hidden" aria-expanded={chatOpen} aria-controls="learning-chat" onClick={() => setChatOpen((open) => !open)}>AI 导师</button>
+           <span className="chip ml-auto hidden sm:inline-flex">
+             {mode === "atlas" ? "BodyParts3D 4.0 · 15 系统" : `${organ.system}`}
+           </span>
+@@ -200,9 +207,10 @@
+           {mode === "atlas" ? (
+             <div className="absolute inset-0 p-3">
+               <AtlasViewer
++                key={sex}
+                 sex={sex}
+                 onSelectStructure={(info) => {
+-                  setStructCtx(info);
++                  setStructure({ info, sex });
+                 }}
+               />
+             </div>
+@@ -213,16 +221,16 @@
+                   sex={sex}
+                   selectedId={selectedId}
+                   onSelect={focusOrgan}
+-                  onClearSelect={() => setSelectedId(null)}
++                  onClearSelect={() => setSelected(null)}
+                   onEnterCloseup={openCloseup}
+                 />
+               ) : (
+                 <LearnCanvas
+                   mode="organ"
+-                  organId={organId}
++                  organId={organ.id}
+                   selectedId={null}
+                   onSelect={focusOrgan}
+-                  onClearSelect={() => setSelectedId(null)}
++                  onClearSelect={() => setSelected(null)}
+                   sex={sex}
+                 />
+               )}
+@@ -271,10 +279,10 @@
+       </main>
+ 
+       {/* 右侧：AI 医学导师 */}
+-      <aside id="learning-chat" aria-label="AI 医学导师" className={`panel ${chatOpen ? "fixed inset-x-3 bottom-4 top-20 z-40 flex" : "hidden"} shrink-0 flex-col overflow-hidden lg:static lg:flex lg:w-[360px]`}>
+-        <button className="btn m-2 self-end lg:hidden" onClick={() => setChatOpen(false)}>关闭导师</button>
++      <aside id="learning-chat" aria-label="AI 医学导师" className={`panel ${chatOpen ? "fixed inset-x-3 bottom-4 top-20 z-40 flex" : "hidden"} shrink-0 flex-col overflow-hidden xl:static xl:flex xl:w-[360px]`}>
++        <button className="btn m-2 self-end xl:hidden" onClick={() => setChatOpen(false)}>关闭导师</button>
+         <ChatPanel
+-          key={structCtx ? `${structCtx.name}` : mode === "overview" ? selectedId ?? "overview" : organId}
++          key={`${sex}-${mode}-${structCtx ? structCtx.conceptId || structCtx.name : mode === "overview" ? selectedId ?? "overview" : organ.id}`}
+           mode="learning"
+           context={chatContext}
+           className="h-full"
+diff --git a/src/components/planning/PlanningWorkspace.tsx b/src/components/planning/PlanningWorkspace.tsx
+--- a/src/components/planning/PlanningWorkspace.tsx
++++ b/src/components/planning/PlanningWorkspace.tsx
+@@ -178,7 +178,7 @@
+     const v = currentVersion?.version;
+     return [...detail.simulations].reverse().find((s) => s.version === v) ?? null;
+   }, [detail, currentVersion]);
+-  const focusOrgan = ORGANS[matchOrgan(simulation?.focusOrgan ?? "skin")];
++  const focusOrgan = typeof simulation?.focusOrgan === "string" ? ORGANS[matchOrgan(simulation.focusOrgan)] : null;
+ 
+   const planContext = useMemo(() => {
+     if (!detail) return undefined;
+@@ -328,7 +328,7 @@
+                     </div>
+                   )}
+                   <button
+-                    className="btn !py-1 !text-[12px] lg:hidden"
++                    className="btn !py-1 !text-[12px] xl:hidden"
+                     onClick={() => setChatOpen((o) => !o)}
+                     aria-expanded={chatOpen}
+                     aria-controls="guidance-panel"
+@@ -349,7 +349,7 @@
+                   onClick={() => setTab("sim")}
+                 >
+                   🫀 3D 模拟
+-                  {simulation ? ` · ${focusOrgan.nameZh}` : ""}
++                  {focusOrgan ? ` · ${focusOrgan.nameZh}` : ""}
+                 </button>
+                 <button
+                   className={`tab ${tab === "feedback" ? "active" : ""}`}
+@@ -488,8 +488,8 @@
+ 
+       {/* 右侧：手术指导顾问 */}
+       {detail && (
+-        <aside id="guidance-panel" aria-label="手术指导顾问" className={`panel ${chatOpen ? "fixed inset-x-3 bottom-4 top-20 z-40 flex" : "hidden"} shrink-0 flex-col overflow-hidden lg:static lg:flex lg:w-[360px]`}>
+-          <button className="btn m-2 self-end lg:hidden" onClick={() => setChatOpen(false)}>关闭顾问</button>
++        <aside id="guidance-panel" aria-label="手术指导顾问" className={`panel ${chatOpen ? "fixed inset-x-3 bottom-4 top-20 z-40 flex" : "hidden"} shrink-0 flex-col overflow-hidden xl:static xl:flex xl:w-[360px]`}>
++          <button className="btn m-2 self-end xl:hidden" onClick={() => setChatOpen(false)}>关闭顾问</button>
+           <ChatPanel
+             key={`${detail.plan.id}-${currentVersion?.version ?? 0}`}
+             mode="guidance"
+diff --git a/src/components/sim/SimulationStage.tsx b/src/components/sim/SimulationStage.tsx
+--- a/src/components/sim/SimulationStage.tsx
++++ b/src/components/sim/SimulationStage.tsx
+@@ -11,6 +11,7 @@
+ import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
+ import * as THREE from "three";
+ import { ORGANS, matchOrgan } from "@/lib/organ-models";
++import { normalizeSimSteps } from "@/lib/planning-prompt";
+ import type { SimulationRun } from "@/lib/types";
+ import { BodyOverviewScene } from "./BodyOverviewScene";
+ import { OrganModel } from "./OrganModel";
+@@ -258,7 +259,17 @@
+   onPlaying,
+   sex = "male",
+ }: SimulationStageProps) {
++  const completedRef = useRef(false);
++  useEffect(() => { completedRef.current = false; }, [simulation?.id, stepIndex]);
+   const steps = simulation?.steps ?? [];
++  try {
++    if (simulation) {
++      if (typeof simulation.focusOrgan !== "string" || !Array.isArray(simulation.steps)) throw new Error("模拟元数据无效");
++      if (steps.length) normalizeSimSteps(steps);
++    }
++  } catch {
++    return <div role="alert" className="panel p-4 text-[var(--warn)]">该历史模拟脚本格式不完整，暂时无法播放。请重新生成方案，原有记录会保留。</div>;
++  }
+   const step = steps[stepIndex];
+   const focusId = matchOrgan(simulation?.focusOrgan ?? "skin");
+   const organ = ORGANS[focusId];
+@@ -285,7 +296,10 @@
+               sim={simulation} stepIndex={stepIndex} playing={playing} sex={sex}
+               onComplete={() => {
+                 if (stepIndex + 1 < steps.length) onStepIndex(stepIndex + 1);
+-                else onPlaying(false);
++                else {
++                  completedRef.current = true;
++                  onPlaying(false);
++                }
+               }}
+             />
+           </Suspense>
+@@ -329,7 +343,7 @@
+             <button
+               className="btn btn-primary !px-4"
+               onClick={() => {
+-                if (stepIndex === steps.length - 1 && !playing) onStepIndex(0);
++                if (completedRef.current && !playing) onStepIndex(0);
+                 onPlaying(!playing);
+               }}
+             >
+diff --git a/src/lib/agnes.ts b/src/lib/agnes.ts
+--- a/src/lib/agnes.ts
++++ b/src/lib/agnes.ts
+@@ -45,6 +45,22 @@
+ function requestSignal(signal?: AbortSignal): AbortSignal {
+   const timeout = AbortSignal.timeout(240_000);
+   return signal ? AbortSignal.any([signal, timeout]) : timeout;
++}
++
++function isObject(value: unknown): value is Record<string, unknown> {
++  return value !== null && typeof value === "object" && !Array.isArray(value);
++}
++
++async function providerJson(res: Response): Promise<Record<string, unknown>> {
++  let data: unknown;
++  try { data = await res.json(); }
++  catch (error) {
++    if (error instanceof SyntaxError) throw new AgnesError("Agnes 返回了无效的 JSON 数据");
++    throw error;
++  }
++  if (!isObject(data)) throw new AgnesError("Agnes 返回了无效的数据结构");
++  if (data.error) throw new AgnesError("Agnes 服务返回错误，请稍后重试");
++  return data;
+ }
+ 
+ /** 发起流式对话请求，返回上游 Response（SSE），由调用方转发或解析。 */
+@@ -88,10 +104,10 @@
+     await res.body?.cancel();
+     throw new AgnesError(`对话服务暂不可用（上游 ${res.status}）`);
+   }
+-  const data = (await res.json()) as {
+-    choices?: { message?: { content?: string } }[];
+-  };
+-  const content = data.choices?.[0]?.message?.content ?? "";
++  const data = await providerJson(res);
++  const choice = Array.isArray(data.choices) ? data.choices[0] : undefined;
++  const message = isObject(choice) ? choice.message : undefined;
++  const content = isObject(message) ? message.content : undefined;
+   if (typeof content !== "string" || !content.trim()) throw new AgnesError("Agnes Chat 返回了空内容");
+   return content;
+ }
+@@ -118,11 +134,18 @@
+           const payload = trimmed.slice(5).trim();
+           if (payload === "[DONE]") return;
+           if (!payload) continue;
+-          let json: { error?: unknown; choices?: { delta?: { content?: string } }[] };
++          let json: unknown;
+           try { json = JSON.parse(payload); }
+           catch { throw new AgnesError("对话服务返回了无效的流式数据"); }
++          if (!isObject(json)) throw new AgnesError("对话服务返回了无效的流式结构");
+           if (json.error) throw new AgnesError("对话服务返回错误，请稍后重试");
+-          const delta = json.choices?.[0]?.delta?.content;
++          if (!Array.isArray(json.choices)) throw new AgnesError("对话服务返回了无效的流式结构");
++          const choice = json.choices[0];
++          if (choice !== undefined && !isObject(choice)) throw new AgnesError("对话服务返回了无效的流式结构");
++          const deltaObject = isObject(choice) ? choice.delta : undefined;
++          if (deltaObject != null && !isObject(deltaObject)) throw new AgnesError("对话服务返回了无效的流式结构");
++          const delta = isObject(deltaObject) ? deltaObject.content : undefined;
++          if (delta != null && typeof delta !== "string") throw new AgnesError("对话服务返回了无效的文本增量");
+           if (typeof delta === "string" && delta) yield delta;
+         }
+       }
+@@ -202,14 +225,21 @@
+     await res.body?.cancel();
+     throw new AgnesError(`图像服务暂不可用（上游 ${res.status}）`);
+   }
+-  const data = (await res.json()) as {
+-    data?: { url?: string | null; b64_json?: string | null }[];
+-  };
+-  const item = Array.isArray(data?.data) ? data.data[0] : undefined;
+-  const url = typeof item?.url === "string" ? item.url.trim() : "";
+-  const b64 = typeof item?.b64_json === "string" ? item.b64_json.trim() : "";
++  const data = await providerJson(res);
++  const item = Array.isArray(data.data) ? data.data[0] : undefined;
++  const url = isObject(item) && typeof item.url === "string" ? item.url.trim() : "";
++  const b64 = isObject(item) && typeof item.b64_json === "string" ? item.b64_json.trim() : "";
+   if (!url && !b64) {
+     throw new AgnesError("Agnes Image 未返回图像数据");
+   }
++  if (url) {
++    let parsed: URL;
++    try { parsed = new URL(url); }
++    catch { throw new AgnesError("Agnes Image 返回了无效的图像地址"); }
++    if (!["https:", "http:"].includes(parsed.protocol)) throw new AgnesError("Agnes Image 返回了不支持的图像地址协议");
++  }
++  if (b64 && (b64.length % 4 !== 0 || !/^[A-Za-z0-9+/]+={0,2}$/.test(b64))) {
++    throw new AgnesError("Agnes Image 返回了无效的 Base64 数据");
++  }
+   return { url: url || undefined, b64: b64 || undefined };
+ }
+diff --git a/src/lib/auth.ts b/src/lib/auth.ts
+--- a/src/lib/auth.ts
++++ b/src/lib/auth.ts
+@@ -29,6 +29,12 @@
+   }
+ }
+ 
++export function authFailure(error: { status?: number } | null, unauthorized: string): ApiError {
++  if (error?.status === 429) return new ApiError("登录请求过于频繁，请稍后重试", 429);
++  if (error && (!error.status || error.status >= 500)) return new ApiError("登录服务暂不可用，请稍后重试", 503);
++  return new ApiError(unauthorized, 401);
++}
++
+ export async function requireActor(req: Request, role?: "expert" | "admin"): Promise<Actor> {
+   if (!["GET", "HEAD"].includes(req.method)) assertSameOrigin(req);
+   const bearer = req.headers.get("authorization")?.match(/^Bearer (.+)$/i)?.[1];
+@@ -37,11 +43,13 @@
+   const token = bearer || cookie;
+   if (!token) throw new ApiError("请先登录", 401);
+   const { data, error } = await authClient(req.signal).auth.getUser(token);
+-  if (error || !data.user) throw new ApiError("登录已过期，请重新登录", 401);
++  req.signal.throwIfAborted();
++  if (error || !data.user) throw authFailure(error, "登录已过期，请重新登录");
+   const user = data.user;
+   const userRole = ["expert", "admin"].includes(user.app_metadata?.role) ? user.app_metadata.role as "expert" | "admin" : "user";
+   if (role && userRole !== "admin" && userRole !== role) throw new ApiError("当前账号没有该操作权限", 403);
+-  return { id: user.id, name: user.user_metadata?.full_name || user.email || "登录用户", role: userRole };
++  const fullName = user.user_metadata?.full_name;
++  return { id: user.id, name: typeof fullName === "string" && fullName.trim() ? fullName.trim() : user.email || "登录用户", role: userRole };
+ }
+ 
+ export function sessionCookie(token: string, maxAge: number): string {
+diff --git a/src/lib/planning-prompt.ts b/src/lib/planning-prompt.ts
+--- a/src/lib/planning-prompt.ts
++++ b/src/lib/planning-prompt.ts
+@@ -2,6 +2,7 @@
+ // 所有面向 Agnes(agnes-2.5-flash) 的规划类 system prompt 集中在此维护。
+ import type { ExpertFeedback, PlanVersion, Patient, SimulationStep } from "./types";
+ import { ORGAN_IDS } from "./types";
++import { enumField, integerField, object, stringList, textField, ValidationError } from "./validation";
+ 
+ const ORGAN_ENUM = ORGAN_IDS.join(" | ");
+ 
+@@ -124,22 +125,21 @@
+ 
+ /** 归一化 LLM 生成的模拟步骤：补齐器械与动作类型（缺失时按步骤名推断） */
+ export function normalizeSimSteps(rawSteps: unknown): SimulationStep[] {
+-  const arr = Array.isArray(rawSteps) ? (rawSteps as Record<string, unknown>[]).slice(0, 12) : [];
+-  return arr.map((s, i) => {
+-    const inf = inferInstruments(String(s?.name ?? ""));
+-    const actionRaw = String(s?.action ?? "");
+-    const action = (KNOWN_ACTIONS as string[]).includes(actionRaw) ? actionRaw : inf.action;
+-    const instruments = Array.isArray(s?.instruments) && s.instruments.length
+-      ? (s.instruments as unknown[]).slice(0, 3).map(String)
+-      : inf.instruments;
++  if (!Array.isArray(rawSteps) || !rawSteps.length || rawSteps.length > 12) {
++    throw new ValidationError("模拟必须包含 1 到 12 个完整步骤");
++  }
++  return rawSteps.map((value, i) => {
++    const s = object(value);
++    const name = textField(s, "name", 300);
++    const inf = inferInstruments(name);
+     return {
+       index: i + 1,
+-      name: String(s?.name ?? `阶段${i + 1}`),
+-      narration: String(s?.narration ?? ""),
+-      view: s?.view === "overview" ? ("overview" as const) : ("organ" as const),
+-      durationSec: Math.min(20, Math.max(6, Number(s?.durationSec) || 10)),
+-      instruments,
+-      action,
++      name,
++      narration: textField(s, "narration", 6000),
++      view: enumField(s.view, ["overview", "organ"], "view") as "overview" | "organ",
++      durationSec: integerField(s.durationSec, 6, 20, "durationSec"),
++      instruments: s.instruments === undefined ? inf.instruments : stringList(s.instruments, "instruments", 3, 100),
++      action: s.action === undefined ? inf.action : enumField(s.action, KNOWN_ACTIONS, "action"),
+     };
+   });
+ }
+diff --git a/tests/auth-regressions.test.cjs b/tests/auth-regressions.test.cjs
+--- /dev/null
++++ b/tests/auth-regressions.test.cjs
+@@ -0,0 +1,47 @@
++const test = require('node:test');
++const assert = require('node:assert/strict');
++const {loadTs} = require('./load-ts.cjs');
++
++function authModules(result) {
++  return {'@supabase/supabase-js':{createClient:()=>({auth:{getUser:async()=>result,signInWithPassword:async()=>result}})}};
++}
++function withConfig(action) {
++  const old={url:process.env.SUPABASE_URL,key:process.env.SUPABASE_ANON_KEY};
++  process.env.SUPABASE_URL='https://local-test.example.invalid';process.env.SUPABASE_ANON_KEY='synthetic-test';
++  return Promise.resolve().then(action).finally(()=>{
++    for (const [key,value] of [['SUPABASE_URL',old.url],['SUPABASE_ANON_KEY',old.key]]) {
++      if (value===undefined) delete process.env[key];else process.env[key]=value;
++    }
++  });
++}
++const request=()=>new Request('http://localhost/api/plans',{headers:{authorization:'Bearer local-test'}});
++
++test('Auth service failures and provider throttling retain their status instead of accusing credentials',()=>withConfig(async()=>{
++  for (const [error,status] of [[{status:503},503],[{status:0,name:'AuthRetryableFetchError'},503],[{status:429},429]]) {
++    const {requireActor}=loadTs('src/lib/auth.ts',authModules({data:{user:null},error}));
++    await assert.rejects(requireActor(request()),err=>err.status===status);
++    const route=loadTs('src/app/api/auth/route.ts',authModules({data:{session:null},error}));
++    const response=await route.POST(new Request('http://localhost/api/auth',{method:'POST',body:JSON.stringify({email:'test@example.invalid',password:'synthetic'})}));
++    assert.equal(response.status,status);
++  }
++}));
++
++test('only verified app metadata grants roles and malformed display names fall back to email',()=>withConfig(async()=>{
++  const {requireActor}=loadTs('src/lib/auth.ts',authModules({data:{user:{id:'test-owner',email:'test@example.invalid',
++    app_metadata:{role:'user'},user_metadata:{role:'admin',full_name:{unexpected:'object'}}}},error:null}));
++  const actor=await requireActor(request());
++  assert.equal(actor.role,'user');assert.equal(actor.name,'test@example.invalid');
++  await assert.rejects(requireActor(request(),'expert'),err=>err.status===403);
++}));
++
++test('expired sessions remain unauthorized rather than service failures',()=>withConfig(async()=>{
++  const {requireActor}=loadTs('src/lib/auth.ts',authModules({data:{user:null},error:{status:401}}));
++  await assert.rejects(requireActor(request()),err=>err.status===401);
++}));
++
++test('cancelling Auth checks remains cancellation when the SDK wraps the fetch error',()=>withConfig(async()=>{
++  const controller=new AbortController();controller.abort();
++  const {requireActor}=loadTs('src/lib/auth.ts',authModules({data:{user:null},error:{status:0}}));
++  await assert.rejects(requireActor(new Request('http://localhost/api/plans',{
++    headers:{authorization:'Bearer local-test'},signal:controller.signal})),err=>err.name==='AbortError');
++}));
+diff --git a/tests/e2e-flow.cjs b/tests/e2e-flow.cjs
+--- a/tests/e2e-flow.cjs
++++ b/tests/e2e-flow.cjs
+@@ -67,6 +67,15 @@
+     assert.equal((await scenario({})).counts.images,1);
+   });
+   const adminCookie=cookie;
++  await check('登录服务故障和限流保留真实错误含义',async()=>{
++    for (const status of [503,429]) {
++      await scenario({failAuth:status});
++      assert.equal((await request('/api/auth')).status,status);
++      assert.equal((await request('/api/auth',{email:'audit-admin@example.invalid',password:'local-fixture-password'})).status,status);
++    }
++    await scenario({failAuth:0});
++    assert.equal((await request('/api/auth')).data.authenticated,true);
++  });
+   await check('知识写入角色限制与病例所有者隔离',async()=>{
+     const entry={title:'合成知识',category:'anatomy',content:'软件合成测试',tags:['测试']};
+     assert.equal((await request('/api/knowledge',entry)).status,201);
+@@ -147,7 +156,7 @@
+   });
+ }
+ main().then(()=>{
+-  const output=path.resolve(__dirname,'../../审查结果/修复验证/e2e-results.json');
++  const output=path.join(path.resolve(__dirname,'..',process.env.MEDPLAN_TEST_OUTPUT || '../审查结果/修复验证'),'e2e-results.json');
+   fs.writeFileSync(output,JSON.stringify({date:new Date().toISOString(),environment:'Production Next.js + local synthetic Supabase Auth/REST/RPC and AI; not a real PostgreSQL or AI service',passed:checks.length,checks},null,2));
+   console.log(`${checks.length} flow checks passed`);
+ }).catch(error=>{console.error(error);process.exitCode=1;});
+diff --git a/tests/e2e-server.cjs b/tests/e2e-server.cjs
+--- a/tests/e2e-server.cjs
++++ b/tests/e2e-server.cjs
+@@ -6,7 +6,7 @@
+ const { loadTs } = require('./load-ts.cjs');
+ const { MemoryStore } = loadTs('src/lib/store/memory.ts');
+ const store = new MemoryStore();
+-const state = { plan: null, refine: null, failChat: false, failSimulation: false, failTable: '', slowChat: false, truncatedChat: false, invalidImage: false, cancelled: 0, lastSystem: '' };
++const state = { plan: null, refine: null, failChat: false, failAuth: 0, failSimulation: false, failTable: '', slowChat: false, truncatedChat: false, invalidImage: false, cancelled: 0, lastSystem: '' };
+ const plan = { summary: '软件验证用合成方案', diagnosis: '合成病例', procedureName: '合成演示术式',
+   anesthesia: '演示', position: '演示', approach: '演示', region: '盆腔', focusOrgan: 'uterus',
+   instruments: ['手术刀'], steps: [{index: 1, name: '演示切开', detail: '软件测试步骤', duration: '10分钟', risk: '测试', keyPoints: ['测试']}],
+@@ -36,12 +36,13 @@
+       if (req.method === 'POST') {
+         if (body.reset) {
+           delete globalThis.__medplanMemDb;globalThis.__medplanRateWindows?.clear();
+-          Object.assign(state,{plan:null,refine:null,failChat:false,failSimulation:false,failTable:'',slowChat:false,truncatedChat:false,invalidImage:false,cancelled:0,lastSystem:''});
++          Object.assign(state,{plan:null,refine:null,failChat:false,failAuth:0,failSimulation:false,failTable:'',slowChat:false,truncatedChat:false,invalidImage:false,cancelled:0,lastSystem:''});
+         }
+         if (body.clearRates) globalThis.__medplanRateWindows?.clear(); Object.assign(state,body);
+       }
+       return json({...state,counts:{messages:globalThis.__medplanMemDb?.chatMessages.length ?? 0,images:globalThis.__medplanMemDb?.images.length ?? 0}});
+     }
++    if (url.pathname.startsWith('/auth/v1/') && state.failAuth) return json({message:'Synthetic Auth unavailable'},state.failAuth);
+     if (url.pathname === '/auth/v1/token') {
+       if (body.password !== 'local-fixture-password') return json({error:'invalid_grant',error_description:'Invalid login credentials'},400);
+       const admin=body.email === 'audit-admin@example.invalid';
+@@ -82,7 +83,7 @@
+       if (order) {const [key,direction]=order.split('.'); data.sort((a,b)=>String(a[key]).localeCompare(String(b[key]))*(direction==='desc'?-1:1));}
+       return json(data);
+     }
+-    if (url.pathname==='/v1/images/generations') return json({data:[{url:state.invalidImage ? 42 : '/cases/uterus-thumb.png'}]});
++    if (url.pathname==='/v1/images/generations') return json({data:[{url:state.invalidImage ? 42 : 'http://127.0.0.1:4401/cases/uterus-thumb.png'}]});
+     if (url.pathname==='/v1/chat/completions') {
+       state.lastSystem=body.messages?.[0]?.content ?? '';
+       if (body.stream) {
+@@ -110,7 +111,7 @@
+   } catch (error) {json({code:error.name==='StoreConflictError'?'40001':error.name==='StoreAccessError'?'42501':'XX000',message:error.message},error.name==='StoreConflictError'?409:500);}
+ });
+ const root=path.resolve(__dirname,'..');
+-const output=path.resolve(root,'../审查结果/修复验证'); fs.mkdirSync(output,{recursive:true});
++const output=path.resolve(root,process.env.MEDPLAN_TEST_OUTPUT || '../审查结果/修复验证'); fs.mkdirSync(output,{recursive:true});
+ fixture.listen(4402,'127.0.0.1',()=>{
+   const log=fs.openSync(path.join(output,'server.log'),'w');
+   const child=spawn(process.execPath,[path.join(root,'node_modules/next/dist/bin/next'),'start','-H','127.0.0.1','-p','4401'],{
+diff --git a/tests/plan-generation-regressions.test.cjs b/tests/plan-generation-regressions.test.cjs
+--- /dev/null
++++ b/tests/plan-generation-regressions.test.cjs
+@@ -0,0 +1,107 @@
++const assert = require('node:assert/strict');
++const { test } = require('node:test');
++const { loadTs } = require('./load-ts.cjs');
++
++const content = {
++  summary: '合成测试方案', diagnosis: '测试', procedureName: '测试术式',
++  anesthesia: '测试', position: '测试', approach: '测试', region: '腹腔',
++  instruments: [], steps: [{ name: '测试步骤', detail: '核对解剖标志', keyPoints: [] }],
++  risks: [], postop: ['观察'], focusOrgan: 'intestine', simulationNotes: '',
++};
++const step = { name: '体位摆放', narration: '核对体位与手术区域', view: 'overview', durationSec: 10 };
++
++test('malformed simulation steps are rejected instead of fabricated into playable steps', () => {
++  const { normalizeSimSteps } = loadTs('src/lib/planning-prompt.ts');
++  for (const steps of [null, [], [null], [42], [{}], [{ ...step, name: {} }],
++    [{ ...step, narration: '' }], [{ ...step, view: 'unknown' }],
++    [{ ...step, durationSec: '10' }], [{ ...step, durationSec: Infinity }],
++    [{ ...step, action: {} }], [{ ...step, instruments: [{}] }],
++    Array.from({ length: 13 }, () => step)]) {
++    assert.throws(() => normalizeSimSteps(steps), { name: 'Error' });
++  }
++});
++
++test('simulation normalization preserves explicitly empty instrument lists', () => {
++  const { normalizeSimSteps } = loadTs('src/lib/planning-prompt.ts');
++  const [normalized] = normalizeSimSteps([{ ...step, instruments: [], action: 'none' }]);
++  assert.deepEqual(normalized, { ...step, index: 1, instruments: [], action: 'none' });
++  assert.deepEqual(normalizeSimSteps([step])[0].instruments, []);
++});
++
++test('invalid AI simulation uses the existing plan-derived fallback', async () => {
++  const { MemoryStore } = loadTs('src/lib/store/memory.ts');
++  const store = new MemoryStore();
++  const actor = { id: 'invalid-simulation-owner', name: '合成用户', role: 'user' };
++  const { plan } = await store.createCase({ name: '合成患者', ownerId: actor.id });
++  const detail = await store.getPlanDetail(plan.id, actor.id);
++  let call = 0;
++  const { generatePlan } = loadTs('src/lib/plan-generation.ts', {
++    './agnes': { agnesConfigured: () => true, agnesChatJSON: async () => ++call === 1 ? content : { steps: [null] } },
++    './store': { getStore: () => store },
++    './knowledge': { getRetriever: () => ({ retrieve: async () => [] }) },
++  });
++  const result = await generatePlan(detail, actor, new AbortController().signal);
++  assert.equal(result.simulation.steps.length, 2);
++  assert.equal(result.simulation.steps[0].name, '体区定位');
++  assert.equal(result.simulation.steps[1].name, '测试步骤');
++  assert.equal(result.simulation.steps[1].narration, '核对解剖标志');
++  assert.equal((await store.getPlanDetail(plan.id, actor.id)).plan.currentVersion, 1);
++});
++
++for (const action of ['generate', 'feedback']) {
++  test(`${action} shares one deadline across both AI calls and never commits an expired result`, async () => {
++    const { MemoryStore } = loadTs('src/lib/store/memory.ts');
++    const store = new MemoryStore();
++    const actor = { id: `deadline-${action}-owner`, name: '合成专家', role: 'expert' };
++    const { plan } = await store.createCase({ name: '合成患者', ownerId: actor.id });
++    if (action === 'feedback') {
++      await store.commitPlan({ planId: plan.id, ownerId: actor.id, expectedVersion: 0,
++        content, changelog: '初版', source: 'ai', knowledgeUsed: [],
++        simulation: { focusOrgan: 'intestine', region: '腹腔', steps: [step] } });
++    }
++    const originalFetch = global.fetch;
++    const originalTimeout = AbortSignal.timeout;
++    const savedKey = process.env.AGNES_API_KEY;
++    const timers = [];
++    let clock = 0;
++    let calls = 0;
++    AbortSignal.timeout = (milliseconds) => {
++      const controller = new AbortController();
++      timers.push({ expires: clock + milliseconds, controller });
++      return controller.signal;
++    };
++    function advance(milliseconds) {
++      clock += milliseconds;
++      for (const timer of timers) if (timer.expires <= clock) {
++        timer.controller.abort(new DOMException('Timed out', 'TimeoutError'));
++      }
++    }
++    global.fetch = async (_url, init) => {
++      calls++;
++      advance(calls === 1 ? 200_000 : 100_000);
++      init.signal.throwIfAborted();
++      const output = calls === 1 ? { ...content, changelog: '合成修订' } : { steps: [step] };
++      return Response.json({ choices: [{ message: { content: JSON.stringify(output) } }] });
++    };
++    process.env.AGNES_API_KEY = 'local-fixture';
++    try {
++      const routes = loadTs(`src/app/api/plans/[id]/${action}/route.ts`, {
++        '@/lib/auth': { requireActor: async () => actor },
++        '@/lib/store': { getStore: () => store }, './store': { getStore: () => store },
++        './knowledge': { getRetriever: () => ({ retrieve: async () => [] }) },
++      });
++      const response = await routes.POST(new Request(`http://localhost/api/plans/${plan.id}/${action}`, {
++        method: 'POST', ...(action === 'feedback' ? { body: JSON.stringify({ comment: '合成反馈', baseVersion: 1 }) } : {}),
++      }), { params: Promise.resolve({ id: plan.id }) });
++      assert.equal(response.status, 504);
++      assert.equal(calls, 2);
++      const detail = await store.getPlanDetail(plan.id, actor.id);
++      assert.equal(detail.plan.currentVersion, action === 'feedback' ? 1 : 0);
++      assert.equal(detail.feedbacks.length, 0);
++    } finally {
++      global.fetch = originalFetch;
++      AbortSignal.timeout = originalTimeout;
++      if (savedKey === undefined) delete process.env.AGNES_API_KEY; else process.env.AGNES_API_KEY = savedKey;
++    }
++  });
++}
+diff --git a/tests/postgres-check.mjs b/tests/postgres-check.mjs
+--- /dev/null
++++ b/tests/postgres-check.mjs
+@@ -0,0 +1,349 @@
++// Explicit integration check; never contacts a cloud database or changes application dependencies.
++// npm install --prefix <temporary-runtime> --save-exact @electric-sql/pglite@0.5.13
++// node tests/postgres-check.mjs --pglite-dir <temporary-runtime> --output <results-directory>
++// PGLITE_RUNTIME_DIR may replace --pglite-dir. PGlite is single-connection: this is not a concurrency test.
++import assert from 'node:assert/strict';
++import { createHash } from 'node:crypto';
++import { mkdir, readFile, writeFile } from 'node:fs/promises';
++import { createRequire } from 'node:module';
++import path from 'node:path';
++import { fileURLToPath, pathToFileURL } from 'node:url';
++import { parseArgs } from 'node:util';
++
++const { values } = parseArgs({ options: {
++  'pglite-dir': { type: 'string' }, output: { type: 'string' },
++} });
++const runtimeDir = values['pglite-dir'] ?? process.env.PGLITE_RUNTIME_DIR;
++const requireRuntime = createRequire(runtimeDir
++  ? path.join(path.resolve(runtimeDir), 'package.json') : import.meta.url);
++const { PGlite } = await import(pathToFileURL(requireRuntime.resolve('@electric-sql/pglite')).href);
++const schemaPath = fileURLToPath(new URL('../supabase/schema.sql', import.meta.url));
++const schema = await readFile(schemaPath, 'utf8');
++const outputDir = values.output && path.resolve(values.output);
++const ownerA = '11111111-1111-4111-8111-111111111111';
++const ownerB = '22222222-2222-4222-8222-222222222222';
++const unknownOwner = '33333333-3333-4333-8333-333333333333';
++const tables = ['patients', 'surgical_plans', 'plan_versions', 'plan_feedback', 'simulations',
++  'knowledge_entries', 'chat_sessions', 'chat_messages', 'generated_images', 'rate_limit_windows'];
++const content = { summary: '合成测试', steps: [{ index: 1, name: '测试步骤' }] };
++const simulation = { focusOrgan: 'intestine', region: '腹腔', steps: [{ index: 1, name: '定位', durationSec: 8 }] };
++const report = {
++  startedAt: new Date().toISOString(), schemaPath,
++  schemaSha256: createHash('sha256').update(schema).digest('hex'),
++  engine: 'PGlite (actual PostgreSQL WASM, in-memory)',
++  harness: 'Only auth.users, auth.uid(), test roles and Supabase-like table grants are supplied; schema.sql executes unchanged.',
++  limitations: ['Single PostgreSQL connection; no multi-session lock contention or multi-instance concurrency verified.',
++    'No Supabase cloud, PostgREST transport, JWT signature validation or live service connectivity verified.',
++    'RLS checks use SET ROLE and a synthetic JWT subject; cloud PostgreSQL version, default privileges and legacy policies still require deployment verification.'],
++  checks: [],
++};
++
++async function check(name, body) {
++  try {
++    await body();
++    report.checks.push({ name, passed: true });
++    console.log(`PASS ${name}`);
++  } catch (error) {
++    report.checks.push({ name, passed: false, error: error.message, code: error.code });
++    console.error(`FAIL ${name}: ${error.message}`);
++  }
++}
++
++async function bootstrap(db) {
++  // The grants reproduce Supabase public-table access, so RLS (not missing grants) must deny writes.
++  await db.exec(`
++    create role anon nologin;
++    create role authenticated nologin;
++    create role service_role nologin bypassrls;
++    create schema auth;
++    create table auth.users(id uuid primary key);
++    create function auth.uid() returns uuid language sql stable as
++      $$select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid$$;
++    grant usage on schema public, auth to anon, authenticated, service_role;
++    alter default privileges in schema public grant all on tables to anon, authenticated, service_role;
++  `);
++  await db.query('insert into auth.users(id) values ($1), ($2)', [ownerA, ownerB]);
++}
++
++async function asRole(db, role, owner, body) {
++  assert.ok(['anon', 'authenticated', 'service_role'].includes(role));
++  await db.query("select set_config('request.jwt.claim.sub', $1, false)", [owner ?? '']);
++  await db.exec(`set role ${role}`);
++  try { return await body(); }
++  finally { await db.exec('reset role'); }
++}
++
++const calls = {
++  create_case: 'select public.create_case($1::uuid, $2::jsonb, $3::text) as result',
++  commit_plan: 'select public.commit_plan($1::uuid, $2::uuid, $3::integer, $4::jsonb, $5::text, $6::text, $7::text[], $8::jsonb, $9::jsonb) as result',
++  ensure_chat_session: 'select public.ensure_chat_session($1::text, $2::text, $3::text, $4::uuid) as result',
++  append_chat_messages: 'select public.append_chat_messages($1::text, $2::uuid, $3::jsonb) as result',
++  consume_rate_limit: 'select public.consume_rate_limit($1::uuid, $2::text, $3::integer, $4::integer) as result',
++};
++async function rpc(db, name, args, role = 'service_role', owner = null) {
++  return asRole(db, role, owner, async () => (await db.query(calls[name], args)).rows[0].result);
++}
++const createCase = (db, owner, name = '合成患者') => rpc(db, 'create_case', [owner, JSON.stringify({ name, age: 42 }), null]);
++function commitArgs(planId, owner, version, overrides = {}) {
++  const input = { content, simulation, feedback: null, source: 'ai', ...overrides };
++  return [planId, owner, version, JSON.stringify(input.content), '合成变更', input.source, ['合成知识'],
++    JSON.stringify(input.simulation), input.feedback === null ? null : JSON.stringify(input.feedback)];
++}
++async function snapshot(db) {
++  const result = {};
++  for (const table of tables) {
++    result[table] = (await db.query(`select coalesce(jsonb_agg(to_jsonb(t) order by to_jsonb(t)::text), '[]'::jsonb) as data from public.${table} t`)).rows[0].data;
++  }
++  return result;
++}
++async function rejectsCode(operation, code) {
++  await assert.rejects(operation, error => error.code === code,
++    `expected PostgreSQL SQLSTATE ${code}`);
++}
++
++const db = new PGlite();
++try {
++  await bootstrap(db);
++  report.postgresVersion = (await db.query('select version() as version')).rows[0].version;
++  await check('schema.sql executes unchanged on PostgreSQL', () => db.exec(schema));
++  if (!report.checks[0].passed) throw new Error('Cannot continue without installed schema');
++  let caseA, caseB;
++
++  await check('service role creates linked patient and owner-bound plan', async () => {
++    caseA = await createCase(db, ownerA);
++    caseB = await createCase(db, ownerB, '第二位合成患者');
++    assert.equal(caseA.plan.patient_id, caseA.patient.id);
++    assert.equal(caseA.plan.owner_id, ownerA);
++    assert.equal(caseA.plan.current_version, 0);
++    assert.equal(caseA.plan.title, '合成患者·手术规划');
++    assert.equal(caseA.patient.age, 42);
++  });
++  await check('create_case rolls back patient when plan owner foreign key fails', async () => {
++    const before = await snapshot(db);
++    await rejectsCode(() => createCase(db, unknownOwner), '23503');
++    assert.deepEqual(await snapshot(db), before);
++  });
++  await check('create_case rejects empty names without side effects', async () => {
++    const before = await snapshot(db);
++    await rejectsCode(() => createCase(db, ownerA, '  '), '22023');
++    assert.deepEqual(await snapshot(db), before);
++  });
++  await check('commit_plan atomically creates version and simulation and advances plan', async () => {
++    const result = await rpc(db, 'commit_plan', commitArgs(caseA.plan.id, ownerA, 0));
++    assert.equal(result.version.version, 1);
++    assert.equal(result.simulation.version, 1);
++    assert.equal(result.version.plan_id, caseA.plan.id);
++    assert.deepEqual(result.version.content, content);
++    assert.deepEqual(result.simulation.steps, simulation.steps);
++    assert.equal(result.feedback, null);
++    const plan = (await db.query('select current_version, status from surgical_plans where id=$1', [caseA.plan.id])).rows[0];
++    assert.deepEqual(plan, { current_version: 1, status: 'simulated' });
++  });
++  await check('late invalid feedback rolls back inserted version and simulation', async () => {
++    const before = await snapshot(db);
++    await rejectsCode(() => rpc(db, 'commit_plan', commitArgs(caseA.plan.id, ownerA, 1,
++      { source: 'expert_refine', feedback: { expertName: '测试专家', comment: '  ' } })), '22023');
++    assert.deepEqual(await snapshot(db), before);
++  });
++  await check('expert refinement preserves feedback target version and advances plan', async () => {
++    const result = await rpc(db, 'commit_plan', commitArgs(caseA.plan.id, ownerA, 1,
++      { source: 'expert_refine', feedback: { expertName: '测试专家', comment: '合成反馈' } }));
++    assert.equal(result.version.version, 2);
++    assert.equal(result.simulation.version, 2);
++    assert.equal(result.feedback.version, 1);
++    assert.equal(result.feedback.comment, '合成反馈');
++    assert.equal((await db.query('select status from surgical_plans where id=$1', [caseA.plan.id])).rows[0].status, 'refined');
++  });
++  await check('stale expected version is rejected without modifying history', async () => {
++    const before = await snapshot(db);
++    await rejectsCode(() => rpc(db, 'commit_plan', commitArgs(caseA.plan.id, ownerA, 1)), '40001');
++    assert.deepEqual(await snapshot(db), before);
++  });
++  await check('foreign and null owner cannot commit another owner plan', async () => {
++    const before = await snapshot(db);
++    for (const owner of [ownerB, null]) {
++      await rejectsCode(() => rpc(db, 'commit_plan', commitArgs(caseA.plan.id, owner, 2)), '42501');
++    }
++    assert.deepEqual(await snapshot(db), before);
++  });
++  await check('invalid plan and simulation step payloads leave no partial state', async () => {
++    const before = await snapshot(db);
++    for (const overrides of [{ content: { steps: [] } }, { simulation: { steps: [] } },
++      { content: { steps: {} } }, { simulation: null }, { source: null }]) {
++      await rejectsCode(() => rpc(db, 'commit_plan', commitArgs(caseA.plan.id, ownerA, 2, overrides)), '22023');
++    }
++    assert.deepEqual(await snapshot(db), before);
++  });
++  for (const table of ['plan_versions', 'simulations']) {
++    await check(`${table} unique index rejects duplicate plan/version without changing original`, async () => {
++      const before = await snapshot(db);
++      const fields = table === 'plan_versions' ? 'content' : 'steps';
++      await rejectsCode(() => db.query(`insert into ${table}(id, plan_id, version, ${fields}) select gen_random_uuid(), plan_id, version, ${fields} from ${table} where plan_id=$1 and version=1`, [caseA.plan.id]), '23505');
++      assert.deepEqual(await snapshot(db), before);
++    });
++  }
++  await check('chat session is idempotent for its owner and rejects owner takeover', async () => {
++    await rpc(db, 'ensure_chat_session', ['session-a', 'learning', '合成对话', ownerA]);
++    const before = await snapshot(db);
++    await rpc(db, 'ensure_chat_session', ['session-a', 'guidance', '重命名', ownerA]);
++    await rejectsCode(() => rpc(db, 'ensure_chat_session', ['session-a', 'learning', '篡改', ownerB]), '42501');
++    assert.deepEqual(await snapshot(db), before);
++    await rpc(db, 'ensure_chat_session', ['session-b', 'guidance', '另一对话', ownerB]);
++  });
++  await check('chat append rejects foreign owner and rolls back a partially invalid batch', async () => {
++    await rpc(db, 'append_chat_messages', ['session-a', ownerA, JSON.stringify([{ role: 'user', content: '合成问题' }, { role: 'assistant', content: '合成回答' }])]);
++    await rpc(db, 'append_chat_messages', ['session-b', ownerB, JSON.stringify([{ role: 'user', content: '另一个问题' }])]);
++    const before = await snapshot(db);
++    await rejectsCode(() => rpc(db, 'append_chat_messages', ['session-a', ownerB, '[]']), '42501');
++    await rejectsCode(() => rpc(db, 'append_chat_messages', ['session-a', ownerA,
++      JSON.stringify([{ role: 'user', content: '该项必须回滚' }, { role: 'system', content: '无效角色' }])]), '22023');
++    assert.deepEqual(await snapshot(db), before);
++  });
++  await check('rate limit enforces cap and separates users and actions', async () => {
++    const allowed = [];
++    for (let i = 0; i < 5; i++) allowed.push(await rpc(db, 'consume_rate_limit', [ownerA, 'chat', 3, 86400]));
++    assert.deepEqual(allowed, [true, true, true, false, false]);
++    assert.equal(await rpc(db, 'consume_rate_limit', [ownerB, 'chat', 3, 86400]), true);
++    assert.equal(await rpc(db, 'consume_rate_limit', [ownerA, 'image', 3, 86400]), true);
++    assert.equal((await db.query("select request_count from rate_limit_windows where owner_id=$1 and action='chat'", [ownerA])).rows[0].request_count, 4);
++  });
++  await check('rate limit resets an expired stored window and rejects invalid limits', async () => {
++    await db.query("update rate_limit_windows set window_start=now()-interval '2 days' where owner_id=$1 and action='chat'", [ownerA]);
++    assert.equal(await rpc(db, 'consume_rate_limit', [ownerA, 'chat', 3, 86400]), true);
++    assert.equal((await db.query("select request_count from rate_limit_windows where owner_id=$1 and action='chat'", [ownerA])).rows[0].request_count, 1);
++    const before = await snapshot(db);
++    for (const args of [[null, 'chat', 3, 60], [ownerA, '', 3, 60], [ownerA, 'chat', 0, 60], [ownerA, 'chat', 3, 0]]) {
++      await rejectsCode(() => rpc(db, 'consume_rate_limit', args), '22023');
++    }
++    assert.deepEqual(await snapshot(db), before);
++  });
++
++  await db.query("insert into generated_images(id,owner_id,prompt,url) values (gen_random_uuid(),$1,'合成图像','https://example.invalid/a'), (gen_random_uuid(),$2,'另一图像','https://example.invalid/b')", [ownerA, ownerB]);
++  await db.query("insert into knowledge_entries(id,title,content) values (gen_random_uuid(),'合成知识','测试内容')");
++  // Give both owners version/simulation/feedback rows so a missing child policy cannot hide in empty fixtures.
++  await rpc(db, 'commit_plan', commitArgs(caseB.plan.id, ownerB, 0,
++    { feedback: { expertName: '测试专家', comment: '另一反馈' } }));
++
++  await check('all browser roles really have table privileges and no RLS bypass', async () => {
++    for (const role of ['anon', 'authenticated']) {
++      await asRole(db, role, ownerA, async () => {
++        const identity = (await db.query('select current_user as role, auth.uid() as owner')).rows[0];
++        assert.equal(identity.role, role);
++        assert.equal(identity.owner, ownerA);
++        assert.equal((await db.query('select rolbypassrls from pg_roles where rolname=current_user')).rows[0].rolbypassrls, false);
++        for (const table of tables) {
++          for (const privilege of ['SELECT', 'INSERT', 'UPDATE', 'DELETE']) {
++            const result = await db.query('select has_table_privilege(current_user,$1,$2) as allowed', [`public.${table}`, privilege]);
++            assert.equal(result.rows[0].allowed, true);
++          }
++        }
++      });
++    }
++  });
++  const expectedOwnerCounts = {
++    patients: [1, 1], surgical_plans: [1, 1], plan_versions: [2, 1], plan_feedback: [1, 1],
++    simulations: [2, 1], chat_sessions: [1, 1], chat_messages: [2, 1], generated_images: [1, 1],
++    knowledge_entries: [1, 1], rate_limit_windows: [0, 0],
++  };
++  for (const table of tables) {
++    await check(`${table} RLS permits owner reads, hides foreign rows and denies browser writes`, async () => {
++      const before = await snapshot(db);
++      for (const [i, [role, owner]] of [['authenticated', ownerA], ['authenticated', ownerB], ['anon', null]].entries()) {
++        await asRole(db, role, owner, async () => {
++          const result = await db.query(`select count(*)::int as count from public.${table}`);
++          assert.equal(result.rows[0].count, role === 'anon' ? 0 : expectedOwnerCounts[table][i]);
++          if (table !== 'rate_limit_windows') {
++            const ownCase = owner === ownerA ? caseA : caseB;
++            const ownSession = owner === ownerA ? 'session-a' : 'session-b';
++            const expectedIds = before[table].filter(row => role !== 'anon' && (
++              table === 'knowledge_entries' ||
++              (table === 'patients' && row.id === ownCase.patient.id) ||
++              (table === 'surgical_plans' && row.id === ownCase.plan.id) ||
++              (['plan_versions', 'plan_feedback', 'simulations'].includes(table) && row.plan_id === ownCase.plan.id) ||
++              (table === 'chat_sessions' && row.id === ownSession) ||
++              (table === 'chat_messages' && row.session_id === ownSession) ||
++              (table === 'generated_images' && row.owner_id === owner)
++            )).map(row => row.id).sort();
++            const visibleIds = (await db.query(`select id from public.${table} order by id`)).rows.map(row => row.id);
++            assert.deepEqual(visibleIds, expectedIds);
++          }
++          const updateColumn = { patients: 'name', surgical_plans: 'title', plan_versions: 'changelog',
++            plan_feedback: 'comment', simulations: 'region', knowledge_entries: 'content',
++            chat_sessions: 'title', chat_messages: 'content', generated_images: 'prompt', rate_limit_windows: 'action' }[table];
++          assert.equal((await db.query(`update public.${table} set ${updateColumn}='forbidden'`)).affectedRows, 0);
++          assert.equal((await db.query(`delete from public.${table}`)).affectedRows, 0);
++          const seedRow = before[table][0];
++          assert.ok(seedRow, `${table} must have a nonempty write fixture`);
++          const insertRow = { ...seedRow };
++          if ('id' in insertRow) insertRow.id = table === 'chat_sessions' ? `forbidden-${owner}` : unknownOwner;
++          if (table === 'rate_limit_windows') insertRow.action = 'forbidden';
++          await rejectsCode(() => db.query(`insert into public.${table} select * from jsonb_populate_record(null::public.${table}, $1::jsonb)`, [JSON.stringify(insertRow)]), '42501');
++        });
++      }
++      assert.deepEqual(await snapshot(db), before);
++    });
++  }
++  for (const role of ['anon', 'authenticated']) {
++    await check(`${role} cannot call any privileged RPC, even with valid owner arguments`, async () => {
++      const before = await snapshot(db);
++      const argumentsByName = {
++        create_case: [ownerA, '{"name":"篡改"}', null],
++        commit_plan: commitArgs(caseA.plan.id, ownerA, 2),
++        ensure_chat_session: ['session-a', 'learning', '篡改', ownerA],
++        append_chat_messages: ['session-a', ownerA, '[]'],
++        consume_rate_limit: [ownerA, 'chat', 3, 60],
++      };
++      for (const [name, args] of Object.entries(argumentsByName)) {
++        await rejectsCode(() => rpc(db, name, args, role, ownerA), '42501');
++      }
++      assert.deepEqual(await snapshot(db), before);
++    });
++  }
++  await check('schema rerun preserves all existing data and privileges', async () => {
++    const before = await snapshot(db);
++    await db.exec(schema);
++    assert.deepEqual(await snapshot(db), before);
++    await rejectsCode(() => rpc(db, 'create_case', [ownerA, '{"name":"篡改"}', null], 'authenticated', ownerA), '42501');
++    await asRole(db, 'authenticated', ownerA, async () => {
++      assert.equal((await db.query('select count(*)::int as count from surgical_plans')).rows[0].count, 1);
++    });
++  });
++
++  for (const duplicateTable of ['plan_versions', 'simulations']) {
++    await check(`legacy duplicate ${duplicateTable} aborts schema migration and preserves all original rows`, async () => {
++      const legacy = new PGlite();
++      try {
++        await bootstrap(legacy);
++        await legacy.exec(schema);
++        const { plan } = await createCase(legacy, ownerA);
++        await rpc(legacy, 'commit_plan', commitArgs(plan.id, ownerA, 0));
++        const index = duplicateTable === 'plan_versions' ? 'uq_plan_versions_plan_version' : 'uq_simulations_plan_version';
++        await legacy.exec(`drop index public.${index}`);
++        const dataColumn = duplicateTable === 'plan_versions' ? 'content' : 'steps';
++        await legacy.query(`insert into ${duplicateTable}(id,plan_id,version,${dataColumn}) select gen_random_uuid(),plan_id,version,${dataColumn} from ${duplicateTable} limit 1`);
++        // This pending upgrade proves BEGIN rolls back earlier DDL when the duplicate guard fails.
++        await legacy.exec('alter table public.generated_images drop column owner_id cascade');
++        const before = await snapshot(legacy);
++        await assert.rejects(() => legacy.exec(schema), error => error.code === 'P0001' && /存在重复/.test(error.message));
++        await legacy.exec('rollback');
++        assert.deepEqual(await snapshot(legacy), before);
++        assert.equal((await legacy.query("select count(*)::int as count from information_schema.columns where table_schema='public' and table_name='generated_images' and column_name='owner_id'")).rows[0].count, 0);
++      } finally { await legacy.close(); }
++    });
++  }
++} catch (error) {
++  report.fatalError = error.message;
++  console.error(error.stack);
++} finally {
++  await db.close();
++  report.finishedAt = new Date().toISOString();
++  report.passed = report.checks.filter(item => item.passed).length;
++  report.failed = report.checks.filter(item => !item.passed).length;
++  report.ok = report.failed === 0 && !report.fatalError;
++  console.log(`PostgreSQL checks: ${report.passed} passed, ${report.failed} failed${report.fatalError ? ', fatal setup/runtime error' : ''}`);
++  if (outputDir) {
++    await mkdir(outputDir, { recursive: true });
++    await writeFile(path.join(outputDir, 'postgres-results.json'), JSON.stringify(report, null, 2) + '\n');
++  }
++  process.exitCode = report.ok ? 0 : 1;
++}
+diff --git a/tests/provider.test.cjs b/tests/provider.test.cjs
+--- a/tests/provider.test.cjs
++++ b/tests/provider.test.cjs
+@@ -53,7 +53,9 @@
+       addGeneratedImage: async () => { persisted++; return { id: 'image' }; } }) },
+   });
+   try {
+-    for (const item of [{url:42}, {url:{}}, {url:[]}, {url:'  '}, {b64_json:42}, null]) {
++    for (const item of [{url:42}, {url:{}}, {url:[]}, {url:'  '}, {b64_json:42}, null,
++      { url: 'javascript:alert(1)' }, { url: 'file:///private/image.png' },
++      { url: '/relative/image.png' }, { b64_json: 'invalid-base64!' }]) {
+       global.fetch = async () => Response.json({ data: [item] });
+       const response = await routes.POST(new Request('http://localhost/api/image', {
+         method: 'POST', body: JSON.stringify({ prompt: '合成测试' }),
+@@ -67,3 +69,30 @@
+     if (saved === undefined) delete process.env.AGNES_API_KEY; else process.env.AGNES_API_KEY = saved;
+   }
+ });
++
++test('malformed non-streaming provider responses are reported as upstream errors', async () => {
++  const original = global.fetch;
++  const saved = process.env.AGNES_API_KEY;
++  process.env.AGNES_API_KEY = 'local-fixture';
++  const { agnesChat, agnesImage, AgnesError } = loadTs('src/lib/agnes.ts');
++  try {
++    for (const call of [() => agnesChat([{ role: 'user', content: 'test' }]), () => agnesImage({ prompt: 'test' })]) {
++      for (const body of ['null', 'not json']) {
++        global.fetch = async () => new Response(body);
++        await assert.rejects(call(), (error) => error instanceof AgnesError && error.status === 502);
++      }
++    }
++  } finally {
++    global.fetch = original;
++    if (saved === undefined) delete process.env.AGNES_API_KEY; else process.env.AGNES_API_KEY = saved;
++  }
++});
++
++test('malformed SSE objects are surfaced as upstream errors', async () => {
++  const { iterateAgnesDelta, AgnesError } = loadTs('src/lib/agnes.ts');
++  for (const value of [null, 42, [], { choices: {} }, { choices: [{ delta: { content: {} } }] }]) {
++    const response = new Response(`data: ${JSON.stringify(value)}\n\ndata: [DONE]\n\n`);
++    await assert.rejects(async () => { for await (const part of iterateAgnesDelta(response)) void part; },
++      (error) => error instanceof AgnesError && error.status === 502);
++  }
++});
+diff --git a/tests/simulation-regression.test.cjs b/tests/simulation-regression.test.cjs
+--- a/tests/simulation-regression.test.cjs
++++ b/tests/simulation-regression.test.cjs
+@@ -1,5 +1,6 @@
+ const assert = require('node:assert/strict');
+ const test = require('node:test');
++const React = require('react');
+ const { loadTs } = require('./load-ts.cjs');
+ 
+ const { advancePlayback } = loadTs('src/components/sim/SimulationStage.tsx');
+@@ -22,3 +23,61 @@
+   assert.equal(finished.progress,1);
+   assert.equal(advancePlayback(finished,1,true,8).completed,false);
+ });
++
++function nodes(element) {
++  if (!element || typeof element !== 'object') return [];
++  if (Array.isArray(element)) return element.flatMap(nodes);
++  return [element, ...nodes(element.props?.children)];
++}
++
++const simulation = {
++  id:'sim-a',planId:'case-a',version:1,focusOrgan:'intestine',region:'腹腔',createdAt:'2026-10-30',
++  steps:[
++    {index:1,name:'定位',narration:'观察术区',view:'overview',durationSec:8,instruments:[],action:'position'},
++    {index:2,name:'操作',narration:'操作示范',view:'organ',durationSec:8,instruments:['手术刀'],action:'cut'},
++  ],
++};
++
++function stageHarness(initial = {}) {
++  const refs=[],effects=[];
++  let refIndex=0,effectIndex=0;
++  const hooks={...React,
++    useRef(initial){const i=refIndex++;return refs[i]??(refs[i]={current:initial});},
++    useEffect(effect,deps){const i=effectIndex++,prev=effects[i];if(!prev||deps.some((d,j)=>!Object.is(d,prev[j]))){effects[i]=deps;effect();}},
++  };
++  const {default:Stage}=loadTs('src/components/sim/SimulationStage.tsx',{react:hooks});
++  const props={simulation,stepIndex:1,playing:false,onStepIndex(i){props.stepIndex=i;},onPlaying(p){props.playing=p;},...initial};
++  const render=()=>{refIndex=0;effectIndex=0;return nodes(Stage(props));};
++  return {props,render};
++}
++
++test('resuming a paused final simulation step does not jump back to the beginning',()=>{
++  const stage=stageHarness();
++  stage.render().find(n=>n.type==='button'&&n.props.children==='▶ 播放模拟').props.onClick();
++  assert.equal(stage.props.stepIndex,1);
++  assert.equal(stage.props.playing,true);
++});
++
++test('a completed simulation replays from the first step',()=>{
++  const stage=stageHarness({playing:true});
++  stage.render().find(n=>typeof n.props?.onComplete==='function').props.onComplete();
++  assert.equal(stage.props.playing,false);
++  stage.render().find(n=>n.type==='button'&&n.props.children==='▶ 播放模拟').props.onClick();
++  assert.equal(stage.props.stepIndex,0);
++  assert.equal(stage.props.playing,true);
++});
++
++test('invalid historical simulation data shows an error without mounting a 3D stage',()=>{
++  for(const invalid of [
++    {...simulation,steps:[null]},
++    {...simulation,steps:[{...simulation.steps[1],instruments:'手术刀'}]},
++    {...simulation,steps:[{...simulation.steps[1],durationSec:NaN}]},
++    {...simulation,focusOrgan:42},
++  ]){
++    const tree=stageHarness({simulation:invalid,stepIndex:0}).render();
++    const alert=tree.find(n=>n.props?.role==='alert');
++    assert.ok(alert,'invalid persisted data must be explained');
++    assert.match(alert.props.children,/格式|重新生成/);
++    assert.equal(tree.some(n=>typeof n.props?.onComplete==='function'),false);
++  }
++});
+diff --git a/tests/ui-regressions.test.cjs b/tests/ui-regressions.test.cjs
+--- a/tests/ui-regressions.test.cjs
++++ b/tests/ui-regressions.test.cjs
+@@ -24,9 +24,9 @@
+   simulations:[{id:'sim-2',version:2,focusOrgan:'intestine',steps:[]}]
+ };
+ 
+-function planningTree(tab='plan') {
++function planningTree(tab='plan', planDetail=detail) {
+   let slot=0;
+-  const states=[[],detail,false,tab,0,0,false,null,null,true,''];
++  const states=[[],planDetail,false,tab,0,0,false,null,null,true,''];
+   const hooks={...React,useState(initial){const index=slot++;return [index<states.length?states[index]:typeof initial==='function'?initial():initial,()=>{}];},useEffect(){},useMemo(fn){return fn();},useCallback(fn){return fn;},useRef(){return {current:null};}};
+   const {default:Workspace}=loadTs('src/components/planning/PlanningWorkspace.tsx',{
+     react:hooks,'next/dynamic':()=>function LazyComponent(){return null;}
+@@ -47,6 +47,12 @@
+   assert.equal(chat.props.context.planId,'case-a');
+   assert.equal(chat.props.context.planVersion,1);
+   assert.match(chat.key,/case-a.*1/);
++});
++
++test('an invalid historical focus organ reaches the simulation error instead of crashing its workspace',()=>{
++  const broken={...detail,simulations:[{...detail.simulations[0],version:1,focusOrgan:42}]};
++  const sim=planningTree('sim',broken).find(n=>'simulation' in (n.props||{}));
++  assert.equal(sim.props.simulation.focusOrgan,42);
+ });
+ 
+ test('invalid historical model content renders a useful error instead of crashing',()=>{
+@@ -72,6 +78,95 @@
+     const button=tree.find(n=>n.type==='button'&&nodes(n.props.children).some(child=>child.props?.children===name));
+     assert.ok(button);button.props.onClick();assert.equal(selected,id);
+   }
++});
++
++function learningHarness(initialSex='female') {
++  const saved={window:Object.getOwnPropertyDescriptor(global,'window'),localStorage:Object.getOwnPropertyDescriptor(global,'localStorage')};
++  const events=new EventTarget(),values=new Map([['mp-sex',initialSex]]),state=[];
++  Object.defineProperty(global,'window',{configurable:true,value:events});
++  Object.defineProperty(global,'localStorage',{configurable:true,value:{getItem:k=>values.get(k)??null,setItem:(k,v)=>values.set(k,v)}});
++  let index=0,unsubscribe,changed=false;
++  const hooks={...React,
++    useState(initial){const i=index++;if(!(i in state))state[i]=typeof initial==='function'?initial():initial;return[state[i],value=>state[i]=typeof value==='function'?value(state[i]):value];},
++    useSyncExternalStore(subscribe,snapshot){unsubscribe??=subscribe(()=>{changed=true;});return snapshot();},
++    useMemo(fn){return fn();},useCallback(fn){return fn;},
++  };
++  const {default:Center}=loadTs('src/components/learn/LearningCenter.tsx',{react:hooks,'next/dynamic':()=>function Lazy(){return null;}});
++  const render=()=>{index=0;return nodes(Center());};
++  return {render,
++    externalSex(value){values.set('mp-sex',value);changed=false;events.dispatchEvent(new Event('storage'));assert.ok(changed);return render();},
++    cleanup(){unsubscribe?.();for(const [name,descriptor] of Object.entries(saved)){if(descriptor)Object.defineProperty(global,name,descriptor);else delete global[name];}},
++  };
++}
++
++const learningChat=tree=>tree.find(n=>n.props?.mode==='learning');
++const learningCanvas=tree=>tree.find(n=>n.props?.mode==='organ'&&n.props.organId);
++const learningButton=(tree,text)=>tree.find(n=>n.type==='button'&&nodes(n).some(child=>child.props?.children===text));
++
++test('an external sex update keeps the visible closeup and tutor context on an available organ',()=>{
++  const panel=learningHarness();
++  try {
++    learningButton(panel.render(),'子宫').props.onClick();
++    const female=panel.render();
++    assert.equal(learningCanvas(female).props.organId,'uterus');
++    assert.equal(learningChat(female).props.context.organId,'uterus');
++    const male=panel.externalSex('male');
++    assert.equal(learningCanvas(male).props.sex,'male');
++    assert.equal(learningCanvas(male).props.organId,'heart');
++    assert.equal(learningChat(male).props.context.organId,'heart');
++    assert.notEqual(learningChat(female).key,learningChat(male).key);
++  } finally {panel.cleanup();}
++});
++
++test('an external sex update clears overview selections and their tutor context',()=>{
++  for(const id of ['uterus','breast']){
++    const panel=learningHarness();
++    try {
++      panel.render().find(n=>n.props?.onEnterCloseup).props.onSelect(id);
++      const female=panel.render();
++      assert.equal(female.find(n=>n.props?.onEnterCloseup).props.selectedId,id);
++      const male=panel.externalSex('male');
++      assert.equal(male.find(n=>n.props?.onEnterCloseup).props.selectedId,null);
++      assert.match(learningChat(male).props.context.organName,/全身概览/);
++      assert.equal(learningChat(male).props.context.organId,undefined);
++    } finally {panel.cleanup();}
++  }
++});
++
++test('an external sex update cannot reuse an atlas structure from the other sex',()=>{
++  const panel=learningHarness('male');
++  try {
++    learningButton(panel.render(),'🧬 精细人体图谱').props.onClick();
++    panel.render().find(n=>n.props?.onSelectStructure).props.onSelectStructure({name:'Prostate',systemId:'reproductive',systemZh:'生殖系统',systemDesc:'',conceptId:'prostate',sizeMm:[10,10,10]});
++    const male=panel.render();
++    assert.match(learningChat(male).props.context.organName,/Prostate/);
++    const female=panel.externalSex('female');
++    assert.equal(female.find(n=>n.props?.onSelectStructure).props.sex,'female');
++    assert.notEqual(male.find(n=>n.props?.onSelectStructure).key,female.find(n=>n.props?.onSelectStructure).key);
++    assert.doesNotMatch(learningChat(female).props.context.organName,/Prostate|心脏/);
++    assert.match(learningChat(female).props.context.organName,/图谱/);
++    assert.notEqual(learningChat(male).key,learningChat(female).key);
++  } finally {panel.cleanup();}
++});
++
++test('local sex buttons and mode changes preserve matching model and tutor contexts',()=>{
++  const panel=learningHarness();
++  try {
++    learningButton(panel.render(),'子宫').props.onClick();
++    learningButton(panel.render(),'♂ 男性').props.onClick();
++    const male=panel.render();
++    assert.equal(learningCanvas(male).props.organId,'heart');
++    assert.equal(learningChat(male).props.context.organId,'heart');
++    learningButton(male,'♀ 女性').props.onClick();
++    const female=panel.render();
++    assert.equal(learningCanvas(female).props.organId,'heart');
++    assert.notEqual(learningChat(male).key,learningChat(female).key);
++    learningButton(female,'🧬 精细人体图谱').props.onClick();
++    const atlas=panel.render();
++    assert.match(learningChat(atlas).props.context.organName,/图谱/);
++    assert.equal(learningChat(atlas).props.context.organId,undefined);
++    assert.notEqual(learningChat(female).key,learningChat(atlas).key);
++  } finally {panel.cleanup();}
+ });
+ 
+ function chatHarness(initialMessages) {
+@@ -135,3 +230,26 @@
+     assert.equal(payload.messages.at(-1).content,'审查提问');
+   } finally {global.fetch=savedFetch;}
+ });
++
++test('a question after cancellation retains completed history without sending the failure as an answer',async()=>{
++  const savedFetch=global.fetch;
++  let requests=0,payload;
++  global.fetch=(_url,options)=>{
++    if(requests++===0)return new Promise((_resolve,reject)=>options.signal.addEventListener('abort',()=>reject(new DOMException('Aborted','AbortError')),{once:true}));
++    payload=JSON.parse(options.body);
++    return Promise.resolve(new Response('data: {"delta":"新的回答"}\n\ndata: {"done":true}\n\n'));
++  };
++  try {
++    const previous=[{role:'user',content:'心脏在哪里？'},{role:'assistant',content:'心脏位于纵隔内。'}];
++    const panel=chatHarness(previous);
++    panel.render().find(n=>n.type==='textarea').props.onChange({target:{value:'血供有哪些？'}});
++    const pending=panel.render().find(n=>n.type==='button'&&n.props?.children==='发送').props.onClick();
++    panel.render().find(n=>n.type==='button'&&n.props?.children==='停止').props.onClick();
++    await pending;
++    assert.match(panel.state[0].at(-1).content,/已停止生成/);
++    panel.render().find(n=>n.type==='textarea').props.onChange({target:{value:'请重新回答血供问题'}});
++    await panel.render().find(n=>n.type==='button'&&n.props?.children==='发送').props.onClick();
++    assert.deepEqual(payload.messages,[...previous,{role:'user',content:'血供有哪些？'},{role:'user',content:'请重新回答血供问题'}]);
++    assert.equal(panel.state[0].at(-1).content,'新的回答');
++  } finally {global.fetch=savedFetch;}
++});

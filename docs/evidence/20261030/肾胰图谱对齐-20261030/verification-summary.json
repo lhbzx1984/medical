@@ -1,0 +1,58 @@
+{
+  "date": "2026-10-30",
+  "scope": "按精细图谱对齐手术模拟“人体层面”中肾、胰的位置和大小（mackdown.md 第 16 节的结论）。用户留言本轮结束后直接进入下一轮，只做了不需要用户判断的这两个器官；第一次只跑了 npm test，用户确认后补跑其余验证",
+  "rootCause": "肾、胰的 bodyPosition、bodySize 是手工估计值，未取自图谱；且 kidneys.glb 下方带输尿管残端，OrganModel 按整个包围盒居中，若直接用图谱包围盒中心，肾主体会偏高约 0.7 cm",
+  "atlasReference": {
+    "source": "审查结果/器官图谱对比-20261030/report.txt 与 comparison.json",
+    "kidneys": { "structures": "左右肾（2 个网格）", "center": [0.001, 1.107, -0.014], "size": [0.178, 0.124, 0.052], "longestSide": 0.178, "xRange": [-0.0876, 0.0904], "yRange": [1.045, 1.169] },
+    "pancreas": { "structures": "胰腺（1 个网格）", "center": [0.012, 1.119, 0.021], "size": [0.121, 0.074, 0.051], "longestSide": 0.121, "xRange": [-0.0479, 0.0727], "yRange": [1.0825, 1.1562] }
+  },
+  "changes": [
+    { "path": "medical-main/src/lib/organ-models.ts",
+      "kidneys": { "before": { "bodyPosition": [0, 1.14, -0.048], "bodySize": 0.24 }, "after": { "bodyPosition": [0, 1.1, -0.014], "bodySize": 0.178 } },
+      "pancreas": { "before": { "bodyPosition": [0.0, 1.105, -0.005], "bodySize": 0.2 }, "after": { "bodyPosition": [0.012, 1.119, 0.021], "bodySize": 0.121 } },
+      "note": "肾 y 比图谱中心 1.107 低 0.007，抵消输尿管残端；x 保持 0（图谱 0.001）。胰按整个包围盒取值，下方较窄的胰头图谱也有，不当作残端。两处都加了注释说明取值来源",
+      "sha256Before": "bb9213a58114bcab90593ba3ad0222f9acf433de8a4b02cc4a5d62dc61475b0e", "sha256After": "d09e178f1bc2c4416046d0b74f3c8c53d6b69750d715a096ddde18e673ea821f" },
+    { "path": "medical-main/tests/atlas-regression.test.cjs",
+      "note": "新增 1 个测试：解码肾、胰的 GLB（肾先去掉宽度不足三分之一的输尿管层），按 OrganModel 的居中与缩放算出中心和最长边，须与图谱相差不超过 1 cm。修改产品代码前运行，按预期失败（新测试-修改前失败.log：肾中心 0,1.149,-0.048、最长边 0.24；胰中心 0,1.105,-0.005、最长边 0.2）。已有的肝测试未改",
+      "sha256Before": "160355abafe36d8c2621d72640b196309242239177bccc39df1835c7e98875d6", "sha256After": "4bb457239ccbbac85e3ab9407d25a4a750a28aae47195e9ac59a90d20df69bce" }
+  ],
+  "unit": { "command": "npm test", "exitCode": 0, "passed": 59, "failed": 0 },
+  "lint": { "command": "npm run lint", "exitCode": 0, "errors": 0, "warnings": 0 },
+  "typescript": { "command": "node node_modules/typescript/bin/tsc --noEmit --incremental false", "exitCode": 0 },
+  "build": { "command": "npm run build", "exitCode": 0, "note": "确认构建产物中肾为 bodyPosition:[0,1.1,-.014],bodySize:.178，胰为 bodyPosition:[.012,1.119,.021],bodySize:.121，旧值已不存在" },
+  "http": { "environment": "Production Next.js with synthetic local Auth/REST/RPC/AI", "exitCode": 0, "passed": 17, "failed": 0 },
+  "browser": {
+    "method": "应用内浏览器，生产构建 + 本地合成服务（MEDPLAN_TEST_OUTPUT 指向 浏览器检查/ 和 浏览器检查-修改前/），合成肾、胰病例；默认视角截图后，水平拖动转到正面、垂直拖动把相机放平。修改前后各测一次",
+    "measurement": "measure-organ.py 读取正面截图：以人形轮廓肩部拐点（r 0.185，y 1.36）的宽度和行号求相机距离与轨道目标高度，再把器官掩码的行列换算成米。结果在 浏览器检查-修改前/正面测量.txt 和 浏览器检查/正面测量.txt。修改前后截图取景不同（1.41 与 0.94 px/CSS px），脚本按取景换算；更新后的脚本在修改前的两张图上重跑，输出与原结果完全相同",
+    "checks": [
+      "肾包围盒（含输尿管）y：修改前 1.050—1.228，修改后 1.035—1.164（按模型计算 1.035—1.165）",
+      "肾主体中心 y：修改前 1.149，修改后 1.108（按模型计算和图谱均为 1.107）；左右宽：修改前 0.236，修改后 0.173（图谱 0.178）",
+      "胰 y：修改前 1.051—1.158，修改后 1.089—1.150（按模型计算 1.087—1.151，图谱 1.083—1.156）",
+      "胰 x：修改前 -0.101—0.099，修改后 -0.046—0.071（按模型计算 -0.049—0.073，图谱 -0.048—0.073）",
+      "胰中心：修改前 x -0.001、y 1.105，修改后 x 0.013、y 1.119（图谱 0.012、1.119）；最长边：修改前 0.200，修改后 0.116（图谱 0.121）；胰头在患者右侧",
+      "轨道目标高度实测 1.090（肾）、1.109（胰），比 bodyPosition 低约 1 cm：从器官层面返回时 CameraRig 在离目标 1.2 cm 内就停下，属已有行为，测量已按实测高度换算",
+      "默认视角与器官层面（步骤 2）都正常渲染；器官层面固定尺寸，不受 bodySize 影响",
+      "控制台 error 为 0"
+    ],
+    "measurementLimits": [
+      "正面视图量不出前后位置（z）；z 由解码 GLB 的单元测试和构建产物确认",
+      "掩码宽度比计算值窄约 0.5 cm（0.173 对 0.178，0.116 对 0.121），修改前的肾同样窄约 0.4 cm",
+      "肾主体的上下端实测 1.056—1.160，计算值 1.048—1.165，差 0.5—0.8 cm，来自宽度规则在图像行上的取法（修改前同样差约 0.4 cm）；中心不受明显影响，以包围盒和中心为准"
+    ]
+  },
+  "notChanged": [
+    "肺（图谱没有肺实质，需先定规则）、脑和眼球（朝向转了 90°，且人形轮廓头部偏高，需用户决定）、肠（基本吻合）",
+    "模型两肾等高，而图谱右肾比左肾低约 1.8 cm，改摆放无法修正",
+    "模型比例与图谱不同，等比缩放只对齐最长边：肾主体高 0.118（图谱 0.124），胰高 0.065（图谱 0.074）；未改模型",
+    "CameraRig 的停止条件未改",
+    "概览场景同时显示全部器官的入口目前不可达，故未检查器官之间的穿插"
+  ],
+  "limitations": [
+    "Real Supabase and Agnes deferred by user",
+    "Only one viewport (853 x 833 CSS px); no physical phone",
+    "No medical review"
+  ],
+  "testServersStopped": true,
+  "temporaryFiles": "工作区根目录临时 .claude/launch.json 已删除（该目录原本不存在，一并删除）；.env.local 不存在，也未创建"
+}

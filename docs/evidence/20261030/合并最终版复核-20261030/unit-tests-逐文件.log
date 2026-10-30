@@ -1,0 +1,20 @@
+tests/admin.test.cjs | exit 0 | # tests 1 # pass 1 # fail 0 # skipped 0 
+tests/api-regressions.test.cjs | exit 0 | # tests 10 # pass 10 # fail 0 # skipped 0 
+tests/archive.test.cjs | exit 0 | # tests 1 # pass 1 # fail 0 # skipped 0 
+tests/assign.test.cjs | exit 0 | # tests 1 # pass 1 # fail 0 # skipped 0 
+tests/atlas-regression.test.cjs | exit 0 | # tests 6 # pass 6 # fail 0 # skipped 0 
+tests/audit.test.cjs | exit 0 | # tests 1 # pass 1 # fail 0 # skipped 0 
+tests/auth-regressions.test.cjs | exit 0 | # tests 8 # pass 8 # fail 0 # skipped 0 
+tests/chat-route.test.cjs | exit 0 | # tests 9 # pass 9 # fail 0 # skipped 0 
+tests/diagnosis.test.cjs | exit 0 | # tests 1 # pass 1 # fail 0 # skipped 0 
+tests/edit.test.cjs | exit 0 | # tests 1 # pass 1 # fail 0 # skipped 0 
+tests/finalize.test.cjs | exit 0 | # tests 1 # pass 1 # fail 0 # skipped 0 
+tests/knowledge.test.cjs | exit 0 | # tests 1 # pass 1 # fail 0 # skipped 0 
+tests/plan-generation-regressions.test.cjs | exit 0 | # tests 12 # pass 12 # fail 0 # skipped 0 
+tests/provider.test.cjs | exit 0 | # tests 10 # pass 10 # fail 0 # skipped 0 
+tests/quiz.test.cjs | exit 0 | # tests 1 # pass 1 # fail 0 # skipped 0 
+tests/quota.test.cjs | exit 0 | # tests 1 # pass 1 # fail 0 # skipped 0 
+tests/simulation-regression.test.cjs | exit 0 | # tests 5 # pass 5 # fail 0 # skipped 0 
+tests/store.test.cjs | exit 0 | # tests 7 # pass 7 # fail 0 # skipped 0 
+tests/ui-regressions.test.cjs | exit 0 | # tests 15 # pass 15 # fail 0 # skipped 0 
+perfile done

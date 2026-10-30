@@ -1,9 +1,10 @@
-import { getStore } from "@/lib/store";
+import type { SupabaseStore } from "@/lib/store/supabase";
 import { quizQuestion } from "@/lib/quiz";
+import { apiError, assertSameOrigin, requireStore } from "@/lib/http";
 
 export async function GET(req: Request) {
-  const store = await getStore();
-  if (!store) return Response.json({ error: "请先登录" }, { status: 401 });
+  let store: SupabaseStore;
+  try { store = await requireStore(); } catch (error) { return apiError(error); }
   const url = new URL(req.url);
   if (url.searchParams.get("history") === "1") return Response.json({ attempts: await store.listLearningAttempts() });
   const organ = url.searchParams.get("organ") ?? "";
@@ -14,8 +15,8 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const store = await getStore();
-  if (!store) return Response.json({ error: "请先登录" }, { status: 401 });
+  let store: SupabaseStore;
+  try { assertSameOrigin(req); store = await requireStore(); } catch (error) { return apiError(error); }
   const body = await req.json().catch(() => null);
   if (!body || typeof body.organ !== "string" || typeof body.kind !== "string" || typeof body.answer !== "string")
     return Response.json({ error: "答案格式不正确" }, { status: 400 });

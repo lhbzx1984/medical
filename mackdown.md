@@ -1,0 +1,337 @@
+# MedPlan Atlas · 合并最终版说明
+
+更新日期：2026-10-31（合并和大部分验证在 2026-10-30 完成，最后一轮复验跨过了午夜）。
+
+本文取代合并前的 `mackdown.md`；合并前的原文保存在 [`docs/archive/local-line-20261030/mackdown.local-line.md`](docs/archive/local-line-20261030/mackdown.local-line.md)（只把会话链接和本机路径换成了占位符）。启动与接口以 [`README.md`](README.md) 为入口，逐文件清单见 [`docs/merge-ledger-20261030.md`](docs/merge-ledger-20261030.md)，交接说明见 [`CLAUDE_HANDOFF.md`](CLAUDE_HANDOFF.md)。
+
+标记约定：**【修改】** 在已有文件上改动；**【新增】** 新文件；**【采用远程】**、**【采用本地】** 两边都改过的文件取其中一边；**【取代】** 本地独有的实现被远程同类实现取代，没有带入；**【未修改】** 相对参与合并的版本没有任何改动；**【未验证】** 没有条件验证，不能当作已通过。
+
+## 0. 结论
+
+- **合并结果**：把 GitHub `main` 在 2026-10-30 当天新增的 21 个提交（登录与账号、行级安全、原子保存版本、AI 配额、病例编辑/归档/定稿/打印、版本对比、知识库来源与审核、学习自测、管理员与审计）与本地最终版（器官位置与图谱对齐、胃 3D 模型、模拟进度、学习中心修正、输入与 AI 方案校验、聊天流加固）合并成一个版本。后端以远程为准；与远程重复的本地实现被取代；不重叠的本地成果原样带入；本地的加固移植到了远程的路由和存储上。
+- **提交方式**：合并提交以 `origin/main`（`8f3ea17`）为第一父提交、本地最终版（`97be433`）为第二父提交，推送为 `main` 的快进。没有强制推送，没有改写远程已有提交，没有建 Pull Request。
+- **验证（最终代码，临时克隆内）**：类型检查退出码 0；ESLint 0 错误、0 警告；`npm test` **95/95**（含 12 个在 PGlite 中直接执行 `supabase/schema.sql` 的 SQL 测试）；`npm run build` 退出码 0；合成完整链路 **19/19**。合并后在应用内浏览器（1280×720）查看了登录、病例与版本、子宫 3D 模拟、学习中心、账号菜单、胃 3D 模型，控制台没有 error（第 7 节）。
+- **没有验证**：真实 Supabase（登录、PostgREST、行级安全在真实服务上的行为、多连接并发、多实例）、真实 Agnes、390/768/1024 像素与手机真机、各种 GPU、医学内容的专业审核。完整链路里的登录令牌服务、PostgREST 层和 AI 都是替身（第 7.3 节）。
+- **更正了 8 处错误**（第 4 节），其中一处是合并自身引入的回归（认证服务故障时 4 个路由会变成未处理的 500）。合并前本地线的 59 项回归里，有 17 项因绑定到已被取代的实现而改名或改写，其中 1 项没有等价用例，2 项的覆盖缺口已用新增的 SQL 测试补上（第 4 节第 4 条）。
+- **没有改动的重要事项**：真实密钥、`.env.local`、远程 SQL、云端迁移、部署都没有碰；项目目录仍然没有 `.git`，没有 reset 或 clean。已知限制见第 8 节。
+
+## 1. 合并输入与做法
+
+| 版本 | 提交 | 内容 |
+| --- | --- | --- |
+| ZIP 基线 | `0f31d72`（2026-10-25） | 下载包 `medical-main.zip` 的原始内容；120 个文件与仓库该提交逐一比对一致（仅换行符不同） |
+| 远程 `main` | `8f3ea17` | 基线之后新增 21 个提交（2026-10-30 14:49—18:00，作者显示为 `User`） |
+| 本地最终版 | `97be433`（分支 `local-medical-main-20261030`，首个提交 `a73898c`） | 从基线出发，包含合并前文档第 2—17 节的全部修改 |
+
+做法：
+
+1. 项目目录是 ZIP 解压目录，没有 `.git`，所以在临时目录克隆仓库工作；项目目录里不放 `.git`，也没有为 Git 覆盖任何文件。
+2. 以 `origin/main` 为基础做真实的 git 合并（两个父提交），自动合并的结果逐文件复核——自动合并有一次悄悄取了本地的存储实现（第 4 节第 1 条）。
+3. 两边都改过或实现重复的文件逐个裁决（第 2.3、3 节），不重建网站、不平行实现、不更换框架。
+4. 每次改动后运行相关测试；最终代码上运行全部检查（第 7 节）。
+5. 不删测试来制造通过；验证证据每次写入新文件夹，不覆盖旧证据。
+
+## 2. 对比：当天上传到 main 的内容与本地最终版
+
+### 2.1 main 上新增（21 个提交）
+
+| 能力 | 主要位置 |
+| --- | --- |
+| 登录与账号 | `/login`、`/account`；`/api/auth/login`、`logout`、`password`；`@supabase/ssr` 的 Cookie 会话，拒绝 service_role 与 `sb_secret_` 密钥 |
+| 数据隔离 | 13 个迁移与 `supabase/schema.sql`：行级安全按 `owner_id`；`medplan_save_revision`、`medplan_update_case`、`medplan_set_archived`、`medplan_set_finalized`、`medplan_consume_ai_quota`、`medplan_is_admin`、`medplan_security_version` |
+| 病例管理 | 编辑病例（带版本冲突检查）、历史（最近 100 次修改前资料）、归档与恢复、定稿与重开、打印页、按诊断/日期/状态筛选、版本对比 |
+| 知识库 | 来源名称/链接/版本、审核状态；`/admin/knowledge`；检索只用“已审核”条目；方案版本保存引用快照 |
+| 管理 | `/admin/users`（建号、重置密码、禁止/允许新登录）、`/admin/unassigned`（旧病例逐条分配）、管理操作审计 |
+| 学习 | 器官自测 `/api/learning/quiz` 与 `OrganQuiz`，按账号保存作答 |
+| 测试 | 10 个 PGlite SQL 测试：事务回滚、所有者隔离、RLS、RPC 权限、管理员与审计、配额、知识审核 |
+
+### 2.2 本地最终版独有
+
+| 能力 | 主要位置 |
+| --- | --- |
+| 器官与图谱 | 心、肝、肾、胰按图谱对齐；胃 3D 模型（`public/models/stomach.glb`，由图谱 FJ2564 转换）；器官注册表；图谱拾取与隐藏/爆炸一致、加载失败可重试 |
+| 模拟与学习中心 | 手动预览进度、暂停保时、末步暂停续播；性别/模式切换后的选择派生；窄屏入口；1280 像素断点 |
+| 输入与 AI 方案校验 | `src/lib/validation.ts`（`readJson` 128 KB 上限、字段检查、`normalizePlan`）；`src/lib/plan-generation.ts`（生成与修订共用，总期限 270 秒） |
+| 聊天与上游调用 | `agnes.ts` 的取消与 240 秒上限；聊天流取消、截断检测、`[DONE]`；历史条数与体积上限；顾问上下文由服务器按病例与版本加载 |
+| 其他 | 知识检索中逗号、括号、引号、通配符按文字处理；同源校验使用公开 Host 与代理协议；认证服务故障/限流保留 503/429 |
+
+### 2.3 两边重复实现的取舍
+
+| 主题 | 远程 `main` | 本地最终版 | 合并版 |
+| --- | --- | --- | --- |
+| 登录与会话 | 登录页与 `/api/auth/login`、`logout`、`password`；Supabase Cookie 会话 | `/api/auth` 路由、顶栏 `AuthControls`、自管会话令牌 | **【采用远程】**；本地的路由与组件**【取代】** |
+| 数据访问与隔离 | 每个请求用登录会话建 `SupabaseStore`，行级安全按 `owner_id` | 以所有者参数过滤的 `DataStore` 与内存存储 | **【采用远程】**（`store/base.ts`、`store/memory.ts`、`schema.sql`）；本地的命名错误、LIKE 转义等移植进远程存储 |
+| 原子保存 | `medplan_save_revision` 等 RPC | `commit_plan`、`create_case` RPC | **【采用远程】** |
+| 限流 | `medplan_consume_ai_quota`：600 秒窗口，聊天 20、插图 5、方案生成与修订合计 5，调用上游前扣减，失败也计入 | `consume_rate_limit`：60 秒窗口，病例创建 10、方案 5、修订 5、聊天 20、插图 5、知识新增 10 | **【采用远程】** |
+| 角色 | `medplan_admins` 表与 `medplan_is_admin()`；没有“专家”角色 | `app_metadata` 里的专家/维护角色 | **【采用远程】**：修订权限 = 病例所有者；管理员只管用户、知识库、旧病例分配 |
+| 输入校验 | 路由内零散检查 | `validation.ts` | 保留本地，接到远程路由 |
+| 方案生成与修订 | 两个路由各写一份 | `generatePlan()` 共用 | 保留本地，改用远程的存储与配额 |
+| 聊天与插图 | 远程的会话存储与配额 | 流取消、截断检测、历史上限、服务器端上下文 | 两者合并 |
+| 测试 | 10 个 SQL 测试 | 回归测试与合成完整链路（旧夹具） | 都保留；本地测试改写到新接口；完整链路改为 PGlite 夹具；新增 2 个 SQL 测试 |
+
+## 3. 合并结果：修改与未修改
+
+下表来自 git（基线、远程、本地、合并版四方比较），数字以 [`docs/merge-ledger-20261030.md`](docs/merge-ledger-20261030.md) 为准；未修改的文件也在清单里逐一列出。
+
+<!-- LEDGER:BEGIN -->
+| 合并结果 | 文件数 | 含义 |
+| --- | ---: | --- |
+| 未修改 | 78 | 三方一致，没有任何改动 |
+| 远程原样 | 38 | 来自远程，合并时没有改动（含远程新增页面、接口、迁移和 SQL 测试） |
+| 本地原样 | 26 | 来自本地最终版，合并时没有改动（器官模型、图谱、模拟、学习中心、胃模型等） |
+| 采用远程 | 3 | 两边都改过，合并版取远程内容 |
+| 手工整合 | 18 | 两边都改过，在远程内容上整合了本地改动 |
+| 远程基础上修改 | 11 | 在远程版本上做了改动 |
+| 本地基础上修改 | 14 | 在本地版本上做了改动 |
+| 合并时新增 | 9 | 合并过程中新增（测试夹具、归档、说明文档等） |
+| 取代 | 3 | 本地独有、被远程同类实现取代，未带入（旧文本保存在 docs/archive） |
+| **合计（不含 docs/evidence 与本清单）** | **200** | |
+
+另有 `docs/evidence/` 下 172 个证据文件（脱敏副本，见第 10 节）和清单本身。
+<!-- LEDGER:END -->
+
+### 3.1 【采用远程】（3 个）
+
+`supabase/schema.sql`、`src/lib/store/base.ts`、`src/lib/store/memory.ts`：两边都改过，合并版取远程内容。本地对它们的改动（所有者参数、`commit_plan`、`create_case`、`consume_rate_limit`）随被取代的实现不再保留；`memory.ts` 是远程遗留实现，应用和测试都没有使用它。
+
+### 3.2 【远程原样】（38 个）
+
+远程新增或修改、本地没有动过的文件原样保留：登录页、账号页、三个管理页、打印页、`OrganQuiz`、`CaseHistory`、`PlanComparison`、`quiz.ts`；13 个迁移；10 个 SQL 测试；以及 `package-lock.json`、`globals.css`、`layout.tsx`、`PatientForm.tsx`、`knowledge/index.ts`。
+
+### 3.3 【本地原样】（26 个）
+
+本地新增或修改、远程没有动过的文件原样带入：器官注册表 `organ-models.ts`、`OrganModel`、`SimulationStage`、`instruments`、`BodyOutline`、`FemaleReproductive`、`LearnCanvas`、`Anatomy2D`、`AtlasViewer`、`atlasData`、`ChatPanel`、`agnes.ts`、`planning-prompt.ts`、`material-utils.ts`；胃模型与缩略图（`stomach.glb`、`thumb.webp`、`organ.webp`）和提取脚本 `extract-stomach-glb.mjs`；两个图片生成脚本的修改（`gen-case-images.mjs`、`gen-female-anatomy.mjs`）；新增的 `seed-knowledge.mjs`；`atlas-regression`、`simulation-regression` 测试与 `load-ts.cjs` 测试加载器；两份 2026-10-28/30 的实施计划。
+
+### 3.4 【手工整合】（18 个）
+
+两边都改过，在远程内容上整合本地改动：
+
+| 文件 | 整合内容 |
+| --- | --- |
+| `README.md` | 远程的建库、登录、管理员、迁移说明 + 本地的器官与验证说明，按合并后的架构重写 |
+| `package.json` | 远程的依赖与脚本为基础，加入本地的 `test`（限定 `tests/*.test.cjs`）、`test:e2e`、`seed:knowledge` |
+| `src/app/api/chat/route.ts` | 远程的登录会话存储与 AI 配额 + 本地的请求体上限与校验、历史上限、上游取消、`[DONE]` 与截断处理、服务器端加载顾问上下文 |
+| `src/app/api/image/route.ts` | 远程的配额与存储 + 本地的参数与图像类型校验、取消信号 |
+| `src/app/api/knowledge/route.ts` | 远程的管理员写入与来源/审核字段 + 本地的字段校验、请求体上限（256 KB） |
+| `src/app/api/health/route.ts` | 远程的健康检查 + `authConfigured` 标志（只报布尔值，不回显密钥） |
+| `src/app/api/plans/route.ts`、`plans/[id]/route.ts` | 远程的建病例、编辑病例 + 本地的字段校验；建病例仍是两步写入（第 8 节） |
+| `plans/[id]/generate/route.ts`、`feedback/route.ts` | 两个路由改为调用共享的 `generatePlan()`（配额 → 检索 → AI → 校验 → 模拟 → 原子保存），修订署名取自登录账号 |
+| `src/lib/auth.ts` | 远程的 Cookie 客户端 + `authFailureStatus`、`AuthUnavailableError`、会话 Cookie 设为 HttpOnly |
+| `src/lib/store/index.ts`、`supabase.ts` | `actor`（来自已验证的会话）、认证故障抛 `AuthUnavailableError`、命名错误、知识搜索的 LIKE 转义 |
+| `src/lib/types.ts` | 加入 `stomach`、`uterus` 枚举与聊天的 `planId`/`planVersion` |
+| `src/components/planning/PlanningWorkspace.tsx` | 远程的病例列表、筛选、编辑、归档、定稿、历史、版本对比 + 本地的版本精确匹配模拟、按病例与版本重建顾问面板、窄屏入口 |
+| `src/components/planning/PlanDocument.tsx` | 加入 `normalizePlan` 保护：坏历史显示“格式不完整”而不是让页面崩溃 |
+| `src/components/learn/LearningCenter.tsx` | 远程的自测入口 + 本地的性别/模式派生、窄屏面板、胃署名 |
+| `src/components/site/Header.tsx` | 远程的账号与管理链接 + 本地的窄屏适配，合并为“账号 ▾”菜单 |
+
+### 3.5 【远程基础上修改】（11 个）
+
+在远程文件上做了小改动：`admin/unassigned`、`admin/users`、`auth/login`、`auth/logout`、`auth/password`、`learning/quiz`、`plans/[id]/archive`、`finalize`、`history` 九个路由和 `src/lib/admin.ts`——加同源校验 `assertSameOrigin`、认证服务故障/限流映射为 503/429、打开存储统一走 `requireStore()` 与 `apiError`；`tsconfig.json` 加入 `exclude`（`docs/archive`、`docs/evidence`）。
+
+### 3.6 【本地基础上修改】（14 个）
+
+`src/lib/http.ts`、`plan-generation.ts`、`validation.ts`；`eslint.config.mjs`（`tests/**/*.cjs` 允许 require，忽略 `docs/archive`、`docs/evidence`）；改写到新接口的 8 个测试文件（`api-regressions`、`auth-regressions`、`plan-generation-regressions`、`provider`、`store`、`ui-regressions`、`e2e-flow`、`e2e-server`）；以及本文和 `CLAUDE_HANDOFF.md`。
+
+### 3.7 【合并时新增】（9 个）
+
+`docs/archive/local-line-20261030/` 下 5 个归档文件（旧交接说明、旧技术文档、旧完整链路脚本两份、旧 PostgreSQL 检查脚本）；`tests/chat-route.test.cjs`、`tests/fake-store.cjs`（聊天路由测试与存储替身）；`tests/quota-window.test.cjs`、`tests/chat-isolation.test.cjs`（第 4 节第 4 条）。
+
+### 3.8 【取代】（3 个）
+
+`src/app/api/auth/route.ts`、`src/components/site/AuthControls.tsx`、`tests/postgres-check.mjs`：本地独有，被远程的登录实现和 SQL 测试取代，没有带入；旧文本保存在 `docs/archive/local-line-20261030/`（脚本）与 git 历史（分支 `local-medical-main-20261030`）。
+
+### 3.9 【未修改】（78 个）
+
+三方一致、没有任何改动的文件，没有被重做，也没有被替换。按目录：
+
+<!-- UNCHANGED:BEGIN -->
+| 目录 | 文件数 | 文件 |
+| --- | ---: | --- |
+| 项目根目录 | 3 | `.gitignore`, `AGENTS.md`, `next.config.ts` |
+| `public/anatomy/<器官>/`（脑、眼球、心、肠、肾、肝、肺、胰、皮肤，每个器官 3 张） | 27 | `location.webp`、`organ.webp`、`thumb.webp` |
+| `public/atlas` | 16 | `atlas.json`, `body-0.bin.gz`, `body-1.bin.gz`, `body-10.bin.gz` 等 |
+| `public/cases` | 7 | `anatomy-female.png`, `anatomy-male.png`, `case-appendicitis.png`, `case-cabg.png` 等 |
+| `public` | 5 | `file.svg`, `globe.svg`, `next.svg`, `vercel.svg` 等 |
+| `public/models` | 9 | `brain.glb`, `eyeball.glb`, `heart.glb`, `intestine.glb` 等 |
+| `scripts` | 3 | `gen-hero-anatomy.mjs`, `gen-uterus-thumb.mjs`, `wire-female.mjs` |
+| `src/app` | 2 | `favicon.ico`, `page.tsx` |
+| `src/app/learning` | 1 | `page.tsx` |
+| `src/app/planning` | 1 | `page.tsx` |
+| `src/components/sim` | 1 | `BodyOverviewScene.tsx` |
+| `src/components/site` | 2 | `AnatomyOverlays.tsx`, `HeroAnatomy.tsx` |
+| `src/lib/knowledge` | 1 | `seed.ts` |
+| **合计** | **78** | |
+<!-- UNCHANGED:END -->
+
+多数是公共资源。器官位置与图谱对齐靠 `src/lib/organ-models.ts` 里的取值，没有改动 GLB 模型文件本身。
+
+## 4. 合并中发现并更正的错误
+
+| 编号 | 发现的问题 | 根因 | 修改与验证 |
+| --- | --- | --- | --- |
+| 1 | 自动合并悄悄采用了本地的所有者参数存储（`store/base.ts`、`store/memory.ts`）和 `ownerId`，会让路由绕开远程的“每请求带用户会话 + 行级安全” | 无冲突的文本块被自动取了本地一侧 | 恢复远程版本，再把本地的命名错误、LIKE 转义、`actor` 移植到远程存储；合并提交里不含这个错误。由 SQL 测试、单元测试与完整链路覆盖 |
+| 2 | `archive`、`finalize`、`history`、`learning/quiz` 四个路由在认证服务故障时变成未处理的 500 | 合并后 `getStore()` 在认证服务故障/限流时抛出 `AuthUnavailableError`（为了返回 503/429 而不是“未登录”），而这四个路由在 `try/catch` 之外调用它。**合并自身引入的回归** | 四个路由改用 `requireStore()` 与 `apiError`；新增回归“routes that open the store themselves report an auth outage instead of failing unhandled”，对远程原路由与修复后路由各做破坏检查（前者失败、后者通过）；完整链路的认证故障检查扩展到这四个路由 |
+| 3 | 建病例失败后删除患者行的补偿永远不会成功 | 数据库只授予 `authenticated` 对 `patients` 的 select/insert（更新经 RPC），没有 delete | 移除补偿代码，路由注释写明限制，测试断言“规划写入失败是被报告的，不被隐藏”。孤立患者行的可能性保留在第 8 节 |
+| 4 | 合并前的本地回归里，17 项绑定到已被取代的实现（所有者参数存储、`commit_plan`/`create_case`、`requireActor`、`consume_rate_limit`） | 实现被远程同类取代 | 其中 14 项改名、改写为对远程实现的等价检查，或由远程已有的测试覆盖，没有仅为通过而删除断言（对照表见第 7.2 节）；**2 项的覆盖缺口用新增的 SQL 测试补上**：`quota-window`（600 秒窗口滚动、旧窗口计数保留、超过一天的记录清理）和 `chat-isolation`（对话/消息/插图的所有者隔离、已有会话编号不能被接管、匿名角色被拒）；各做了 3 项破坏检查（把策略或函数改坏后测试必须失败）；**1 项没有等价用例**：“取消 Auth 检查仍按取消处理”绑定本地的 `requireActor(req)`，合并版的 `getStore()` 不接收请求，也就不存在被误报为认证故障的取消，该用例随机制一起不再适用 |
+| 5 | 完整链路第 9 组首次失败 | 新写的测试让普通账号提交知识库条目并期望 400，而接口先校验管理员身份，返回 403。**测试期望写错**，不是接口缺陷 | 改为用管理员账号检查字段校验，再用普通账号检查 403；失败那次没有写出结果文件，已在证据说明里记录 |
+| 6 | 证据副本里的 `.ts` 与 `.cjs`（修改前的快照）被 ESLint 与 `tsc` 当作项目源码：8 个 `no-require-imports` 错误、3 个未使用变量警告、`tsc` 退出码 2、`next build` 退出码 1 | 合并时新增的 `docs/archive` 与 `docs/evidence` 未被排除 | `tsconfig.json` 与 `eslint.config.mjs` 排除这两个目录（旧快照不是运行代码），并清理新增 e2e 脚本里的未使用变量；失败的构建日志保留为证据（`build-首次-失败.log`），修复后全部为 0 |
+| 7 | README 把内存存储写成“仅供独立测试”，并有指向项目外证据的失效链接和过期测试数 | 沿用了远程注释，未核对实际使用 | README 改为“应用与测试均未使用”，失效链接指向 `mackdown.md`、逐文件清单与仓库内证据，测试数与实际一致 |
+| 8 | 合并前的技术文档仍在描述已被取代的登录、限流、事务实现和过期数字 | 文档属于合并前的本地线 | 本文重写；旧文档原文归档并加了说明，不再作为当前状态 |
+
+这 8 项都已更正。**未更正的**问题见第 8 节（顶栏账号菜单不按角色显示、建病例两步写入等），它们不是合并造成的，也没有被掩盖。
+
+## 5. 原审查 20 项在合并版上的状态
+
+原编号与优先级沿用合并前文档。“状态”只写代码和测试能支持的结论。
+
+| 编号 / 原优先级 | 原问题 | 合并版上的实现 | 状态与仍需确认 |
+| --- | --- | --- | --- |
+| 01 / P0 | 病例和专家修订无身份权限 | 【采用远程】Cookie 登录；每个请求用登录会话建存储；行级安全按 `owner_id`；管理员由 `medplan_admins` 判定。【修改】修订署名取自登录账号，不信请求里的姓名 | 已修改。**没有专家角色**：修订权限 = 病例所有者，不支持跨账号协作。真实 Supabase 未验证 |
+| 02 / P1 | AI 与知识写入可匿名滥用 | 【采用远程】`medplan_consume_ai_quota`（600 秒窗口，聊天 20、插图 5、方案合计 5，调用上游前扣减）；知识库写入仅管理员 | 已修改；SQL 测试含窗口滚动。多实例共享依赖数据库计数，真实库未验证 |
+| 03 / P1 | 错误字段类型使 API 崩溃 | 【修改】`validation.ts` 的 `readJson`（128 KB；知识库 256 KB）与字段检查接到 plans、plans/[id]、feedback、chat、image、knowledge 六个接口；统一 400 | 已修改。远程独有的 7 个接口（登录、改密码、用户管理、旧病例分配、自测、归档、定稿）沿用远程各自的字段检查，只加了同源校验。新增入口须继续复用校验 |
+| 04 / P1 | 错误 AI 结构落库并使页面崩溃 | 【修改】`generatePlan()` 与 `PlanDocument` 共用 `normalizePlan`；坏历史显示“格式不完整” | 已修改。已存在的坏版本需人工核对后重新生成，不自动删除 |
+| 05 / P1 | 并发生成产生重复版本 | 【采用远程】`medplan_save_revision` 锁定主记录、比较基础版本与更新时间，唯一索引；冲突返回 409 | 已修改；完整链路“并发生成只有一个成功”通过。真实库多连接未验证 |
+| 06 / P1 | 多次独立写入留下半成品 | 版本、模拟、反馈由同一个 RPC 事务保存（采用远程） | **部分满足**：版本保存是原子的；**新建病例仍是两步写入**（先患者后方案），方案写入失败会留下没有方案的患者行（仅所有者可见），应用用户无删除权限。本地的原子 `create_case` 被取代（第 8 节） |
+| 07 / P1 | 子查询失败伪装为空历史 | 【采用远程】`getPlanDetail` 检查三个子查询；`apiError` 统一 503；历史接口同样走 `requireStore`/`apiError` | 已修改；存储测试与完整链路覆盖 |
+| 08 / P1 | 对话连接失败返回空白错误 | 【手工整合】聊天路由：上游连接失败返回上游错误；流中保留错误事件；缺少 `[DONE]` 报截断错误且不保存 | 已修改；`chat-route` 9 项测试 + 完整链路。真实供应商未联调 |
+| 09 / P1 | 停止未传上游、无调用超时 | 【本地原样】`agnes.ts` 合并取消与 240 秒上限；聊天流取消上游读取；生成与修订共用 270 秒总期限，提交前检查 | 已修改。供应商是否及时停止执行与计费未验证 |
+| 10 / P1 | 顾问混用病例和版本 | 【手工整合】顾问面板按病例与版本重建；聊天接口按 `planId`/`planVersion` 在登录会话下由服务器加载上下文，忽略客户端摘要 | 已修改。未新增跨设备聊天历史恢复 |
+| 11 / P1 | 缺少模拟时播放其他版本 | 【手工整合】工作台只取版本精确匹配的模拟，缺失时显示空态 | 已修改。未新增为历史版本单独重编排模拟的接口 |
+| 12 / P1 | 窄屏核心功能没有入口 | 本地的窄屏入口保留；顶栏改为“账号 ▾”菜单容纳远程新增的链接 | 已修改。**合并后未在 390/768/1024 像素复查**（只看了 1280×720） |
+| 13 / P1 | 胃和乳腺映射到错误器官 | 【修改】胃有专用 3D 模型（第 6 节），“胃”不再匹配为肠；乳腺仍无模型并明确提示；`normalizePlan` 拒绝枚举外器官 | 部分：乳腺资产仍缺。旧版模糊映射已落库的数据需人工核对后重新生成 |
+| 14 / P2 | 子宫遗漏 AI 枚举 | 【手工整合】`types.ts` 含 `uterus` | 已修改；妇科方案的医学准确性不由代码断言 |
+| 15 / P1 | 图谱拾取与隐藏、爆炸不一致 | 【本地原样】`atlasData.ts`、`AtlasViewer.tsx` | 已修改；用真实 Three.js 几何算法与可控网格回归。大图谱性能与 GPU 交互未验证 |
+| 16 / P2 | 加载失败一直命中失败缓存 | 【本地原样】失败后清缓存，`AtlasViewer` 提供重试 | 已修改；离线时仍会提示下载失败 |
+| 17 / P2 | 手动模拟停在器械入场 | 【本地原样】`SimulationStage.tsx` 共享播放计算，预览进度 0.45 | 已修改；未逐个器械动作做视觉验收 |
+| 18 / P2 | 暂停后重置完整计时 | 【本地原样】同一 `elapsedSec` 驱动画面与切步；末步暂停续播与完成后重播分别处理 | 已修改；浏览器后台会节流动画，需在可见窗口观察 |
+| 19 / P2 | Supabase 无知识初始化 | 【本地原样】`scripts/seed-knowledge.mjs` 固定 ID、重跑不覆盖 | 已修改。**远程模式下种子条目导入后均为“未审核”**，检索只用“已审核”，管理员需在 `/admin/knowledge` 核实来源后审核，才会进入方案生成 |
+| 20 / P2 | lint 失败且无业务回归 | 生产代码 Hook 问题已修；回归测试、ESLint、类型检查、构建、完整链路见第 7 节 | 已修改。没有逐行审计第三方依赖 |
+
+## 6. 器官位置与图谱对齐
+
+`bodyPosition`（脚底 y=0，+X 为患者左侧，+Z 向前）与 `bodySize` 取自精细图谱对应结构的包围盒中心与最长边；带血管或输尿管残端的模型按去掉残端后的主体计算。全部在 `src/lib/organ-models.ts`，由 `tests/atlas-regression.test.cjs` 回归（与图谱相差不超过 1 厘米）。这些是**本地原样**带入的成果，合并没有改动它们。
+
+| 器官 | 修改前（原 ZIP） | 合并版 | 备注 |
+| --- | --- | --- | --- |
+| 心 | x −0.015 | x **+0.017** | y、z、bodySize 未改；图谱心腔与心房壁 x −0.036～+0.070 |
+| 肝 | [+0.055, 1.14, 0.01]，0.26 | [**−0.01, 1.202, 0.023**]，**0.21** | y 含模型顶部血管残端的偏移 0.018；最长边取图谱左右宽 0.2095 |
+| 胃 | 无模型 | [0.038, 1.176, 0.038]，0.135；`public/models/stomach.glb`（852 顶点 / 1686 三角形 / 42,540 字节） | 来自图谱 FJ2564（BodyParts3D 4.0，CC BY 4.0），**男性参考解剖的简化网格**，男女共用，仅作教学示意；法线按绕向重新计算；署名按 DBCLS 指定文字 |
+| 肾 | [0, 1.14, −0.048]，0.24 | [0, **1.1, −0.014**]，**0.178** | y 比图谱中心低 0.007，用来抵消输尿管残端；模型两肾等高，图谱右肾比左肾低约 1.8 厘米，改摆放修正不了 |
+| 胰 | [0.0, 1.105, −0.005]，0.2 | [**0.012, 1.119, 0.021**]，**0.121** | 按整个包围盒取值，胰头不当作残端 |
+
+**没有改动**：肠（与图谱基本吻合）、肺（图谱没有肺实质网格，需先定规则；模型比肋骨外包围盒还宽约 4 厘米）、脑和眼球（模型朝向绕竖直轴转了 90°；人形轮廓的头部比图谱高约 4—6 厘米，需先决定以轮廓还是图谱为准）、乳腺（无可靠资产）。等比缩放只能对齐最长边：肝实质上下缘各比图谱多约 0.7—0.9 厘米，肾主体高 0.118（图谱 0.124），胰高 0.065（图谱 0.074）。目前没有同时显示全部器官的 3D 入口，没有检查器官之间的穿插。对比数据见 `docs/evidence/20261030/器官图谱对比-20261030/`。
+
+## 7. 验证
+
+### 7.1 最终代码上的检查
+
+最终代码指本次提交的树；检查在临时克隆里执行。权威证据是 `docs/evidence/20261031/合并最终版定稿验证-20261031/`（每步一份日志，`verification-summary.json` 汇总）。
+
+| 检查 | 命令 | 结果 |
+| --- | --- | --- |
+| 类型检查 | `npx tsc --noEmit --incremental false` | 退出码 0 |
+| ESLint | `npx eslint` | 0 错误、0 警告 |
+| 单元与 SQL 测试 | `npm test` | **95/95 通过**（83 项回归 + 12 个 SQL 测试文件） |
+| 生产构建 | `npm run build` | 退出码 0 |
+| 合成完整链路 | `node tests/e2e-server.cjs` + `npm run test:e2e` | **19/19 通过** |
+
+### 7.2 测试分布与改写对照
+
+| 文件 | 数量 | 范围 |
+| --- | ---: | --- |
+| `api-regressions` | 10 | 同源、匿名、器官枚举（含胃、子宫）、输入校验、建病例、编辑冲突、跨站、健康接口 |
+| `atlas-regression` | 6 | 图谱拾取与失败重试；心、肝、胃、肾、胰位置 |
+| `auth-regressions` | 9 | 拒绝高权限密钥、HttpOnly Cookie、认证故障与限流状态、会话中断与过期、认证故障下的路由、未迁移数据库被拒、管理员由数据库确认、登录路由校验 |
+| `chat-route` | 9 | 流式回答、上游失败、保存失败、取消、非法请求不耗配额、24 条历史、服务器端上下文、配额 |
+| `plan-generation-regressions` | 12 | 模拟校验与回退、不完整方案、配额只扣一次、署名取自账号、过期输入、并发 409、共享期限 |
+| `provider` | 10 | 超时与取消、SSE 错误、`[DONE]` 与截断、非法图像字段、图片保存、图像配额、非法响应 |
+| `simulation-regression` | 5 | 预览进度、暂停保时、末步续播 |
+| `store` | 7 | 子查询失败、详情映射、知识搜索转义、保存修订 RPC、病例状态错误映射、AI 配额、知识种子 |
+| `ui-regressions` | 15 | 版本与上下文、坏历史保护、结构名称、取消与流错误、请求历史上限、窄屏入口等 |
+| SQL 测试 12 个 | 12 | `admin`、`archive`、`assign`、`audit`、`diagnosis`、`edit`、`finalize`、`knowledge`、`quiz`、`quota`（远程）；`quota-window`、`chat-isolation`（合并时新增）。在 PGlite 中直接执行 `supabase/schema.sql` |
+
+合并前本地线的 59 项回归（运行器统计）里，41 项同名保留；其余 17 项（运行器之外按名称统计）的去向：
+
+| 本地用例 | 合并版 |
+| --- | --- |
+| same-origin forms use the public Host header… | 改名为 `same-origin checks use the public Host header…`，行为不变 |
+| anonymous callers cannot list patient plans | 改写为“匿名请求在读写任何病例数据之前被拒绝”，范围更大 |
+| request validation rejects null and scalar patient names… | 改写为“畸形病例输入在存储之前按客户端错误拒绝” |
+| Auth service failures and provider throttling retain their status… | 改名，行为不变 |
+| only verified app metadata grants roles… | 改写：账号取自已验证的会话、坏姓名回退到邮箱；“元数据授予角色”随本地角色门槛取代，管理员改由数据库确认并有对应测试 |
+| expired sessions remain unauthorized rather than service failures | 改写为“会话查询中断是错误，过期会话只是未登录” |
+| cancelling Auth checks remains cancellation… | **取代，无等价用例**（原因见第 4 节第 4 条） |
+| invalid AI simulation uses the existing plan-derived fallback | 改名并加强：回退后仍提交一个版本 |
+| memory store exposes atomic case creation… | **取代**：绑定本地内存存储与原子 `create_case`；合并版建病例是两步写入（第 8 节），对应行为由建病例测试断言“规划写入失败被报告” |
+| concurrent plan commits yield one version… | 改写为并发生成 409 测试，并有完整链路与 SQL 保存修订测试 |
+| foreign owner cannot commit or reuse another owner chat session | 由行级安全保证，**新增 `chat-isolation` SQL 测试覆盖** |
+| Supabase child query failure is surfaced… | 改名，行为不变 |
+| Supabase knowledge search quotes filter punctuation… | 改名，行为不变 |
+| Supabase commits use one RPC and translate stale version conflicts | 改名，行为不变 |
+| rate limits are atomic and separated by user and action | 取代：本地限流表不再存在；远程 `quota` SQL 测试覆盖每账号隔离与上限 |
+| expired rate limit windows become available again | **新增 `quota-window` SQL 测试覆盖**（600 秒窗口滚动与旧记录清理） |
+| Supabase rate limit consumes the shared database counter | 改名：AI 配额经共享数据库计数器扣减，失败时关闭 |
+
+### 7.3 合成完整链路 19 组
+
+1 页面和健康接口；2 匿名请求被拒；3 登录写入 HttpOnly 会话、错误凭据与跨站写入被拒；4 建病例、生成 v1 与同版本模拟；5 专家修订原子保存、署名取自登录账号；6 学习聊天、历史版本指导与图片保存；7 登录服务故障与限流保留真实含义（含 `archive`、`finalize`、`history`、`learning/quiz`）；8 知识库写入权限与病例所有者隔离；9 非法 JSON、字段类型与请求上限；10 坏模型输出不创建版本、模拟或孤立反馈；11 并发生成只有一个成功；12 模拟服务失败时回退到原有规则；13 上游失败与数据库子查询失败不伪装成功；14 截断回答与错误图像类型不保存；15 取消流式请求会取消上游且不保存半条对话；16 图像额度 429 且不影响其他账号；17 病例编辑、历史、归档与定稿；18 学习自测按账号保存、拒绝跨站与非法答案；19 退出登录清除会话。
+
+环境：生产构建的 Next.js + 回环地址上的合成登录令牌服务 + PostgREST 子集翻译器（在 PGlite 中以 `authenticated` 角色执行真实的 `supabase/schema.sql`，所以行级安全、授权和 RPC 是真实的）+ AI 桩。**不是真实的 Supabase、GoTrue、PostgREST 或 AI 服务。**
+
+### 7.4 浏览器检查
+
+合并后在应用内浏览器（视口 1280×720，合成账号与病例）查看：登录、病例列表、病例详情与版本、子宫 3D 模拟、学习中心、账号菜单、胃 3D 模型；控制台没有 error。截图在 `docs/evidence/20261030/合并最终版验证-20261030/`。该检查在认证故障修复之前做；之后只改了服务端路由、测试和配置，没有改页面组件。这不是 390/768/1024 像素、手机真机或各种 GPU 的验收。
+
+### 7.5 不要混用的数字与证据
+
+合并前本地线的数字——34/34、54/54、56/56、57/57、58/58、59/59 项回归，16/16、17/17 组流程，32/32 项独立 SQL 检查——属于合并前的本地树，**不是合并版的结果**。同一天的三个合并后证据文件夹：`合并最终版验证-20261030`（合并后第一次完整链路与浏览器截图）、`合并最终版复核-20261030`（92 项时的复核，已标【已被取代】）、`合并最终版终验-20261030`（93 项、认证故障修复后；结果已被定稿验证取代，仍保留），三者与最终的 `合并最终版定稿验证-20261031` 互不覆盖。
+
+## 8. 已知限制与待办（按优先级）
+
+| 优先级 | 事项 | 下一步与完成标准 |
+| --- | --- | --- |
+| 发布前必须 | 真实 Supabase 验收 | 备份后应用 `schema.sql` 或 13 个迁移；用真实 GoTrue/PostgREST 验证登录、行级安全、RPC 权限、管理员授权、两个账号互不可见、多连接并发与多实例配额。**完整链路是合成替身，不能替代** |
+| 发布前必须 | 真实 Agnes 联调 | 用合成病历确认正常与坏输出、连接故障、流中错误、取消、超时与计费取消；不把模型输出当作医疗事实 |
+| 高 | 窄屏、真机与 GPU | 合并后只看了 1280×720。验证 390/768/1024 像素与桌面下病例、顾问、顶栏菜单、图谱搜索可达，手机触控，模拟器械姿态与步骤同步 |
+| 高 | 顶栏账号菜单不按角色显示 | 继承自远程：所有登录账号都看到“用户管理”“知识库”“登录”，非管理员点击会被服务端拒绝（403）。只是界面问题，需要一个“当前账号是否管理员”的来源后再按角色显示 |
+| 中 | 建病例是两步写入 | 方案写入失败会留下没有方案的患者行（仅所有者可见）。要根治需要新增一个创建病例的 RPC（旧的 `create_case` 文本在 `docs/archive/local-line-20261030/` 的旧文档与 git 历史里可参考） |
+| 中 | 没有专家角色与协作 | 修订权限 = 病例所有者；跨账号协作需明确授权规则 |
+| 中 | 会话 Cookie 未强制 `Secure` | 代码只设置了 HttpOnly。生产必须使用 HTTPS，并确认浏览器收到的 Cookie 带 Secure，否则在 `src/lib/auth.ts` 的 `setAll` 里加上 |
+| 中 | 知识内容 | 种子条目导入后是“未审核”，管理员核实来源并审核后才参与检索；内容没有经过医学专业审核，系统仅用于教学演示 |
+| 低 | 器官待办 | 肺、脑、眼球的取值规则待定（第 6 节）；乳腺无模型；肾两侧等高无法靠摆放修正 |
+| 低 | `src/lib/store/memory.ts` | 远程遗留，应用和测试都没有使用；确认无人依赖后可删除 |
+| 低 | 测试加载器警告 | `require('three')` 触发 `THREE_CJS_DEPRECATED` 废弃提示，来自测试加载器，生产代码使用 ESM |
+
+本文列的是已确认的问题与限制，不是“不会再有 Bug”的保证。后续沿用现有模块增量修改，不为未落实的需求新增平行功能。
+
+## 9. 启动与部署顺序
+
+详细说明见 [`README.md`](README.md)。顺序：
+
+1. `npm ci`；按 README 的样例填写 `.env.local`（Agnes 密钥、Supabase URL 与 anon key；`SUPABASE_SERVICE_ROLE_KEY` 仅用于管理员账号管理接口和知识种子脚本，只放服务器端）。不要提交 `.env.local`，不要给服务端密钥加 `NEXT_PUBLIC_` 前缀。
+2. 备份数据库。新库执行 `supabase/schema.sql`；已有库按顺序执行 13 个迁移（README 列出了链接）。第三个迁移会建立版本与模拟的唯一索引，遇到重复的 `(plan_id, version)` 会失败，需人工核对，不要直接删除。
+3. 在 Supabase Auth 关闭公开注册，由管理员建号；数据库管理员把第一个管理员的 `auth.users.id` 插入 `public.medplan_admins`。旧病例的 `owner_id` 为空，由管理员在 `/admin/unassigned` 核实后逐条分配。
+4. `npm run seed:knowledge` 导入八条种子（未审核）；管理员在 `/admin/knowledge` 核实来源并审核后才参与检索。
+5. `npm run build` 后 `npm run start`；反向代理需保留浏览器请求的 `Host` 并设置 `X-Forwarded-Proto`，生产使用 HTTPS。
+6. 用合成病例和两个账号走完整流程：登录 → 建病例 → 生成 v1 → 检查模拟 → 专家修订 v2 → 切回 v1 看顾问上下文 → 学习问答与插图 → 另一账号确认看不到该病例。真实服务验证通过前，不要用于真实病例。
+
+## 10. 记录与证据索引
+
+仓库内的证据都是脱敏副本：文本文件里的会话链接已替换为“（链接已移除）”，本机绝对路径替换为 `<工作区>`、`<用户目录>`；截图和二进制文件原样复制，内容是合成数据。原件仍在本机项目目录的上一级 `审查结果` 文件夹，没有被改动。
+
+| 位置 | 内容 | 对应合并前文档 |
+| --- | --- | --- |
+| `docs/archive/local-line-20261030/mackdown.local-line.md` | 合并前技术文档原文（第 1—18 节：首轮修复与 20 项表、第二轮、模型与 Skill 对比、胃接入、肝心位置、肝高度、其他器官对比、肾胰对齐、上传记录） | 全部 |
+| `docs/archive/local-line-20261030/CLAUDE_HANDOFF.local-line.md` | 合并前交接说明 | — |
+| `docs/archive/local-line-20261030/*.cjs`、`*.mjs` | 被取代的完整链路脚本与 PostgreSQL 检查脚本（调用已不存在的接口，不可运行，仅作记录） | 第 6、8 节 |
+| `docs/evidence/20261030/第二轮验证-20261030/` | 第二轮的日志、补丁、浏览器记录（合并前本地线） | 第 8 节 |
+| `docs/evidence/20261030/模型与Skill接入-20261030/` | 模型对比记录与脚本 | 第 9—11 节 |
+| `docs/evidence/20261030/胃接入验证-20261030/` | 胃接入验证 | 第 12—13 节 |
+| `docs/evidence/20261030/肝心位置修正-20261030/`、`肝高度大小修正-20261030/` | 肝、心位置与肝高度大小修正（修改前副本、补丁、测量） | 第 14—15 节 |
+| `docs/evidence/20261030/器官图谱对比-20261030/` | 其他器官与图谱的只读对比 | 第 16 节 |
+| `docs/evidence/20261030/肾胰图谱对齐-20261030/` | 肾、胰对齐（修改前副本、补丁、测量） | 第 17 节 |
+| `docs/evidence/20261030/合并最终版验证-20261030/` | 合并后第一次完整链路与浏览器截图 | 本文 |
+| `docs/evidence/20261030/合并最终版复核-20261030/`、`合并最终版终验-20261030/` | 合并后的中间复核，**已被取代**，保留作过程记录 | 本文 |
+| `docs/evidence/20261031/合并最终版定稿验证-20261031/` | 最终树上的全部检查与新增测试的破坏检查（**权威**） | 本文 |
+
+没有收进仓库的本机资料：2026-10-28 的证据（`修复验证`、`修复前基线-20261028`、原 Word 报告）、各轮修改前的源码备份、`medical-main.zip`。分支 `local-medical-main-20261030` 是合并前的快照，按原样保留，没有删除或改写，其中的文档没有做脱敏处理。

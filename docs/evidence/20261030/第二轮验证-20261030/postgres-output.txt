@@ -1,0 +1,33 @@
+PASS schema.sql executes unchanged on PostgreSQL
+PASS service role creates linked patient and owner-bound plan
+PASS create_case rolls back patient when plan owner foreign key fails
+PASS create_case rejects empty names without side effects
+PASS commit_plan atomically creates version and simulation and advances plan
+PASS late invalid feedback rolls back inserted version and simulation
+PASS expert refinement preserves feedback target version and advances plan
+PASS stale expected version is rejected without modifying history
+PASS foreign and null owner cannot commit another owner plan
+PASS invalid plan and simulation step payloads leave no partial state
+PASS plan_versions unique index rejects duplicate plan/version without changing original
+PASS simulations unique index rejects duplicate plan/version without changing original
+PASS chat session is idempotent for its owner and rejects owner takeover
+PASS chat append rejects foreign owner and rolls back a partially invalid batch
+PASS rate limit enforces cap and separates users and actions
+PASS rate limit resets an expired stored window and rejects invalid limits
+PASS all browser roles really have table privileges and no RLS bypass
+PASS patients RLS permits owner reads, hides foreign rows and denies browser writes
+PASS surgical_plans RLS permits owner reads, hides foreign rows and denies browser writes
+PASS plan_versions RLS permits owner reads, hides foreign rows and denies browser writes
+PASS plan_feedback RLS permits owner reads, hides foreign rows and denies browser writes
+PASS simulations RLS permits owner reads, hides foreign rows and denies browser writes
+PASS knowledge_entries RLS permits owner reads, hides foreign rows and denies browser writes
+PASS chat_sessions RLS permits owner reads, hides foreign rows and denies browser writes
+PASS chat_messages RLS permits owner reads, hides foreign rows and denies browser writes
+PASS generated_images RLS permits owner reads, hides foreign rows and denies browser writes
+PASS rate_limit_windows RLS permits owner reads, hides foreign rows and denies browser writes
+PASS anon cannot call any privileged RPC, even with valid owner arguments
+PASS authenticated cannot call any privileged RPC, even with valid owner arguments
+PASS schema rerun preserves all existing data and privileges
+PASS legacy duplicate plan_versions aborts schema migration and preserves all original rows
+PASS legacy duplicate simulations aborts schema migration and preserves all original rows
+PostgreSQL checks: 32 passed, 0 failed

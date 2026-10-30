@@ -1,0 +1,24 @@
+PASS 页面和健康接口可访问
+PASS 匿名请求被拒绝
+PASS 登录写入安全会话，跨站写入被拒绝
+PASS 建病例、生成 v1 和同版本模拟
+PASS 专家修订原子保存，身份来自登录账号
+PASS 学习聊天、历史版本指导与图片保存
+PASS 登录服务故障和限流保留真实错误含义
+PASS 知识写入角色限制与病例所有者隔离
+PASS 非法 JSON、字段类型与请求上限被明确拒绝
+AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+200 !== 502
+
+    at <工作区>\medical-main\tests\e2e-flow.cjs:104:12
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async check (<工作区>\medical-main\tests\e2e-flow.cjs:18:3)
+    at async main (<工作区>\medical-main\tests\e2e-flow.cjs:99:3) {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: 200,
+  expected: 502,
+  operator: 'strictEqual',
+  diff: 'simple'
+}

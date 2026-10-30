@@ -1,8 +1,12 @@
-import { createAuthClient } from "@/lib/auth";
+import { AuthUnavailableError, authFailureStatus, createAuthClient } from "@/lib/auth";
+import { apiError, assertSameOrigin } from "@/lib/http";
 
 export async function POST(req: Request) {
+  try { assertSameOrigin(req); } catch (error) { return apiError(error); }
   const client = await createAuthClient();
   const { data: { user }, error: userError } = await client.auth.getUser();
+  const unavailable = authFailureStatus(userError);
+  if (unavailable) return apiError(new AuthUnavailableError(unavailable));
   if (userError || !user) return Response.json({ error: "请先登录" }, { status: 401 });
   const body: unknown = await req.json().catch(() => null);
   if (!body || typeof body !== "object" || Array.isArray(body)) return Response.json({ error: "请求格式不正确" }, { status: 400 });

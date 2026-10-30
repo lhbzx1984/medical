@@ -1,0 +1,18 @@
+=== kidneys, old build (expected box y 1.052-1.228, width 0.240, body centre y 1.149)
+view: canvas centre (403.8, 401.6), focal 1046.3 px at 1 m
+outline shoulder corner: row 161.0, columns 205..600 -> axis column 402.5, half-width 197.5 px
+camera to body axis 0.997 m (nominal 0.982); camera to organ 1.045 m; scale at organ 1000.9 px/m
+orbit target height from the outline: 1.139 m (bodyPosition y 1.14)
+organ mask: rows 312..490, columns 287..523
+model box in the body: y 1.228..1.050, x -0.115..0.120; width 0.236 m, height 0.178 m
+kidney body without ureters: rows 316..466 -> y 1.224..1.074, centre 1.149, height 0.150 m
+box centre: x 0.002, y 1.139
+
+=== pancreas, old build (expected box y 1.052-1.158, width 0.200, centre y 1.105)
+view: canvas centre (403.8, 401.6), focal 1046.3 px at 1 m
+outline shoulder corner: row 111.0, columns 198..609 -> axis column 403.5, half-width 205.5 px
+camera to body axis 0.960 m (nominal 0.945); camera to organ 0.965 m; scale at organ 1084.3 px/m
+orbit target height from the outline: 1.103 m (bodyPosition y 1.105)
+organ mask: rows 342..458, columns 294..511
+model box in the body: y 1.158..1.051, x -0.101..0.099; width 0.200 m, height 0.107 m
+box centre: x -0.001, y 1.105

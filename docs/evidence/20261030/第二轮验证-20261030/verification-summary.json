@@ -1,0 +1,62 @@
+{
+  "date": "2026-10-30",
+  "unit": {
+    "exitCode": 0,
+    "failed": 0,
+    "passed": 54
+  },
+  "http": {
+    "exitCode": 0,
+    "environment": "Production Next.js with synthetic local Auth/REST/RPC/AI",
+    "failed": 0,
+    "passed": 17
+  },
+  "postgres": {
+    "exitCode": 0,
+    "environment": "PGlite 0.5.13, PostgreSQL 18.6, single-connection, original schema.sql",
+    "failed": 0,
+    "passed": 32
+  },
+  "lint": {
+    "exitCode": 0,
+    "errors": 0,
+    "warnings": 0
+  },
+  "typescript": {
+    "exitCode": 0
+  },
+  "build": {
+    "exitCode": 0
+  },
+  "sourceChanges": {
+    "round2Added": 3,
+    "cumulativeModified": 35,
+    "round2Modified": 18,
+    "cumulativeAdded": 23,
+    "publicAssetsMatchOriginalZip": true,
+    "deleted": 0,
+    "cumulativeUnchanged": 85
+  },
+  "browser": {
+    "layout": {
+      "afterCanvasWidth": 444.67,
+      "beforeCanvasWidth": 62.67
+    },
+    "viewportRestored": true,
+    "consoleErrors": 0,
+    "viewports": [
+      390,
+      768,
+      1024,
+      1280
+    ],
+    "crossTabSexSync": "Verified uterus to heart with matching tutor"
+  },
+  "limitations": [
+    "Real Supabase and Agnes deferred by user",
+    "No real JWT/cloud integration or multi-connection/multi-instance check",
+    "No physical touch devices or exhaustive GPU/instrument checks",
+    "Existing Three.js test CommonJS deprecation warnings retained"
+  ],
+  "testServersStopped": true
+}

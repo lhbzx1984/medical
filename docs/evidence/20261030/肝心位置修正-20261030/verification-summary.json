@@ -1,0 +1,40 @@
+{
+  "date": "2026-10-30",
+  "scope": "修正手术模拟“人体层面”中肝、心的左右位置（mackdown.md 第 13 节确认的问题），用户在本会话中确认修改",
+  "rootCause": "organ-models.ts 的 bodyPosition 与精细图谱同一坐标系（+X 为患者左侧），肝、心的 x 取了错误的一侧；OrganModel 按包围盒中心把模型放在 bodyPosition",
+  "atlasReference": {
+    "method": "精细图谱 public/atlas/atlas.json 中对应结构 bounds 的并集包围盒中心 x（与 OrganModel 的包围盒居中一致，也与胃的取值方法一致）",
+    "liver": { "structures": "Hepatovenous segment * + Caudate lobe of liver（10 个）", "xRange": [-0.115, 0.094], "centerX": -0.0104 },
+    "heart": { "structures": "Cavity/Wall of left/right ventricle/atrium（6 个；图谱无心室壁网格）", "xRange": [-0.036, 0.070], "centerX": 0.017 },
+    "stomach": { "structures": "Stomach FJ2564", "centerX": 0.0383, "unchanged": true }
+  },
+  "changes": [
+    { "path": "medical-main/src/lib/organ-models.ts", "heart": { "before": [-0.015, 1.3, 0.025], "after": [0.017, 1.3, 0.025] }, "liver": { "before": [0.055, 1.14, 0.01], "after": [-0.01, 1.14, 0.01] }, "note": "只改 x；y、z、bodySize 未改。文件头注释补充“+X 为患者左侧”",
+      "sha256Before": "1527f92dfb086655528de891a68b9ee09d8163058e3373b814fcbfe644c015d6", "sha256After": "4ba24d267cf2e524466248cbeeec73e4fb4dea6984bc205028c9036be87ffb6c" },
+    { "path": "medical-main/tests/atlas-regression.test.cjs", "note": "新增 1 个测试：肝、心、胃的 x 与图谱包围盒中心相差不超过 1 cm。修改产品代码前先运行，按预期失败（新测试-修改前失败.log）",
+      "sha256Before": "0a9ce6030c98fde8745d4118eb8b32540fbfeb28ed98461b406322a35dba6245", "sha256After": "7448972ea17f42f4619cdc39b19d4303aade15fdb901cefa600aff9b37af0906" }
+  ],
+  "unit": { "command": "npm test", "exitCode": 0, "passed": 57, "failed": 0 },
+  "lint": { "command": "npm run lint", "exitCode": 0, "errors": 0, "warnings": 0 },
+  "typescript": { "command": "node node_modules/typescript/bin/tsc --noEmit --incremental false", "exitCode": 0 },
+  "build": { "command": "npm run build", "exitCode": 0 },
+  "http": { "environment": "Production Next.js with synthetic local Auth/REST/RPC/AI", "exitCode": 0, "passed": 17, "failed": 0 },
+  "browser": {
+    "method": "In-app browser, production build with synthetic local services, synthetic liver/heart cases, view rotated to near-frontal",
+    "checks": [
+      "肝：正面视角下两臂中点约 520 px，肝约 437–598 px（中心约 517 px），右叶在患者右侧、左叶越过中线；修正前肝中心在中线患者左侧（见 胃接入验证-20261030/模拟-人体层面-肝.jpg）",
+      "心：正面视角下中线约 502 px，心中心约 513 px，位于中线患者左侧约 1.4 cm（图谱 +1.7 cm）",
+      "控制台 error 为 0"
+    ]
+  },
+  "notChanged": [
+    "肝的 y（1.14）比图谱包围盒中心（1.184）低约 4 cm，bodySize 0.26 大于图谱肝最大边 0.209；不属于左右问题，未改",
+    "学习中心概览是 2D 图，不受影响"
+  ],
+  "limitations": [
+    "Real Supabase and Agnes deferred by user",
+    "Only one viewport (about 800 px wide); no physical phone",
+    "No medical review"
+  ],
+  "testServersStopped": true
+}

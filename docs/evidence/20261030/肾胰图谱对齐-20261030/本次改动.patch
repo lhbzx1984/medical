@@ -1,0 +1,78 @@
+--- "D:/�\234�\232�\224�\233/�\214�学�\211\213�\234��\204�\210\222�\231��\203�/审�\237��\223�\236\234/�\202��\203��\233�谱对�\220-20261030/修�\224��\211\215/organ-models.ts"	2026-10-30 15:26:30.111038800 +0800
++++ src/lib/organ-models.ts	2026-10-30 15:27:21.004926400 +0800
+@@ -102,8 +102,9 @@
+     glb: "/models/pancreas.glb",
+     thumb: "/anatomy/pancreas/thumb.webp",
+     organImg: "/anatomy/pancreas/organ.webp",
+-    bodyPosition: [0.0, 1.105, -0.005],
+-    bodySize: 0.2,
++    // 取自精细图谱胰腺的包围盒中心与最大边长（米）：胰头在患者右侧、胰尾伸向左侧，故 x 略偏左。
++    bodyPosition: [0.012, 1.119, 0.021],
++    bodySize: 0.121,
+   },
+   kidneys: {
+     id: "kidneys",
+@@ -114,8 +115,10 @@
+     glb: "/models/kidneys.glb",
+     thumb: "/anatomy/kidneys/thumb.webp",
+     organImg: "/anatomy/kidneys/organ.webp",
+-    bodyPosition: [0, 1.14, -0.048],
+-    bodySize: 0.24,
++    // 取自精细图谱左右肾的包围盒中心与最大边长（米，最大边为左右宽）。
++    // 本模型下方带输尿管残端（图谱的肾不含输尿管），包围盒中心比肾主体中心低约 0.7 cm，故 y 比图谱中心 1.107 低 0.007。
++    bodyPosition: [0, 1.1, -0.014],
++    bodySize: 0.178,
+   },
+   intestine: {
+     id: "intestine",
+--- "D:/�\234�\232�\224�\233/�\214�学�\211\213�\234��\204�\210\222�\231��\203�/审�\237��\223�\236\234/�\202��\203��\233�谱对�\220-20261030/修�\224��\211\215/atlas-regression.test.cjs"	2026-10-30 15:26:30.111038800 +0800
++++ tests/atlas-regression.test.cjs	2026-10-30 15:26:30.253047500 +0800
+@@ -121,3 +121,48 @@
+   assert.ok(centre.every((v, k) => Math.abs(v - atlasCentre[k]) <= 0.01) && Math.abs(longest - atlasLongest) <= 0.01,
+     `liver body centre ${centre}, longest side ${longest}; atlas centre ${atlasCentre}, longest side ${atlasLongest}`);
+ });
++
++test('overview kidneys and pancreas match their atlas structures in centre and longest side (ureter stubs left out)', async () => {
++  const { ORGANS } = loadTs('src/lib/organ-models.ts');
++  const { parts } = JSON.parse(fs.readFileSync(path.join(__dirname, '../public/atlas/atlas.json'), 'utf8'));
++  const { MeshoptDecoder } = await import('three/examples/jsm/libs/meshopt_decoder.module.js');
++  await MeshoptDecoder.ready;
++  const bounds = (pts) => [0, 1, 2].map((k) => pts.reduce(([lo, hi], p) => [Math.min(lo, p[k]), Math.max(hi, p[k])], [Infinity, -Infinity]));
++  // The kidney model hangs ureter stubs below the kidneys, which the atlas kidneys leave out. The narrow lower part of
++  // the pancreas model is its head, which the atlas pancreas has too, so that model is compared whole.
++  const off = [];
++  for (const [id, re, stubsBelow] of [['kidneys', /^(Left|Right) kidney$/, true], ['pancreas', /^Pancreas$/, false]]) {
++    const hits = parts.filter((p) => re.test(p.name));
++    const atlas = [0, 1, 2].map((k) => [Math.min(...hits.map((p) => p.bounds[0][k])), Math.max(...hits.map((p) => p.bounds[1][k]))]);
++    const glb = fs.readFileSync(path.join(__dirname, '../public', ORGANS[id].glb));
++    const jsonLength = glb.readUInt32LE(12);
++    const gltf = JSON.parse(glb.subarray(20, 20 + jsonLength).toString('utf8'));
++    const accessor = gltf.accessors[gltf.meshes[0].primitives[0].attributes.POSITION];
++    const { count, byteStride, byteOffset = 0, byteLength, mode, filter } = gltf.bufferViews[accessor.bufferView].extensions.EXT_meshopt_compression;
++    const raw = new Uint8Array(count * byteStride);
++    MeshoptDecoder.decodeGltfBuffer(raw, count, byteStride, glb.subarray(28 + jsonLength + byteOffset, 28 + jsonLength + byteOffset + byteLength), mode, filter);
++    const view = new DataView(raw.buffer);
++    const { translation, scale } = gltf.nodes[0];
++    const points = Array.from({ length: count }, (_, i) => [0, 1, 2].map((k) =>
++      Math.max(view.getInt16((accessor.byteOffset ?? 0) + i * byteStride + 2 * k, true) / 32767, -1) * scale[k] + translation[k]));
++    const box = bounds(points);
++    let body = box;
++    if (stubsBelow) {
++      // Height slices narrower than a third of the model width are ureter, not kidney (as with the liver's vessel stubs).
++      const row = (p) => Math.min(39, Math.floor(((p[1] - box[1][0]) / (box[1][1] - box[1][0])) * 40));
++      const widths = Array.from({ length: 40 }, () => [Infinity, -Infinity]);
++      for (const p of points) { const w = widths[row(p)]; w[0] = Math.min(w[0], p[0]); w[1] = Math.max(w[1], p[0]); }
++      const kidneyRows = widths.flatMap(([lo, hi], i) => (hi - lo > (box[0][1] - box[0][0]) / 3 ? [i] : []));
++      body = bounds(points.filter((p) => row(p) >= kidneyRows[0] && row(p) <= kidneyRows.at(-1)));
++    }
++    // OrganModel centres the whole box on bodyPosition and scales its longest side to bodySize.
++    const s = ORGANS[id].bodySize / Math.max(...box.map(([lo, hi]) => hi - lo));
++    const centre = body.map(([lo, hi], k) => +(ORGANS[id].bodyPosition[k] + ((lo + hi) / 2 - (box[k][0] + box[k][1]) / 2) * s).toFixed(3));
++    const longest = +(Math.max(...body.map(([lo, hi]) => hi - lo)) * s).toFixed(3);
++    const atlasCentre = atlas.map(([lo, hi]) => +((lo + hi) / 2).toFixed(3));
++    const atlasLongest = +Math.max(...atlas.map(([lo, hi]) => hi - lo)).toFixed(3);
++    if (!centre.every((v, k) => Math.abs(v - atlasCentre[k]) <= 0.01) || Math.abs(longest - atlasLongest) > 0.01)
++      off.push(`${id} centre ${centre}, longest side ${longest}; atlas centre ${atlasCentre}, longest side ${atlasLongest}`);
++  }
++  assert.deepEqual(off, []);
++});

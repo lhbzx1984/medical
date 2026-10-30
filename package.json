@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --test --test-concurrency=1"
+    "test": "node --test --test-concurrency=1 tests/*.test.cjs",
+    "test:e2e": "node tests/e2e-flow.cjs",
+    "seed:knowledge": "node scripts/seed-knowledge.mjs"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.9",

@@ -1,0 +1,20 @@
+=== kidneys, new build (expected box y 1.035-1.165, x -0.089-0.089, width 0.178, body centre y 1.107; atlas y 1.045-1.169, centre y 1.107)
+view: canvas centre (512.7, 449.1), focal 697.5 px at 1 m
+outline shoulder corner: row 232.5, columns 367..658 -> axis column 512.5, half-width 145.5 px
+camera to body axis 0.906 m (nominal 0.892); camera to organ 0.920 m; scale at organ 758.2 px/m
+orbit target height from the outline: 1.090 m (bodyPosition y 1.1)
+organ mask: rows 393..491, columns 448..579
+model box in the body: y 1.164..1.035, x -0.085..0.088; width 0.173 m, height 0.129 m
+kidney body without ureters: rows 396..475 -> y 1.160..1.056, centre 1.108, height 0.104 m
+box centre: x 0.001, y 1.100
+
+=== pancreas, new build (expected box y 1.087-1.151, x -0.049-0.073, width 0.121, centre y 1.119; atlas y 1.083-1.156, x -0.048-0.073, centre y 1.119)
+view: canvas centre (512.7, 449.1), focal 697.5 px at 1 m
+outline shoulder corner: row 226.0, columns 341..662 -> axis column 501.5, half-width 160.5 px
+camera to body axis 0.825 m (nominal 0.813); camera to organ 0.804 m; scale at organ 867.6 px/m
+orbit target height from the outline: 1.109 m (bodyPosition y 1.119)
+organ mask: rows 414..467, columns 462..563
+model box in the body: y 1.150..1.089, x -0.046..0.071; width 0.116 m, height 0.061 m
+box centre: x 0.013, y 1.119
+
+=== method check: the same script rerun on the before-change images gave output identical to 浏览器检查-修改前/正面测量.txt

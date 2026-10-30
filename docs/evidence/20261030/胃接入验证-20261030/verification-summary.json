@@ -1,0 +1,74 @@
+{
+  "date": "2026-10-30",
+  "scope": "胃接入（mackdown.md 第 12 节）在本机的确认，接续 Claude 对话中“下一步是确认”",
+  "unit": {
+    "command": "npm test",
+    "exitCode": 0,
+    "passed": 56,
+    "failed": 0
+  },
+  "lint": {
+    "command": "npm run lint",
+    "exitCode": 0,
+    "errors": 0,
+    "warnings": 0
+  },
+  "typescript": {
+    "command": "node node_modules/typescript/bin/tsc --noEmit --incremental false",
+    "exitCode": 0
+  },
+  "build": {
+    "command": "npm run build",
+    "exitCode": 0
+  },
+  "http": {
+    "environment": "Production Next.js with synthetic local Auth/REST/RPC/AI (tests/e2e-server.cjs, MEDPLAN_TEST_OUTPUT=../审查结果/胃接入验证-20261030)",
+    "firstRun": "9 passed; check 10 failed (200 !== 502) because tests/e2e-flow.cjs line 103 still used focusOrgan 'stomach' as an unsupported organ; checks 11-17 not run. Log: e2e-修改测试前.log",
+    "afterTestFix": {
+      "exitCode": 0,
+      "passed": 17,
+      "failed": 0
+    }
+  },
+  "browser": {
+    "method": "In-app browser, production build with synthetic local services at 127.0.0.1:4401, pane about 800 px wide",
+    "checks": [
+      "学习中心概览点“胃”：出现说明卡和“进入特写 →”",
+      "进入特写：标题为“器官特写 · 胃（Stomach）”，3D 模型着色正常；/models/stomach.glb 返回 200",
+      "左侧面板底部显示 DBCLS 指定署名原文及“男性参考、经简化、法线重算、仅教学示意”说明",
+      "切换女性：仍为胃特写；AI 导师显示“当前结构：胃（Stomach）”",
+      "手术规划：合成病例 focusOrgan=stomach 被接受，人体层面和器官层面都渲染胃",
+      "控制台 error 为 0，仅 THREE.Clock 弃用警告"
+    ],
+    "consoleErrors": 0
+  },
+  "findings": [
+    "tests/e2e-flow.cjs 第 103 行的过时断言：胃接入后 stomach 已是支持器官，改为仍不支持的 breast（与 tests/api-regressions.test.cjs 第 36 行一致）",
+    "肝、心左右放反（已确认，未修改）：OrganModel 把模型中心放在 bodyPosition，+X 为患者左侧。肝 x=+0.055 在患者左侧，图谱右叶 V-VIII 段 x 约 -0.063 至 -0.068、胆囊 -0.045；心 x=-0.015，图谱四个心腔合并中心 x=+0.018。影响手术模拟“人体层面”的器官位置和切口定位环",
+    "器官特写取景偏近：胃超出画布右下边缘，肝特写同样裁切，属现有相机设定，不是胃引入的问题，未修改"
+  ],
+  "changedFiles": [
+    {
+      "path": "medical-main/tests/e2e-flow.cjs",
+      "line": 103,
+      "before": "focusOrgan:'stomach'",
+      "after": "focusOrgan:'breast'",
+      "sha256Before": "716fbdfc15f1c1e955d4e3c4af5a3535cf7b84ec949810096dc100a102db2b8a",
+      "sha256After": "bf112b6ae854f27ffdb161c1f55f7f7707feab5abf0d0a753022ea0099fc9153"
+    }
+  ],
+  "inputs": {
+    "public/models/stomach.glb": {
+      "bytes": 42540,
+      "sha256": "8b68674350c0957bda273443955f42f5854fdc44484c85e848ac16a35186065d"
+    }
+  },
+  "limitations": [
+    "Real Supabase and Agnes deferred by user",
+    "Only one viewport (about 800 px wide); no 390/768/1024/1280 recheck and no physical phone",
+    "Heart position not screenshotted; conclusion from code and atlas coordinates",
+    "No medical review",
+    "全部改动清单与累计补丁未重新生成（未重跑 build_change_ledger.py）"
+  ],
+  "testServersStopped": true
+}

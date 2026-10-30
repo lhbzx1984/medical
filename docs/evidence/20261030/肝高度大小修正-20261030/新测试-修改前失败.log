@@ -1,0 +1,32 @@
+(node:11720) [THREE_CJS_DEPRECATED] DeprecationWarning: `require("three")` is deprecated and will be removed.
+Replace `const THREE = require("three")` with `import * as THREE from "three"`.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ atlas metadata recovers after a temporary request failure (73.7523ms)
+✔ atlas chunk retries a failed request and decompresses the successful response (26.6429ms)
+✔ atlas pointer picking ignores hidden front structure and follows exploded structure (12.6127ms)
+✔ overview organ x positions match their atlas structures (+X is the patient left) (21.6579ms)
+✖ overview liver body matches the atlas liver in centre and longest side (vessel stub left out) (105.9993ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 4
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 531.9625
+
+✖ failing tests:
+
+test at tests\atlas-regression.test.cjs:88:1
+✖ overview liver body matches the atlas liver in centre and longest side (vessel stub left out) (105.9993ms)
+  AssertionError [ERR_ASSERTION]: liver body centre -0.01,1.117,0.01, longest side 0.258; atlas centre -0.01,1.184,0.023, longest side 0.209
+      at TestContext.<anonymous> (<工作区>\medical-main\tests\atlas-regression.test.cjs:121:10)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
