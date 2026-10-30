@@ -100,6 +100,7 @@ export interface SurgicalPlan {
   patientId: string;
   title: string;
   patientName: string;
+  diagnosis?: string;
   status: "draft" | "simulated" | "refined" | "finalized";
   currentVersion: number;
   archivedAt?: string | null;

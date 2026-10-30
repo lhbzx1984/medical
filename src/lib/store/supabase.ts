@@ -109,6 +109,7 @@ export class SupabaseStore implements DataStore {
       patientId: String(r.patient_id),
       title: String(r.title ?? ""),
       patientName: String(r.patient_name ?? ""),
+      diagnosis: String(r.diagnosis ?? ""),
       status: (r.status as SurgicalPlan["status"]) ?? "draft",
       currentVersion: Number(r.current_version ?? 0),
       archivedAt: r.archived_at ? String(r.archived_at) : null,

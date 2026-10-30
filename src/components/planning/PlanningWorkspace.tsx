@@ -33,16 +33,21 @@ const STATUS_LABEL: Record<SurgicalPlan["status"], { text: string; cls: string }
 export default function PlanningWorkspace() {
   const [plans, setPlans] = useState<SurgicalPlan[]>([]);
   const [search, setSearch] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const [showArchived, setShowArchived] = useState(false);
   const [statusFilter, setStatusFilter] = useState<"all" | SurgicalPlan["status"]>("all");
   const filteredPlans = useMemo(() => {
     const term = search.trim().toLocaleLowerCase();
-    return plans.filter((plan) =>
-      Boolean(plan.archivedAt) === showArchived &&
-      (statusFilter === "all" || plan.status === statusFilter) &&
-      (!term || `${plan.title} ${plan.patientName}`.toLocaleLowerCase().includes(term))
-    );
-  }, [plans, search, statusFilter, showArchived]);
+    return plans.filter((plan) => {
+      const date = new Date(plan.updatedAt);
+      const localDate = Number.isFinite(date.getTime()) ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}` : "";
+      return Boolean(plan.archivedAt) === showArchived &&
+        (statusFilter === "all" || plan.status === statusFilter) &&
+        (!dateFrom || localDate >= dateFrom) && (!dateTo || (localDate && localDate <= dateTo)) &&
+        (!term || `${plan.title} ${plan.patientName} ${plan.diagnosis ?? ""}`.toLocaleLowerCase().includes(term));
+    });
+  }, [plans, search, statusFilter, showArchived, dateFrom, dateTo]);
   const [detail, setDetail] = useState<PlanDetail | null>(null);
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -259,7 +264,7 @@ export default function PlanningWorkspace() {
         </div>
         <div className="space-y-2 border-b border-[var(--line)] p-3">
           <label className="sr-only" htmlFor="case-search">搜索病例</label>
-          <input id="case-search" type="search" className="input w-full" placeholder="搜索姓名或方案名称"
+          <input id="case-search" type="search" className="input w-full" placeholder="搜索姓名、诊断或方案名称"
             value={search} onChange={(event) => setSearch(event.target.value)} />
           <label className="sr-only" htmlFor="case-status">筛选方案状态</label>
           <select id="case-status" className="input w-full" value={statusFilter}
@@ -270,6 +275,10 @@ export default function PlanningWorkspace() {
             <option value="refined">已迭代</option>
             <option value="finalized">已定稿</option>
           </select>
+          <div className="grid grid-cols-2 gap-1">
+            <label className="text-xs text-[var(--muted)]">更新日期起<input type="date" className="input w-full" value={dateFrom} onChange={(event) => setDateFrom(event.target.value)} /></label>
+            <label className="text-xs text-[var(--muted)]">更新日期止<input type="date" className="input w-full" value={dateTo} onChange={(event) => setDateTo(event.target.value)} /></label>
+          </div>
           <label className="flex items-center gap-2 text-xs text-[var(--muted)]">
             <input type="checkbox" checked={showArchived} onChange={(event) => setShowArchived(event.target.checked)} />查看已归档病例
           </label>

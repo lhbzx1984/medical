@@ -34,7 +34,7 @@
 - **3D 模拟**：人体层面只聚焦患部器官（切口定位环标记术区）；器官层面按动作类型
   驱动程序化手术器械（手术刀/电刀/止血钳/手术剪/持针器/穿刺器/腹腔镜/冲洗吸引器/
   标本袋/纱布）的进入-操作-退出动画，12 种动作（切开、电凝止血、缝合、冲洗…）
-- 病例列表支持按患者姓名或方案名称搜索、按方案状态筛选，可编辑病例资料及归档和恢复病例；可在病例历史中查看最近 100 次修改前的资料
+- 病例列表支持按患者姓名、最新诊断或方案名称搜索，并按方案状态和更新日期筛选，可编辑病例资料及归档和恢复病例；可在病例历史中查看最近 100 次修改前的资料
 - 内置「急性化脓性阑尾炎」示例病例，一键体验完整流程
 - 版本对比：选择两个版本并排查看发生变化的方案字段；每个版本记录来源、引用的知识库条目和修订说明
 - 可对最新版本确认定稿；修改病例或重新生成前须先撤销定稿
@@ -111,7 +111,8 @@ KNOWLEDGE_RETRIEVER=keyword
 [`202610300009_learning_quiz.sql`](supabase/migrations/202610300009_learning_quiz.sql) 和
 [`202610300010_admin_knowledge.sql`](supabase/migrations/202610300010_admin_knowledge.sql) 和
 [`202610300011_admin_audit.sql`](supabase/migrations/202610300011_admin_audit.sql) 和
-[`202610300012_assign_legacy_cases.sql`](supabase/migrations/202610300012_assign_legacy_cases.sql)。
+[`202610300012_assign_legacy_cases.sql`](supabase/migrations/202610300012_assign_legacy_cases.sql) 和
+[`202610300013_case_diagnosis.sql`](supabase/migrations/202610300013_case_diagnosis.sql)。
 
 在 Supabase Auth 中关闭公开注册，由管理员创建用户，用户通过 `/login` 登录，并可在 `/account` 使用当前密码修改密码。数据库管理员完成初始管理员授权后，管理员可在 `/admin/users` 创建账号、重置密码、禁止或允许新登录。禁止新登录不会撤销已存在的会话，不可视为立即移除现有访问权限。账号管理操作记录在 `medplan_admin_audit`，不记录密码。旧病历的 `owner_id` 默认为空，
 任何普通用户都无法访问；管理员核实用户 ID 后，可通过 `/admin/unassigned` 逐条分配，系统会记录操作。知识库供登录用户读取，管理员可在 `/admin/knowledge` 维护内容。首次授权需要数据库管理员将指定的 `auth.users.id` 插入 `public.medplan_admins`；不要向不可信账号授予该权限。应用不再提供无登录的内存演示存储。
