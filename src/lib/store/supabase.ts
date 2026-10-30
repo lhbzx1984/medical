@@ -188,6 +188,19 @@ export class SupabaseStore implements DataStore {
     return data ?? [];
   }
 
+  async listUnassignedPatients() {
+    const { data, error } = await this.sb.rpc("medplan_list_unassigned_patients");
+    if (error) throw new Error("加载未分配病例失败");
+    return (data ?? []) as { id: string; name: string; created_at: string }[];
+  }
+
+  async assignUnassignedPatient(patientId: string, ownerId: string): Promise<void> {
+    const { error } = await this.sb.rpc("medplan_assign_unassigned_patient", { p_patient_id: patientId, p_owner_id: ownerId });
+    if (error?.code === "40001") throw new RevisionConflictError();
+    if (error?.code === "P0002") throw new CaseNotFoundError();
+    if (error) throw new Error("分配病例失败");
+  }
+
   async recordAdminAction(operationId: string, action: string, target: string, outcome: "requested" | "succeeded" | "failed"): Promise<void> {
     const { error } = await this.tbl("medplan_admin_audit").insert({ operation_id: operationId, action, target, outcome });
     if (error) throw new Error("无法记录管理员操作");

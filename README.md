@@ -110,11 +110,11 @@ KNOWLEDGE_RETRIEVER=keyword
 [`202610300008_knowledge_sources.sql`](supabase/migrations/202610300008_knowledge_sources.sql) 和
 [`202610300009_learning_quiz.sql`](supabase/migrations/202610300009_learning_quiz.sql) 和
 [`202610300010_admin_knowledge.sql`](supabase/migrations/202610300010_admin_knowledge.sql) 和
-[`202610300011_admin_audit.sql`](supabase/migrations/202610300011_admin_audit.sql)。
+[`202610300011_admin_audit.sql`](supabase/migrations/202610300011_admin_audit.sql) 和
+[`202610300012_assign_legacy_cases.sql`](supabase/migrations/202610300012_assign_legacy_cases.sql)。
 
 在 Supabase Auth 中关闭公开注册，由管理员创建用户，用户通过 `/login` 登录，并可在 `/account` 使用当前密码修改密码。数据库管理员完成初始管理员授权后，管理员可在 `/admin/users` 创建账号、重置密码、禁止或允许新登录。禁止新登录不会撤销已存在的会话，不可视为立即移除现有访问权限。账号管理操作记录在 `medplan_admin_audit`，不记录密码。旧病历的 `owner_id` 默认为空，
-任何普通用户都无法访问；管理员须核实后在数据库中将每条 `patients.owner_id` 分配给对应的
-`auth.users.id`。知识库供登录用户读取，管理员可在 `/admin/knowledge` 维护内容。首次授权需要数据库管理员将指定的 `auth.users.id` 插入 `public.medplan_admins`；不要向不可信账号授予该权限。应用不再提供无登录的内存演示存储。
+任何普通用户都无法访问；管理员核实用户 ID 后，可通过 `/admin/unassigned` 逐条分配，系统会记录操作。知识库供登录用户读取，管理员可在 `/admin/knowledge` 维护内容。首次授权需要数据库管理员将指定的 `auth.users.id` 插入 `public.medplan_admins`；不要向不可信账号授予该权限。应用不再提供无登录的内存演示存储。
 执行迁移前应备份数据库并核查现有授权；上线前应使用两个测试账号验证跨账号访问被拒绝。
 第三个迁移会为方案版本和模拟建立唯一索引。如果历史数据含重复的 `(plan_id, version)`，
 迁移会失败；请先核实并处理重复数据，不要直接删除未经确认的记录。版本、模拟和专家反馈

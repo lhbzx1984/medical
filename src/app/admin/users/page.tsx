@@ -36,6 +36,7 @@ export default function AdminUsersPage() {
     } catch (err) { setError(err instanceof Error ? err.message : "操作失败"); } finally { setBusy(false); }
   }
   return <main className="mx-auto max-w-4xl space-y-4 p-6"><h1 className="text-xl font-semibold">账号管理</h1>
+    <p><a className="underline" href="/admin/unassigned">分配旧病例 →</a></p>
     <p className="text-sm text-[var(--muted)]">禁止新登录不会撤销已有会话。请通过安全渠道交付临时密码，提醒用户登录后修改。</p>
     {error && <p role="alert">{error}</p>}{notice && <p role="status">{notice}</p>}
     {allowed && <><form className="panel space-y-3 p-4" onSubmit={(event) => { event.preventDefault(); void run({ action: "create", email, password }); }}>
@@ -45,7 +46,7 @@ export default function AdminUsersPage() {
     </form>
     <section className="panel p-4"><h2 className="mb-3 font-semibold">用户列表</h2>
       {users.map((user) => <div key={user.id} className="panel-2 mb-2 flex flex-wrap items-center gap-2 p-3">
-        <span className="min-w-0 flex-1 break-all">{user.email || user.id}{user.banned ? " · 禁止新登录" : ""}</span>
+        <span className="min-w-0 flex-1 break-all">{user.email || "未填写邮箱"}{user.banned ? " · 禁止新登录" : ""}<br /><span className="text-xs text-[var(--muted)]">用户 ID：{user.id}</span></span>
         <button className="btn" disabled={busy} onClick={() => { setTarget(user); setTemporaryPassword(""); }}>重置密码</button>
         <button className="btn" disabled={busy} onClick={() => { const banned = !!user.banned; if (window.confirm(`${banned ? "允许" : "禁止"} ${user.email || user.id} 新登录？`)) void run({ action: banned ? "enable" : "disable", userId: user.id }); }}>{user.banned ? "允许登录" : "禁止新登录"}</button>
       </div>)}
