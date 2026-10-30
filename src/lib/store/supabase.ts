@@ -327,6 +327,24 @@ export class SupabaseStore implements DataStore {
     }));
   }
 
+  async saveKnowledge(input: {
+    id?: string; title: string; category: string; content: string; tags: string[];
+    sourceName: string; sourceUrl: string; sourceVersion: string;
+    reviewStatus: "unreviewed" | "approved"; reviewedBy: string; reviewedAt: string | null;
+  }): Promise<void> {
+    const row = { title: input.title, category: input.category, content: input.content, tags: input.tags,
+      source_name: input.sourceName, source_url: input.sourceUrl, source_version: input.sourceVersion,
+      review_status: input.reviewStatus, reviewed_by: input.reviewedBy, reviewed_at: input.reviewedAt };
+    if (input.id) {
+      const { data, error } = await this.tbl("knowledge_entries").update(row).eq("id", input.id).select("id");
+      if (error) throw new Error(`更新知识条目失败: ${error.message}`);
+      if (!data?.length) throw new Error("知识条目不存在");
+    } else {
+      const { error } = await this.tbl("knowledge_entries").insert({ ...row, id: id() });
+      if (error) throw new Error(`新增知识条目失败: ${error.message}`);
+    }
+  }
+
   async addKnowledge(e: Omit<KnowledgeEntry, "id" | "createdAt">): Promise<KnowledgeEntry> {
     const row = {
       id: id(),

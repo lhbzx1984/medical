@@ -106,11 +106,12 @@ KNOWLEDGE_RETRIEVER=keyword
 [`202610300006_archive_cases.sql`](supabase/migrations/202610300006_archive_cases.sql) 和
 [`202610300007_finalize_plan.sql`](supabase/migrations/202610300007_finalize_plan.sql) 和
 [`202610300008_knowledge_sources.sql`](supabase/migrations/202610300008_knowledge_sources.sql) 和
-[`202610300009_learning_quiz.sql`](supabase/migrations/202610300009_learning_quiz.sql)。
+[`202610300009_learning_quiz.sql`](supabase/migrations/202610300009_learning_quiz.sql) 和
+[`202610300010_admin_knowledge.sql`](supabase/migrations/202610300010_admin_knowledge.sql)。
 
 在 Supabase Auth 中关闭公开注册，由管理员创建用户，用户通过 `/login` 登录，并可在 `/account` 使用当前密码修改密码。旧病历的 `owner_id` 默认为空，
 任何普通用户都无法访问；管理员须核实后在数据库中将每条 `patients.owner_id` 分配给对应的
-`auth.users.id`。知识库供登录用户读取，内容由数据库管理员维护。应用不再提供无登录的内存演示存储。
+`auth.users.id`。知识库供登录用户读取，管理员可在 `/admin/knowledge` 维护内容。首次授权需要数据库管理员将指定的 `auth.users.id` 插入 `public.medplan_admins`；不要向不可信账号授予该权限。应用不再提供无登录的内存演示存储。
 执行迁移前应备份数据库并核查现有授权；上线前应使用两个测试账号验证跨账号访问被拒绝。
 第三个迁移会为方案版本和模拟建立唯一索引。如果历史数据含重复的 `(plan_id, version)`，
 迁移会失败；请先核实并处理重复数据，不要直接删除未经确认的记录。版本、模拟和专家反馈
@@ -131,12 +132,12 @@ export interface KnowledgeRetriever {
 ```
 
 - 当前默认实现 `KeywordRetriever`（中文 2-gram + 词项重叠评分，零依赖），仅检索已审核条目
-- 管理员在 Supabase 的 `knowledge_entries` 中维护 `source_name`、`source_url`、`source_version`、`reviewed_by` 和 `reviewed_at`；核实后将 `review_status` 设为 `approved`。审核通过要求来源名称、审核人和审核时间。旧条目默认为未审核，不参与检索。
+- 管理员在知识库管理页面维护 `source_name`、`source_url`、`source_version`、`reviewed_by` 和 `reviewed_at`；核实后将 `review_status` 设为 `approved`。审核通过要求来源名称、审核人和审核时间。旧条目默认为未审核，不参与检索。
 - 新方案保存所引用知识内容及来源信息的快照；旧方案只有条目标题，不会虚构出处。
 - 接入向量检索：启用 pgvector（schema 中已预留 `embedding vector(1536)` 列）→
   实现 `retrieve()`（Agnes embedding 或外部 RAG）→ 在 `REGISTRY` 注册 →
   设置 `KNOWLEDGE_RETRIEVER=vector` 即可切换，上层无需改动
-- 知识条目可通过 `GET /api/knowledge` 查询，由数据库管理员维护；内置 8 条种子知识
+- 知识条目可通过 `GET /api/knowledge` 查询，管理员可在管理页面维护；内置 8 条种子知识
   （阑尾切除 / CABG 术前评估 / 无菌原则 / ASA 分级 / 肝切除解剖 / 开颅体位 / 肾部分切除 / WHO 核查表）
 
 ## API 一览

@@ -73,6 +73,7 @@ export default function Header() {
           })}
         </nav>
         <div className="ml-auto flex items-center gap-2">
+          <Link href="/admin/knowledge" className="btn !px-2.5 !py-1.5">知识库</Link>
           <Link href="/account" className="btn !px-2.5 !py-1.5">账号</Link>
           <Link href="/login" className="btn !px-2.5 !py-1.5">登录</Link>
           <button className="btn !px-2.5 !py-1.5" onClick={async () => {
