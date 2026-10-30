@@ -99,6 +99,12 @@ KNOWLEDGE_RETRIEVER=keyword
 knowledge_entries / chat_sessions / chat_messages / generated_images 九张表与索引）。
 填入环境变量后自动启用持久化；两项均不配置时使用进程内存演示存储（重启清空）；配置不完整时会报错，避免误以为数据已持久化。
 
+建库脚本默认开启行级安全（RLS），禁止没有策略的客户端直接读写业务表。启用后服务端必须配置
+`SUPABASE_SERVICE_ROLE_KEY`；仅使用匿名密钥的现有部署需要先调整配置。已有数据库需在
+核查现有策略后执行 [`supabase/migrations/202610300001_enable_rls.sql`](supabase/migrations/202610300001_enable_rls.sql)。
+服务端使用的 service_role 会绕过 RLS；当前应用 API 尚未实现用户身份认证和病例归属隔离，
+因此开启 RLS 后仍不能安全地向公网开放或保存真实患者资料。
+
 ## 手术知识库接口（预留设计）
 
 上层规划流程只依赖检索器接口（`src/lib/knowledge/index.ts`）：

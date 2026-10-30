@@ -106,6 +106,15 @@ create index if not exists idx_feedback_plan on plan_feedback (plan_id);
 create index if not exists idx_sim_plan on simulations (plan_id, version);
 create index if not exists idx_messages_session on chat_messages (session_id);
 
--- 说明：本系统服务端使用 SERVICE_ROLE_KEY 访问（绕过 RLS），
--- 所有数据访问都收敛在 Next.js API Route 内，浏览器不直接连 Supabase。
--- 若需启用 RLS，可按需为上表添加策略，并为 service_role 显式放行。
+-- 防止匿名或已登录的客户端绕过应用直接访问业务表。
+-- 应用服务端的 service_role 仍会绕过 RLS，因此此迁移不能替代应用层的身份认证和病例归属校验。
+-- 如果已有自定义策略，请在执行前核查；本迁移不会删除已有策略。
+alter table public.patients enable row level security;
+alter table public.surgical_plans enable row level security;
+alter table public.plan_versions enable row level security;
+alter table public.plan_feedback enable row level security;
+alter table public.simulations enable row level security;
+alter table public.knowledge_entries enable row level security;
+alter table public.chat_sessions enable row level security;
+alter table public.chat_messages enable row level security;
+alter table public.generated_images enable row level security;
