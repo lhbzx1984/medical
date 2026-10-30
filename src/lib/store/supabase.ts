@@ -188,6 +188,18 @@ export class SupabaseStore implements DataStore {
     return data ?? [];
   }
 
+  async listCaseEdits(planId: string) {
+    const { data, error } = await this.tbl("case_edit_history").select("id,previous_patient,created_at")
+      .eq("plan_id", planId).order("created_at", { ascending: false }).limit(100);
+    if (error) throw new Error(`加载病例历史失败: ${error.message}`);
+    return (data ?? []).map((row) => {
+      const p = row.previous_patient as Record<string, unknown>;
+      return { id: String(row.id), createdAt: String(row.created_at), name: String(p.name ?? ""),
+        gender: String(p.gender ?? ""), age: Number(p.age ?? 0), medicalRecord: String(p.medical_record ?? ""),
+        preliminaryPlan: String(p.preliminary_plan ?? "") };
+    });
+  }
+
   async setFinalized(planId: string, expectedUpdatedAt: string, version: number, finalized: boolean): Promise<void> {
     const { error } = await this.sb.rpc("medplan_set_finalized", {
       p_plan_id: planId, p_expected_updated_at: expectedUpdatedAt, p_version: version, p_finalized: finalized,

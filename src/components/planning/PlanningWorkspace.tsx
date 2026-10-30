@@ -10,6 +10,7 @@ import { ORGANS, matchOrgan } from "@/lib/organ-models";
 import PatientForm, { CaseFormValue } from "./PatientForm";
 import PlanDocument from "./PlanDocument";
 import PlanComparison from "./PlanComparison";
+import CaseHistory from "./CaseHistory";
 
 const SimulationStage = dynamic(() => import("@/components/sim/SimulationStage"), {
   ssr: false,
@@ -45,7 +46,7 @@ export default function PlanningWorkspace() {
   const [detail, setDetail] = useState<PlanDetail | null>(null);
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState(false);
-  const [tab, setTab] = useState<"plan" | "sim" | "feedback" | "compare">("plan");
+  const [tab, setTab] = useState<"plan" | "sim" | "feedback" | "compare" | "history">("plan");
   const [versionIdx, setVersionIdx] = useState(0); // detail.versions 下标
   const [stepIdx, setStepIdx] = useState(0);
   const [playing, setPlaying] = useState(false);
@@ -419,6 +420,7 @@ export default function PlanningWorkspace() {
                 >
                   📋 手术方案
                 </button>
+                <button className={`tab ${tab === "history" ? "active" : ""}`} onClick={() => setTab("history")}>病例历史</button>
                 <button className={`tab ${tab === "compare" ? "active" : ""}`}
                   onClick={() => setTab("compare")} disabled={detail.versions.length < 2}>
                   版本对比
@@ -476,6 +478,8 @@ export default function PlanningWorkspace() {
                     </div>
                   </div>
                 ))}
+
+              {tab === "history" && <CaseHistory key={detail.plan.id} planId={detail.plan.id} />}
 
               {tab === "compare" && currentVersion && (
                 <PlanComparison key={detail.plan.id} versions={detail.versions} selected={currentVersion} />
