@@ -82,6 +82,7 @@ export interface PlanVersion {
   source: "ai" | "expert_refine";
   /** 本版本引用的手术知识库条目标题 */
   knowledgeUsed: string[];
+  knowledgeReferences?: KnowledgeReference[];
   createdAt: string;
 }
 
@@ -142,6 +143,18 @@ export interface PlanDetail {
 
 // ─── 知识库 ──────────────────────────────────────────────────────────────────
 
+export interface KnowledgeReference {
+  id: string;
+  title: string;
+  content: string;
+  sourceName: string;
+  sourceUrl: string;
+  sourceVersion: string;
+  reviewedBy: string;
+  reviewedAt: string | null;
+  updatedAt: string;
+}
+
 export interface KnowledgeEntry {
   id: string;
   title: string;
@@ -149,6 +162,13 @@ export interface KnowledgeEntry {
   category: string;
   content: string;
   tags: string[];
+  sourceName?: string;
+  sourceUrl?: string;
+  sourceVersion?: string;
+  reviewStatus?: "unreviewed" | "approved";
+  reviewedBy?: string;
+  reviewedAt?: string | null;
+  updatedAt?: string;
   createdAt: string;
 }
 

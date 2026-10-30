@@ -103,7 +103,8 @@ KNOWLEDGE_RETRIEVER=keyword
 [`202610300004_ai_quotas.sql`](supabase/migrations/202610300004_ai_quotas.sql) 和
 [`202610300005_edit_case.sql`](supabase/migrations/202610300005_edit_case.sql) 和
 [`202610300006_archive_cases.sql`](supabase/migrations/202610300006_archive_cases.sql) 和
-[`202610300007_finalize_plan.sql`](supabase/migrations/202610300007_finalize_plan.sql)。
+[`202610300007_finalize_plan.sql`](supabase/migrations/202610300007_finalize_plan.sql) 和
+[`202610300008_knowledge_sources.sql`](supabase/migrations/202610300008_knowledge_sources.sql)。
 
 在 Supabase Auth 中关闭公开注册，由管理员创建用户，用户通过 `/login` 登录。旧病历的 `owner_id` 默认为空，
 任何普通用户都无法访问；管理员须核实后在数据库中将每条 `patients.owner_id` 分配给对应的
@@ -127,7 +128,9 @@ export interface KnowledgeRetriever {
 }
 ```
 
-- 当前默认实现 `KeywordRetriever`（中文 2-gram + 词项重叠评分，零依赖）
+- 当前默认实现 `KeywordRetriever`（中文 2-gram + 词项重叠评分，零依赖），仅检索已审核条目
+- 管理员在 Supabase 的 `knowledge_entries` 中维护 `source_name`、`source_url`、`source_version`、`reviewed_by` 和 `reviewed_at`；核实后将 `review_status` 设为 `approved`。审核通过要求来源名称、审核人和审核时间。旧条目默认为未审核，不参与检索。
+- 新方案保存所引用知识内容及来源信息的快照；旧方案只有条目标题，不会虚构出处。
 - 接入向量检索：启用 pgvector（schema 中已预留 `embedding vector(1536)` 列）→
   实现 `retrieve()`（Agnes embedding 或外部 RAG）→ 在 `REGISTRY` 注册 →
   设置 `KNOWLEDGE_RETRIEVER=vector` 即可切换，上层无需改动

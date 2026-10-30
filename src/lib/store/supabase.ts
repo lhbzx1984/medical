@@ -153,6 +153,7 @@ export class SupabaseStore implements DataStore {
         changelog: String(r.changelog ?? ""),
         source: (r.source as PlanVersion["source"]) ?? "ai",
         knowledgeUsed: (r.knowledge_used as string[]) ?? [],
+        knowledgeReferences: (r.knowledge_references as PlanVersion["knowledgeReferences"]) ?? [],
         createdAt: String(r.created_at ?? ""),
       })),
       feedbacks: (feedbacks as Row[]).map((r) => ({
@@ -306,6 +307,10 @@ export class SupabaseStore implements DataStore {
       category: String(r.category ?? "guideline"),
       content: String(r.content ?? ""),
       tags: (r.tags as string[]) ?? [],
+      sourceName: String(r.source_name ?? ""), sourceUrl: String(r.source_url ?? ""),
+      sourceVersion: String(r.source_version ?? ""), reviewStatus: r.review_status === "approved" ? "approved" : "unreviewed",
+      reviewedBy: String(r.reviewed_by ?? ""), reviewedAt: r.reviewed_at ? String(r.reviewed_at) : null,
+      updatedAt: String(r.updated_at ?? ""),
       createdAt: String(r.created_at ?? ""),
     }));
   }

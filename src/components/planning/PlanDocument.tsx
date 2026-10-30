@@ -4,6 +4,11 @@
 import type { PlanVersion } from "@/lib/types";
 import { ORGANS, matchOrgan } from "@/lib/organ-models";
 
+function safeSourceUrl(value: string): string | null {
+  try { const url = new URL(value); return url.protocol === "https:" || url.protocol === "http:" ? url.href : null; }
+  catch { return null; }
+}
+
 function InfoItem({ label, value }: { label: string; value: string }) {
   if (!value) return null;
   return (
@@ -166,13 +171,24 @@ export default function PlanDocument({
               <div className="mb-1.5 mt-3 text-[12.5px] font-semibold text-[var(--heading)]">
                 引用的手术知识库条目
               </div>
-              <div className="flex flex-wrap gap-1.5">
-                {version.knowledgeUsed.map((k) => (
-                  <span key={k} className="chip">
-                    📖 {k}
-                  </span>
-                ))}
-              </div>
+              {version.knowledgeReferences?.length ? (
+                <ul className="space-y-2">
+                  {version.knowledgeReferences.map((reference) => {
+                    const url = safeSourceUrl(reference.sourceUrl);
+                    return <li key={reference.id} className="panel-2 p-3 text-[12.5px]">
+                      <div className="font-semibold">{reference.title}</div>
+                      <div className="mt-1 text-[var(--muted)]">
+                        来源：{url ? <a href={url} target="_blank" rel="noopener noreferrer" className="underline">{reference.sourceName || "查看来源"}</a> : (reference.sourceName || "未填写")}
+                        {reference.sourceVersion && ` · 版本：${reference.sourceVersion}`}
+                        {reference.reviewedBy && ` · 审核：${reference.reviewedBy}`}
+                        {reference.reviewedAt && ` · ${new Date(reference.reviewedAt).toLocaleDateString("zh-CN")}`}
+                      </div>
+                    </li>;
+                  })}
+                </ul>
+              ) : <div className="flex flex-wrap gap-1.5">
+                {version.knowledgeUsed.map((k, i) => <span key={`${k}-${i}`} className="chip">📖 {k}（历史记录未保存来源）</span>)}
+              </div>}
             </>
           )}
         </div>

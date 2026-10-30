@@ -45,7 +45,7 @@ export class KeywordRetriever implements KnowledgeRetriever {
   constructor(private store: DataStore) {}
 
   async retrieve(query: KnowledgeQuery): Promise<KnowledgeEntry[]> {
-    const all = await this.store.listKnowledge();
+    const all = (await this.store.listKnowledge()).filter((entry) => entry.reviewStatus === "approved");
     if (!all.length) return [];
 
     const qTokens = new Set([...tokenize(query.text), ...tokenize(query.organ ?? "")]);

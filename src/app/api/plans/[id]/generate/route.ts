@@ -126,6 +126,9 @@ export async function POST(
     id: id(), createdAt, planId, version: nextVersion, content: plan,
     changelog: nextVersion === 1 ? "初版：由 AI 依据病历、初步方案与知识库生成" : "AI 重新生成",
     source: "ai", knowledgeUsed: knowledge.map((k) => k.title),
+    knowledgeReferences: knowledge.map((k) => ({ id: k.id, title: k.title, content: k.content,
+      sourceName: k.sourceName ?? "", sourceUrl: k.sourceUrl ?? "", sourceVersion: k.sourceVersion ?? "",
+      reviewedBy: k.reviewedBy ?? "", reviewedAt: k.reviewedAt ?? null, updatedAt: k.updatedAt ?? "" })),
   };
   const simulation: SimulationRun = {
     id: id(), createdAt, planId, version: nextVersion,

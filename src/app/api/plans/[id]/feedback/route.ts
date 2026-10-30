@@ -151,6 +151,9 @@ export async function POST(
   const version: PlanVersion = {
     id: id(), createdAt, planId, version: nextVersion, content: plan, changelog,
     source: "expert_refine", knowledgeUsed: knowledge.map((k) => k.title),
+    knowledgeReferences: knowledge.map((k) => ({ id: k.id, title: k.title, content: k.content,
+      sourceName: k.sourceName ?? "", sourceUrl: k.sourceUrl ?? "", sourceVersion: k.sourceVersion ?? "",
+      reviewedBy: k.reviewedBy ?? "", reviewedAt: k.reviewedAt ?? null, updatedAt: k.updatedAt ?? "" })),
   };
   const simulation: SimulationRun = {
     id: id(), createdAt, planId, version: nextVersion,
