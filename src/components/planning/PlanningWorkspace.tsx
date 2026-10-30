@@ -9,6 +9,7 @@ import type { PlanDetail, SimulationRun, SurgicalPlan } from "@/lib/types";
 import { ORGANS, matchOrgan } from "@/lib/organ-models";
 import PatientForm, { CaseFormValue } from "./PatientForm";
 import PlanDocument from "./PlanDocument";
+import PlanComparison from "./PlanComparison";
 
 const SimulationStage = dynamic(() => import("@/components/sim/SimulationStage"), {
   ssr: false,
@@ -41,7 +42,7 @@ export default function PlanningWorkspace() {
   }, [plans, search, statusFilter]);
   const [detail, setDetail] = useState<PlanDetail | null>(null);
   const [creating, setCreating] = useState(false);
-  const [tab, setTab] = useState<"plan" | "sim" | "feedback">("plan");
+  const [tab, setTab] = useState<"plan" | "sim" | "feedback" | "compare">("plan");
   const [versionIdx, setVersionIdx] = useState(0); // detail.versions 下标
   const [stepIdx, setStepIdx] = useState(0);
   const [playing, setPlaying] = useState(false);
@@ -347,6 +348,10 @@ export default function PlanningWorkspace() {
                 >
                   📋 手术方案
                 </button>
+                <button className={`tab ${tab === "compare" ? "active" : ""}`}
+                  onClick={() => setTab("compare")} disabled={detail.versions.length < 2}>
+                  版本对比
+                </button>
                 <button
                   className={`tab ${tab === "sim" ? "active" : ""}`}
                   onClick={() => setTab("sim")}
@@ -399,6 +404,10 @@ export default function PlanningWorkspace() {
                     </div>
                   </div>
                 ))}
+
+              {tab === "compare" && currentVersion && (
+                <PlanComparison key={detail.plan.id} versions={detail.versions} selected={currentVersion} />
+              )}
 
               {tab === "sim" && (
                 <div className="h-[calc(100%-8px)] min-h-[500px]">
