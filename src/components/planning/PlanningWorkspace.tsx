@@ -147,7 +147,7 @@ export default function PlanningWorkspace() {
       const res = await fetch(`/api/plans/${detail.plan.id}/feedback`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ expertName, comment }),
+        body: JSON.stringify({ expertName, comment, version: currentVersion?.version }),
       });
       const data = (await res.json()) as { error?: string };
       if (!res.ok) throw new Error(data.error ?? "反馈提交失败");
@@ -448,11 +448,14 @@ export default function PlanningWorkspace() {
                         />
                       </div>
                     </div>
+                    {currentVersion && currentVersion.version !== detail.plan.currentVersion && (
+                      <p className="text-sm text-[var(--muted)]">请选择最新版本后提交反馈。</p>
+                    )}
                     <div className="flex justify-end">
                       <button
                         className="btn btn-primary"
                         onClick={submitFeedback}
-                        disabled={!comment.trim() || !!busy || !detail.versions.length}
+                        disabled={!comment.trim() || !!busy || !currentVersion || currentVersion.version !== detail.plan.currentVersion}
                       >
                         {busy ?? "提交反馈并由 AI 修订方案"}
                       </button>

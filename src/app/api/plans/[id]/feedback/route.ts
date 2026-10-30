@@ -22,6 +22,7 @@ export const maxDuration = 300;
 interface FeedbackBody {
   expertName?: string;
   comment: string;
+  version: number;
 }
 
 export async function POST(
@@ -36,7 +37,8 @@ export async function POST(
     return Response.json({ error: "请求体不是合法 JSON" }, { status: 400 });
   }
   if (!body || typeof body !== "object" || typeof body.comment !== "string" ||
-      (body.expertName !== undefined && typeof body.expertName !== "string")) {
+      (body.expertName !== undefined && typeof body.expertName !== "string") ||
+      !Number.isInteger(body.version) || body.version < 1) {
     return Response.json({ error: "反馈字段格式不正确" }, { status: 400 });
   }
   if (body.comment.length > 16000 || (body.expertName?.length ?? 0) > 200) {
@@ -56,15 +58,17 @@ export async function POST(
     return Response.json({ error: "AGNES_API_KEY 未配置" }, { status: 500 });
   }
 
-  if (!(await store.consumeAiQuota("plan"))) {
-    return Response.json({ error: "请求过于频繁，请稍后再试" }, { status: 429 });
-  }
-
   const current = detail.versions[detail.versions.length - 1];
   const nextVersion = current.version + 1;
 
   if (current.version !== detail.plan.currentVersion) {
     return Response.json({ error: "规划版本状态不一致，请联系管理员" }, { status: 409 });
+  }
+  if (body.version !== current.version) {
+    return Response.json({ error: "只能对最新版本提交反馈，请刷新并选择最新版本" }, { status: 409 });
+  }
+  if (!(await store.consumeAiQuota("plan"))) {
+    return Response.json({ error: "请求过于频繁，请稍后再试" }, { status: 429 });
   }
   const feedback: ExpertFeedback = {
     id: id(), createdAt: now(), planId, version: current.version,
