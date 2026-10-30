@@ -188,6 +188,11 @@ export class SupabaseStore implements DataStore {
     return data ?? [];
   }
 
+  async recordAdminAction(operationId: string, action: string, target: string, outcome: "requested" | "succeeded" | "failed"): Promise<void> {
+    const { error } = await this.tbl("medplan_admin_audit").insert({ operation_id: operationId, action, target, outcome });
+    if (error) throw new Error("无法记录管理员操作");
+  }
+
   async listCaseEdits(planId: string) {
     const { data, error } = await this.tbl("case_edit_history").select("id,previous_patient,created_at")
       .eq("plan_id", planId).order("created_at", { ascending: false }).limit(100);

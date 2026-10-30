@@ -88,12 +88,14 @@ AGNES_API_BASE_URL=https://apihub.agnes-ai.com
 # Supabase：使用项目 URL 和 anon/publishable key，勿使用 service_role key
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_ANON_KEY=your-anon-key
+# 仅管理员账号管理需要；仅在服务器配置，绝不暴露给浏览器
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 
 # 手术知识库检索器（预留接口，当前：keyword）
 KNOWLEDGE_RETRIEVER=keyword
 ```
 
-**安全说明**：服务端使用当前登录用户的会话和匿名密钥访问数据库，行级安全按病例归属限制访问。请勿将 service_role 密钥用于应用请求。
+**安全说明**：业务数据访问使用当前登录用户的会话和匿名密钥，行级安全按病例归属限制访问；账号管理接口仅在服务器完成管理员权限检查后使用 service_role 密钥访问 Supabase Auth。服务密钥不可放入客户端变量。
 
 ### Supabase 建库与登录
 
@@ -107,9 +109,10 @@ KNOWLEDGE_RETRIEVER=keyword
 [`202610300007_finalize_plan.sql`](supabase/migrations/202610300007_finalize_plan.sql) 和
 [`202610300008_knowledge_sources.sql`](supabase/migrations/202610300008_knowledge_sources.sql) 和
 [`202610300009_learning_quiz.sql`](supabase/migrations/202610300009_learning_quiz.sql) 和
-[`202610300010_admin_knowledge.sql`](supabase/migrations/202610300010_admin_knowledge.sql)。
+[`202610300010_admin_knowledge.sql`](supabase/migrations/202610300010_admin_knowledge.sql) 和
+[`202610300011_admin_audit.sql`](supabase/migrations/202610300011_admin_audit.sql)。
 
-在 Supabase Auth 中关闭公开注册，由管理员创建用户，用户通过 `/login` 登录，并可在 `/account` 使用当前密码修改密码。旧病历的 `owner_id` 默认为空，
+在 Supabase Auth 中关闭公开注册，由管理员创建用户，用户通过 `/login` 登录，并可在 `/account` 使用当前密码修改密码。数据库管理员完成初始管理员授权后，管理员可在 `/admin/users` 创建账号、重置密码、禁止或允许新登录。禁止新登录不会撤销已存在的会话，不可视为立即移除现有访问权限。账号管理操作记录在 `medplan_admin_audit`，不记录密码。旧病历的 `owner_id` 默认为空，
 任何普通用户都无法访问；管理员须核实后在数据库中将每条 `patients.owner_id` 分配给对应的
 `auth.users.id`。知识库供登录用户读取，管理员可在 `/admin/knowledge` 维护内容。首次授权需要数据库管理员将指定的 `auth.users.id` 插入 `public.medplan_admins`；不要向不可信账号授予该权限。应用不再提供无登录的内存演示存储。
 执行迁移前应备份数据库并核查现有授权；上线前应使用两个测试账号验证跨账号访问被拒绝。
