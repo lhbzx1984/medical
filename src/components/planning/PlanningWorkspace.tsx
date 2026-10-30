@@ -32,14 +32,16 @@ const STATUS_LABEL: Record<SurgicalPlan["status"], { text: string; cls: string }
 export default function PlanningWorkspace() {
   const [plans, setPlans] = useState<SurgicalPlan[]>([]);
   const [search, setSearch] = useState("");
+  const [showArchived, setShowArchived] = useState(false);
   const [statusFilter, setStatusFilter] = useState<"all" | SurgicalPlan["status"]>("all");
   const filteredPlans = useMemo(() => {
     const term = search.trim().toLocaleLowerCase();
     return plans.filter((plan) =>
+      Boolean(plan.archivedAt) === showArchived &&
       (statusFilter === "all" || plan.status === statusFilter) &&
       (!term || `${plan.title} ${plan.patientName}`.toLocaleLowerCase().includes(term))
     );
-  }, [plans, search, statusFilter]);
+  }, [plans, search, statusFilter, showArchived]);
   const [detail, setDetail] = useState<PlanDetail | null>(null);
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -140,6 +142,24 @@ export default function PlanningWorkspace() {
     finally { setBusy(null); }
   };
 
+  const setArchived = async () => {
+    if (!detail) return;
+    const archived = !detail.plan.archivedAt;
+    setBusy(archived ? "归档病例…" : "恢复病例…"); setError(null);
+    try {
+      const res = await fetch(`/api/plans/${detail.plan.id}/archive`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ archived, expectedUpdatedAt: detail.plan.updatedAt }),
+      });
+      const data = await res.json() as { error?: string };
+      if (!res.ok) throw new Error(data.error ?? "操作失败");
+      await loadPlans();
+      await selectPlan(detail.plan.id);
+      setShowArchived(archived);
+    } catch (e) { setError(e instanceof Error ? e.message : "操作失败"); }
+    finally { setBusy(null); }
+  };
+
   const generate = async (planId?: string) => {
     const id = planId ?? detail?.plan.id;
     if (!id) return;
@@ -232,12 +252,15 @@ export default function PlanningWorkspace() {
             <option value="refined">已迭代</option>
             <option value="finalized">已定稿</option>
           </select>
-          <p className="text-xs text-[var(--muted)]" aria-live="polite">显示 {filteredPlans.length} / {plans.length} 个病例</p>
+          <label className="flex items-center gap-2 text-xs text-[var(--muted)]">
+            <input type="checkbox" checked={showArchived} onChange={(event) => setShowArchived(event.target.checked)} />查看已归档病例
+          </label>
+          <p className="text-xs text-[var(--muted)]" aria-live="polite">显示 {filteredPlans.length} 个病例</p>
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto p-2">
           {plans.length === 0 && (
             <div className="px-2 py-6 text-center text-[12px] text-[var(--muted)]">
-              暂无病例，点击上方按钮创建
+              {showArchived ? "暂无归档病例" : "暂无病例，点击上方按钮创建"}
             </div>
           )}
           {plans.length > 0 && filteredPlans.length === 0 && (
@@ -323,6 +346,7 @@ export default function PlanningWorkspace() {
                 </div>
                 <div className="ml-auto flex items-center gap-2">
                   <button className="btn !py-1 !text-[12px]" disabled={!!busy} onClick={() => setEditing(true)}>编辑病例</button>
+                  <button className="btn !py-1 !text-[12px]" disabled={!!busy} onClick={() => void setArchived()}>{detail.plan.archivedAt ? "恢复病例" : "归档病例"}</button>
                   {detail.versions.length === 0 ? (
                     <button
                       className="btn btn-primary"

@@ -111,6 +111,7 @@ export class SupabaseStore implements DataStore {
       patientName: String(r.patient_name ?? ""),
       status: (r.status as SurgicalPlan["status"]) ?? "draft",
       currentVersion: Number(r.current_version ?? 0),
+      archivedAt: r.archived_at ? String(r.archived_at) : null,
       createdAt: String(r.created_at ?? ""),
       updatedAt: String(r.updated_at ?? ""),
     };
@@ -170,6 +171,15 @@ export class SupabaseStore implements DataStore {
         createdAt: String(r.created_at ?? ""),
       })),
     };
+  }
+
+  async setArchived(planId: string, expectedUpdatedAt: string, archived: boolean): Promise<void> {
+    const { error } = await this.sb.rpc("medplan_set_archived", {
+      p_plan_id: planId, p_expected_updated_at: expectedUpdatedAt, p_archived: archived,
+    });
+    if (error?.code === "40001") throw new RevisionConflictError();
+    if (error?.code === "P0002") throw new CaseNotFoundError();
+    if (error) throw new Error(`更新归档状态失败: ${error.message}`);
   }
 
   async updateCase(planId: string, expectedUpdatedAt: string, patient: NewPatient): Promise<void> {
