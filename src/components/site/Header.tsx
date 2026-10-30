@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
+import AuthControls from "./AuthControls";
 
 const NAVS = [
   { href: "/", label: "首页" },
@@ -10,18 +11,19 @@ const NAVS = [
   { href: "/learning", label: "学习中心" },
 ];
 
-function ThemeToggle() {
-  const [theme, setTheme] = useState<"dark" | "light" | null>(null);
+function subscribeTheme(callback: () => void) {
+  window.addEventListener("medplan-theme", callback);
+  return () => window.removeEventListener("medplan-theme", callback);
+}
 
-  useEffect(() => {
-    const cur = (document.documentElement.dataset.theme as "dark" | "light") ?? "dark";
-    setTheme(cur);
-  }, []);
+function ThemeToggle() {
+  const theme = useSyncExternalStore(subscribeTheme,
+    () => document.documentElement.dataset.theme ?? "dark", () => "dark");
 
   const toggle = () => {
     const next = theme === "light" ? "dark" : "light";
-    setTheme(next);
     document.documentElement.dataset.theme = next;
+    window.dispatchEvent(new Event("medplan-theme"));
     try {
       localStorage.setItem("mp-theme", next);
     } catch {}
@@ -43,12 +45,12 @@ export default function Header() {
   const pathname = usePathname();
   return (
     <header className="sticky top-0 z-40 border-b border-[var(--line)] bg-[var(--header-bg)] backdrop-blur">
-      <div className="mx-auto flex h-14 max-w-[1600px] items-center gap-6 px-5">
+      <div className="mx-auto flex h-14 max-w-[1600px] items-center gap-2 px-2 sm:gap-6 sm:px-5">
         <Link href="/" className="flex items-center gap-2.5">
           <span className="grid h-8 w-8 place-items-center rounded-lg bg-[var(--accent)] text-base font-bold text-[var(--accent-contrast)]">
             ⚕
           </span>
-          <div className="leading-tight">
+          <div className="hidden leading-tight sm:block">
             <div className="text-[15px] font-bold text-[var(--heading)]">MedPlan Atlas</div>
             <div className="text-[10.5px] text-[var(--muted)]">智能手术规划与医学教学平台</div>
           </div>
@@ -61,7 +63,7 @@ export default function Header() {
               <Link
                 key={n.href}
                 href={n.href}
-                className={`rounded-lg px-3.5 py-1.5 text-[13.5px] transition-colors ${
+                className={`rounded-lg px-2 py-1.5 text-[12px] transition-colors sm:px-3.5 sm:text-[13.5px] ${
                   active
                     ? "bg-[var(--chip-bg)] !text-[var(--accent)] font-semibold"
                     : "text-[var(--muted)] hover:text-[var(--heading)]"
@@ -73,6 +75,7 @@ export default function Header() {
           })}
         </nav>
         <div className="ml-auto flex items-center gap-2">
+          <AuthControls />
           <ThemeToggle />
         </div>
       </div>

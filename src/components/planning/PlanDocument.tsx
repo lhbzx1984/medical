@@ -3,6 +3,7 @@
 // 结构化手术方案文档渲染：摘要 / 基本信息 / 器械 / 步骤时间线 / 风险对策 / 术后处理。
 import type { PlanVersion } from "@/lib/types";
 import { ORGANS, matchOrgan } from "@/lib/organ-models";
+import { normalizePlan } from "@/lib/validation";
 
 function InfoItem({ label, value }: { label: string; value: string }) {
   if (!value) return null;
@@ -21,7 +22,13 @@ export default function PlanDocument({
   version: PlanVersion;
   patientName?: string;
 }) {
-  const plan = version.content;
+  let plan;
+  try {
+    plan = normalizePlan(version.content);
+  } catch {
+    return <div role="alert" className="panel p-4 text-[var(--warn)]">该历史方案格式不完整，暂时无法显示。请重新生成方案，原有记录会保留。</div>;
+  }
+  const knowledgeUsed = Array.isArray(version.knowledgeUsed) ? version.knowledgeUsed.filter((k) => typeof k === "string") : [];
   const organ = ORGANS[matchOrgan(plan.focusOrgan)];
 
   return (
@@ -36,7 +43,7 @@ export default function PlanDocument({
             {version.source === "ai" ? "🤖 AI 生成" : "👨‍⚕️ 专家反馈修订"}
           </span>
           <span className="chip">
-            🧠 知识库引用 × {version.knowledgeUsed.length}
+            🧠 知识库引用 × {knowledgeUsed.length}
           </span>
           <span className="chip">🎯 模拟聚焦：{organ.nameZh}</span>
           <span className="ml-auto text-[11px] text-[var(--muted)]">
@@ -153,7 +160,7 @@ export default function PlanDocument({
       )}
 
       {/* 模拟要点 + 知识库引用 */}
-      {(plan.simulationNotes || version.knowledgeUsed.length > 0) && (
+      {(plan.simulationNotes || knowledgeUsed.length > 0) && (
         <div className="panel p-4">
           {plan.simulationNotes && (
             <>
@@ -161,13 +168,13 @@ export default function PlanDocument({
               <p className="text-[12.5px] leading-6 text-[var(--text)]">{plan.simulationNotes}</p>
             </>
           )}
-          {version.knowledgeUsed.length > 0 && (
+          {knowledgeUsed.length > 0 && (
             <>
               <div className="mb-1.5 mt-3 text-[12.5px] font-semibold text-[var(--heading)]">
                 引用的手术知识库条目
               </div>
               <div className="flex flex-wrap gap-1.5">
-                {version.knowledgeUsed.map((k) => (
+                {knowledgeUsed.map((k) => (
                   <span key={k} className="chip">
                     📖 {k}
                   </span>

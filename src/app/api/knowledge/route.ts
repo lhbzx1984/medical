@@ -4,10 +4,15 @@
 // 注：向量检索接入见 src/lib/knowledge/index.ts 的说明。
 import { NextRequest } from "next/server";
 import { getStore } from "@/lib/store";
+import { requireActor } from "@/lib/auth";
+import { readJson, textField, enumField, stringList } from "@/lib/validation";
+import { apiError, limitAction } from "@/lib/http";
 
 
 export async function GET(req: NextRequest) {
-  const q = req.nextUrl.searchParams.get("q") ?? undefined;
+  try {
+  await requireActor(req);
+  const q = textField({ q: new URL(req.url).searchParams.get("q") ?? "" }, "q", 200, true);
   const store = getStore();
   const entries = await store.listKnowledge(q);
   return Response.json({
@@ -15,23 +20,19 @@ export async function GET(req: NextRequest) {
     retriever: process.env.KNOWLEDGE_RETRIEVER ?? "keyword",
     store: store.kind,
   });
+  } catch (error) { return apiError(error); }
 }
 
 export async function POST(req: NextRequest) {
-  let body: { title?: string; category?: string; content?: string; tags?: string[] };
   try {
-    body = await req.json();
-  } catch {
-    return Response.json({ error: "请求体不是合法 JSON" }, { status: 400 });
-  }
-  if (!body.title?.trim() || !body.content?.trim()) {
-    return Response.json({ error: "title 与 content 不能为空" }, { status: 400 });
-  }
-  const entry = await getStore().addKnowledge({
-    title: body.title.trim(),
-    category: body.category?.trim() || "guideline",
-    content: body.content.trim(),
-    tags: Array.isArray(body.tags) ? body.tags.map(String).slice(0, 10) : [],
-  });
+  const actor = await requireActor(req, "admin");
+  const body = await readJson(req);
+  const input = { title: textField(body, "title", 200),
+    category: enumField(body.category ?? "guideline", ["procedure", "instrument", "guideline", "anatomy"], "category"),
+    content: textField(body, "content", 20000), tags: stringList(body.tags ?? [], "tags", 10, 60) };
+  const store = getStore();
+  await limitAction(store, actor.id, "knowledge-write", 10);
+  const entry = await store.addKnowledge(input);
   return Response.json({ entry }, { status: 201 });
+  } catch (error) { return apiError(error); }
 }

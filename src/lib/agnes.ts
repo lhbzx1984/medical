@@ -42,6 +42,27 @@ export interface ChatOptions {
   signal?: AbortSignal;
 }
 
+function requestSignal(signal?: AbortSignal): AbortSignal {
+  const timeout = AbortSignal.timeout(240_000);
+  return signal ? AbortSignal.any([signal, timeout]) : timeout;
+}
+
+function isObject(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+async function providerJson(res: Response): Promise<Record<string, unknown>> {
+  let data: unknown;
+  try { data = await res.json(); }
+  catch (error) {
+    if (error instanceof SyntaxError) throw new AgnesError("Agnes 返回了无效的 JSON 数据");
+    throw error;
+  }
+  if (!isObject(data)) throw new AgnesError("Agnes 返回了无效的数据结构");
+  if (data.error) throw new AgnesError("Agnes 服务返回错误，请稍后重试");
+  return data;
+}
+
 /** 发起流式对话请求，返回上游 Response（SSE），由调用方转发或解析。 */
 export async function agnesChatStream(
   messages: ChatMsg[],
@@ -57,11 +78,11 @@ export async function agnesChatStream(
       temperature: opts.temperature ?? 0.7,
       max_tokens: opts.maxTokens ?? 4096,
     }),
-    signal: opts.signal,
+    signal: requestSignal(opts.signal),
   });
   if (!res.ok || !res.body) {
-    const text = await res.text().catch(() => "");
-    throw new AgnesError(`Agnes Chat 请求失败 (${res.status}): ${text.slice(0, 300)}`);
+    await res.body?.cancel();
+    throw new AgnesError(`对话服务暂不可用（上游 ${res.status}）`);
   }
   return res;
 }
@@ -77,17 +98,17 @@ export async function agnesChat(messages: ChatMsg[], opts: ChatOptions = {}): Pr
       temperature: opts.temperature ?? 0.4,
       max_tokens: opts.maxTokens ?? 4096,
     }),
-    signal: opts.signal,
+    signal: requestSignal(opts.signal),
   });
   if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new AgnesError(`Agnes Chat 请求失败 (${res.status}): ${text.slice(0, 300)}`);
+    await res.body?.cancel();
+    throw new AgnesError(`对话服务暂不可用（上游 ${res.status}）`);
   }
-  const data = (await res.json()) as {
-    choices?: { message?: { content?: string } }[];
-  };
-  const content = data.choices?.[0]?.message?.content ?? "";
-  if (!content) throw new AgnesError("Agnes Chat 返回了空内容");
+  const data = await providerJson(res);
+  const choice = Array.isArray(data.choices) ? data.choices[0] : undefined;
+  const message = isObject(choice) ? choice.message : undefined;
+  const content = isObject(message) ? message.content : undefined;
+  if (typeof content !== "string" || !content.trim()) throw new AgnesError("Agnes Chat 返回了空内容");
   return content;
 }
 
@@ -101,7 +122,7 @@ export async function* iterateAgnesDelta(res: Response): AsyncGenerator<string> 
   try {
     for (;;) {
       const { done, value } = await reader.read();
-      if (done) break;
+      if (done) throw new AgnesError("回答意外中断，请重试");
       buffer += decoder.decode(value, { stream: true });
       // SSE 事件以空行分隔
       const events = buffer.split(/\r?\n\r?\n/);
@@ -111,20 +132,26 @@ export async function* iterateAgnesDelta(res: Response): AsyncGenerator<string> 
           const trimmed = line.trim();
           if (!trimmed.startsWith("data:")) continue;
           const payload = trimmed.slice(5).trim();
-          if (!payload || payload === "[DONE]") continue;
-          try {
-            const json = JSON.parse(payload) as {
-              choices?: { delta?: { content?: string } }[];
-            };
-            const delta = json.choices?.[0]?.delta?.content;
-            if (delta) yield delta;
-          } catch {
-            // 忽略无法解析的心跳/注释行
-          }
+          if (payload === "[DONE]") return;
+          if (!payload) continue;
+          let json: unknown;
+          try { json = JSON.parse(payload); }
+          catch { throw new AgnesError("对话服务返回了无效的流式数据"); }
+          if (!isObject(json)) throw new AgnesError("对话服务返回了无效的流式结构");
+          if (json.error) throw new AgnesError("对话服务返回错误，请稍后重试");
+          if (!Array.isArray(json.choices)) throw new AgnesError("对话服务返回了无效的流式结构");
+          const choice = json.choices[0];
+          if (choice !== undefined && !isObject(choice)) throw new AgnesError("对话服务返回了无效的流式结构");
+          const deltaObject = isObject(choice) ? choice.delta : undefined;
+          if (deltaObject != null && !isObject(deltaObject)) throw new AgnesError("对话服务返回了无效的流式结构");
+          const delta = isObject(deltaObject) ? deltaObject.content : undefined;
+          if (delta != null && typeof delta !== "string") throw new AgnesError("对话服务返回了无效的文本增量");
+          if (typeof delta === "string" && delta) yield delta;
         }
       }
     }
   } finally {
+    await reader.cancel().catch(() => {});
     reader.releaseLock();
   }
 }
@@ -152,10 +179,8 @@ export async function agnesChatJSON<T>(
   const text = await agnesChat(messages, { ...opts, temperature: opts.temperature ?? 0.2 });
   try {
     return extractJson<T>(text);
-  } catch (e) {
-    throw new AgnesError(
-      `JSON 解析失败: ${e instanceof Error ? e.message : String(e)}；原始输出前 400 字: ${text.slice(0, 400)}`
-    );
+  } catch {
+    throw new AgnesError("AI 未返回有效的 JSON 方案，请重新生成");
   }
 }
 
@@ -178,7 +203,7 @@ export interface ImageResult {
   b64?: string;
 }
 
-export async function agnesImage(req: ImageRequest): Promise<ImageResult> {
+export async function agnesImage(req: ImageRequest, signal?: AbortSignal): Promise<ImageResult> {
   const extraBody: Record<string, unknown> = {};
   if (req.images?.length) extraBody.image = req.images;
   extraBody.response_format = req.returnBase64 ? "b64_json" : "url";
@@ -194,18 +219,27 @@ export async function agnesImage(req: ImageRequest): Promise<ImageResult> {
       extra_body: extraBody,
     }),
     // 图像生成可能需要数十秒
-    signal: AbortSignal.timeout(300_000),
+    signal: requestSignal(signal),
   });
   if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new AgnesError(`Agnes Image 请求失败 (${res.status}): ${text.slice(0, 300)}`);
+    await res.body?.cancel();
+    throw new AgnesError(`图像服务暂不可用（上游 ${res.status}）`);
   }
-  const data = (await res.json()) as {
-    data?: { url?: string | null; b64_json?: string | null }[];
-  };
-  const item = data.data?.[0];
-  if (!item || (!item.url && !item.b64_json)) {
+  const data = await providerJson(res);
+  const item = Array.isArray(data.data) ? data.data[0] : undefined;
+  const url = isObject(item) && typeof item.url === "string" ? item.url.trim() : "";
+  const b64 = isObject(item) && typeof item.b64_json === "string" ? item.b64_json.trim() : "";
+  if (!url && !b64) {
     throw new AgnesError("Agnes Image 未返回图像数据");
   }
-  return { url: item.url ?? undefined, b64: item.b64_json ?? undefined };
+  if (url) {
+    let parsed: URL;
+    try { parsed = new URL(url); }
+    catch { throw new AgnesError("Agnes Image 返回了无效的图像地址"); }
+    if (!["https:", "http:"].includes(parsed.protocol)) throw new AgnesError("Agnes Image 返回了不支持的图像地址协议");
+  }
+  if (b64 && (b64.length % 4 !== 0 || !/^[A-Za-z0-9+/]+={0,2}$/.test(b64))) {
+    throw new AgnesError("Agnes Image 返回了无效的 Base64 数据");
+  }
+  return { url: url || undefined, b64: b64 || undefined };
 }

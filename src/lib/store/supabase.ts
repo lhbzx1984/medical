@@ -4,7 +4,6 @@
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import type {
   ChatMode,
-  ExpertFeedback,
   GeneratedImage,
   KnowledgeEntry,
   PlanDetail,
@@ -13,7 +12,7 @@ import type {
   SimulationRun,
   SurgicalPlan,
 } from "../types";
-import { DataStore, id, NewPatient, now } from "./base";
+import { DataStore, id, NewCase, now, PlanCommitInput, PlanCommitResult, StoreAccessError, StoreConflictError } from "./base";
 
 type Row = Record<string, unknown>;
 
@@ -29,20 +28,22 @@ export class SupabaseStore implements DataStore {
     return this.sb.from(name);
   }
 
-  // ── 病人 ──
-  async createPatient(input: NewPatient): Promise<Patient> {
-    const row = {
-      id: id(),
+  async createCase(input: NewCase): Promise<{ patient: Patient; plan: SurgicalPlan }> {
+    if (!input.ownerId) throw new StoreAccessError();
+    const { data, error } = await this.sb.rpc("create_case", {
+      p_owner_id: input.ownerId,
+      p_patient: {
       name: input.name,
       gender: input.gender ?? "",
       age: input.age ?? 0,
       medical_record: input.medicalRecord ?? "",
       preliminary_plan: input.preliminaryPlan ?? "",
-      created_at: now(),
-    };
-    const { error } = await this.tbl("patients").insert(row);
-    if (error) throw new Error(`Supabase 写入 patients 失败: ${error.message}`);
-    return this.rowToPatient(row);
+      },
+      p_title: input.title ?? null,
+    });
+    if (error) throw new Error(`Supabase 创建病例失败: ${error.message}`);
+    if (!data?.patient || !data?.plan) throw new Error("Supabase 创建病例未返回完整记录");
+    return { patient: this.rowToPatient(data.patient), plan: this.rowToPlan(data.plan) };
   }
 
   private rowToPatient(r: Row): Patient {
@@ -57,49 +58,17 @@ export class SupabaseStore implements DataStore {
     };
   }
 
-  async getPatient(pid: string): Promise<Patient | null> {
+  private async getPatient(pid: string): Promise<Patient | null> {
     const { data, error } = await this.tbl("patients").select("*").eq("id", pid).maybeSingle();
     if (error) throw new Error(error.message);
     return data ? this.rowToPatient(data) : null;
-  }
-
-  async listPatients(): Promise<Patient[]> {
-    const { data, error } = await this.tbl("patients").select("*").order("created_at", { ascending: false });
-    if (error) throw new Error(error.message);
-    return (data ?? []).map((r) => this.rowToPatient(r));
-  }
-
-  // ── 手术方案 ──
-  async createPlan(input: { patientId: string; title?: string }): Promise<SurgicalPlan> {
-    const patient = await this.getPatient(input.patientId);
-    const row = {
-      id: id(),
-      patient_id: input.patientId,
-      title: input.title || `${patient?.name ?? "病例"}·手术规划`,
-      patient_name: patient?.name ?? "",
-      status: "draft",
-      current_version: 0,
-      created_at: now(),
-      updated_at: now(),
-    };
-    const { error } = await this.tbl("surgical_plans").insert(row);
-    if (error) throw new Error(`Supabase 写入 surgical_plans 失败: ${error.message}`);
-    return {
-      id: String(row.id),
-      patientId: row.patient_id,
-      title: row.title,
-      patientName: row.patient_name,
-      status: "draft",
-      currentVersion: 0,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-    };
   }
 
   private rowToPlan(r: Row): SurgicalPlan {
     return {
       id: String(r.id),
       patientId: String(r.patient_id),
+      ownerId: String(r.owner_id ?? ""),
       title: String(r.title ?? ""),
       patientName: String(r.patient_name ?? ""),
       status: (r.status as SurgicalPlan["status"]) ?? "draft",
@@ -109,29 +78,35 @@ export class SupabaseStore implements DataStore {
     };
   }
 
-  async listPlans(): Promise<SurgicalPlan[]> {
+  async listPlans(ownerId: string): Promise<SurgicalPlan[]> {
+    if (!ownerId) throw new StoreAccessError();
     const { data, error } = await this.tbl("surgical_plans")
       .select("*")
+      .eq("owner_id", ownerId)
       .order("updated_at", { ascending: false });
     if (error) throw new Error(error.message);
     return (data ?? []).map((r) => this.rowToPlan(r));
   }
 
-  async getPlanDetail(planId: string): Promise<PlanDetail | null> {
-    const { data: planRow, error } = await this.tbl("surgical_plans").select("*").eq("id", planId).maybeSingle();
+  async getPlanDetail(planId: string, ownerId: string): Promise<PlanDetail | null> {
+    if (!ownerId) throw new StoreAccessError();
+    const { data: planRow, error } = await this.tbl("surgical_plans").select("*").eq("id", planId).eq("owner_id", ownerId).maybeSingle();
     if (error) throw new Error(error.message);
     if (!planRow) return null;
     const patient = await this.getPatient(String(planRow.patient_id));
     if (!patient) return null;
     const [versions, feedbacks, simulations] = await Promise.all([
-      this.tbl("plan_versions").select("*").eq("plan_id", planId).order("version").then((r) => r.data ?? []),
-      this.tbl("plan_feedback").select("*").eq("plan_id", planId).order("created_at").then((r) => r.data ?? []),
-      this.tbl("simulations").select("*").eq("plan_id", planId).order("version").then((r) => r.data ?? []),
+      this.tbl("plan_versions").select("*").eq("plan_id", planId).order("version"),
+      this.tbl("plan_feedback").select("*").eq("plan_id", planId).order("created_at"),
+      this.tbl("simulations").select("*").eq("plan_id", planId).order("version"),
     ]);
+    for (const [name, result] of [["plan_versions", versions], ["plan_feedback", feedbacks], ["simulations", simulations]] as const) {
+      if (result.error) throw new Error(`Supabase 查询 ${name} 失败: ${result.error.message}`);
+    }
     return {
       plan: this.rowToPlan(planRow),
       patient,
-      versions: (versions as Row[]).map((r) => ({
+      versions: ((versions.data ?? []) as Row[]).map((r) => ({
         id: String(r.id),
         planId: String(r.plan_id),
         version: Number(r.version),
@@ -141,7 +116,7 @@ export class SupabaseStore implements DataStore {
         knowledgeUsed: (r.knowledge_used as string[]) ?? [],
         createdAt: String(r.created_at ?? ""),
       })),
-      feedbacks: (feedbacks as Row[]).map((r) => ({
+      feedbacks: ((feedbacks.data ?? []) as Row[]).map((r) => ({
         id: String(r.id),
         planId: String(r.plan_id),
         version: Number(r.version),
@@ -149,7 +124,7 @@ export class SupabaseStore implements DataStore {
         comment: String(r.comment ?? ""),
         createdAt: String(r.created_at ?? ""),
       })),
-      simulations: (simulations as Row[]).map((r) => ({
+      simulations: ((simulations.data ?? []) as Row[]).map((r) => ({
         id: String(r.id),
         planId: String(r.plan_id),
         version: Number(r.version),
@@ -161,78 +136,52 @@ export class SupabaseStore implements DataStore {
     };
   }
 
-  async addPlanVersion(v: Omit<PlanVersion, "id" | "createdAt">): Promise<PlanVersion> {
-    const row = {
-      id: id(),
-      plan_id: v.planId,
-      version: v.version,
-      content: v.content,
-      changelog: v.changelog,
-      source: v.source,
-      knowledge_used: v.knowledgeUsed,
-      created_at: now(),
-    };
-    const { error } = await this.tbl("plan_versions").insert(row);
-    if (error) throw new Error(`Supabase 写入 plan_versions 失败: ${error.message}`);
-    const status = v.source === "expert_refine" ? "refined" : "simulated";
-    await this.updatePlanStatus(v.planId, { currentVersion: v.version, status });
+  async commitPlan(input: PlanCommitInput): Promise<PlanCommitResult> {
+    if (!input.ownerId) throw new StoreAccessError();
+    const { data, error } = await this.sb.rpc("commit_plan", {
+      p_plan_id: input.planId,
+      p_owner_id: input.ownerId,
+      p_expected_version: input.expectedVersion,
+      p_content: input.content,
+      p_changelog: input.changelog,
+      p_source: input.source,
+      p_knowledge_used: input.knowledgeUsed,
+      p_simulation: input.simulation,
+      p_feedback: input.feedback ?? null,
+    });
+    if (error?.code === "40001" || error?.code === "23505") throw new StoreConflictError();
+    if (error?.code === "42501") throw new StoreAccessError();
+    if (error) throw new Error(`Supabase 保存方案失败: ${error.message}`);
+    if (!data?.version || !data?.simulation) throw new Error("Supabase 保存方案未返回完整记录");
+    const v = data.version, s = data.simulation, f = data.feedback;
     return {
-      id: row.id,
-      planId: v.planId,
-      version: v.version,
-      content: v.content,
-      changelog: v.changelog,
-      source: v.source,
-      knowledgeUsed: v.knowledgeUsed,
-      createdAt: row.created_at,
+      version: {id: v.id, planId: v.plan_id, version: v.version, content: v.content,
+        changelog: v.changelog, source: v.source, knowledgeUsed: v.knowledge_used, createdAt: v.created_at},
+      simulation: {id: s.id, planId: s.plan_id, version: s.version, focusOrgan: s.focus_organ,
+        region: s.region, steps: s.steps, createdAt: s.created_at},
+      ...(f ? {feedback: {id: f.id, planId: f.plan_id, version: f.version,
+        expertName: f.expert_name, comment: f.comment, createdAt: f.created_at}} : {}),
     };
   }
 
-  async addFeedback(f: Omit<ExpertFeedback, "id" | "createdAt">): Promise<ExpertFeedback> {
-    const row = {
-      id: id(),
-      plan_id: f.planId,
-      version: f.version,
-      expert_name: f.expertName,
-      comment: f.comment,
-      created_at: now(),
-    };
-    const { error } = await this.tbl("plan_feedback").insert(row);
-    if (error) throw new Error(`Supabase 写入 plan_feedback 失败: ${error.message}`);
-    return { ...f, id: row.id, createdAt: row.created_at };
-  }
-
-  async addSimulation(s: Omit<SimulationRun, "id" | "createdAt">): Promise<SimulationRun> {
-    const row = {
-      id: id(),
-      plan_id: s.planId,
-      version: s.version,
-      focus_organ: s.focusOrgan,
-      region: s.region,
-      steps: s.steps,
-      created_at: now(),
-    };
-    const { error } = await this.tbl("simulations").insert(row);
-    if (error) throw new Error(`Supabase 写入 simulations 失败: ${error.message}`);
-    return { ...s, id: row.id, createdAt: row.created_at };
-  }
-
-  async updatePlanStatus(
-    planId: string,
-    patch: Partial<Pick<SurgicalPlan, "status" | "currentVersion" | "title">>
-  ): Promise<void> {
-    const upd: Row = { updated_at: now() };
-    if (patch.status) upd.status = patch.status;
-    if (patch.currentVersion !== undefined) upd.current_version = patch.currentVersion;
-    if (patch.title) upd.title = patch.title;
-    const { error } = await this.tbl("surgical_plans").update(upd).eq("id", planId);
-    if (error) throw new Error(`Supabase 更新 surgical_plans 失败: ${error.message}`);
+  async consumeRateLimit(ownerId: string, action: string, limit: number, windowSeconds: number): Promise<boolean> {
+    if (!ownerId) throw new StoreAccessError();
+    const {data, error} = await this.sb.rpc("consume_rate_limit", {
+      p_owner_id: ownerId, p_action: action, p_limit: limit, p_window_seconds: windowSeconds,
+    });
+    if (error) throw new Error(`Supabase 限流检查失败: ${error.message}`);
+    if (typeof data !== "boolean") throw new Error("Supabase 限流检查未返回有效结果");
+    return data;
   }
 
   // ── 知识库 ──
   async listKnowledge(q?: string): Promise<KnowledgeEntry[]> {
     let query = this.tbl("knowledge_entries").select("*").order("created_at", { ascending: true });
-    if (q) query = query.or(`title.ilike.%${q}%,content.ilike.%${q}%`);
+    if (q) {
+      // Escape LIKE first, then the quoted PostgREST value so punctuation stays search text.
+      const literal = q.replace(/[\\%_]/g, "\\$&").replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+      query = query.or(`title.ilike."%${literal}%",content.ilike."%${literal}%"`);
+    }
     const { data, error } = await query;
     if (error) throw new Error(error.message);
     return (data ?? []).map((r: Row) => ({
@@ -260,29 +209,26 @@ export class SupabaseStore implements DataStore {
   }
 
   // ── 对话 ──
-  async ensureChatSession(sessionId: string, mode: ChatMode, title: string): Promise<void> {
-    const { error } = await this.tbl("chat_sessions").upsert({
-      id: sessionId,
-      mode,
-      title,
-      created_at: now(),
+  async ensureChatSession(sessionId: string, mode: ChatMode, title: string, ownerId: string): Promise<void> {
+    if (!ownerId) throw new StoreAccessError();
+    const { error } = await this.sb.rpc("ensure_chat_session", {
+      p_session_id: sessionId, p_mode: mode, p_title: title, p_owner_id: ownerId,
     });
+    if (error?.code === "42501") throw new StoreAccessError();
     if (error) throw new Error(`Supabase 写入 chat_sessions 失败: ${error.message}`);
   }
 
   async addChatMessages(
     sessionId: string,
-    msgs: { role: "user" | "assistant"; content: string }[]
+    msgs: { role: "user" | "assistant"; content: string }[],
+    ownerId: string
   ): Promise<void> {
+    if (!ownerId) throw new StoreAccessError();
     if (!msgs.length) return;
-    const rows = msgs.map((m) => ({
-      id: id(),
-      session_id: sessionId,
-      role: m.role,
-      content: m.content,
-      created_at: now(),
-    }));
-    const { error } = await this.tbl("chat_messages").insert(rows);
+    const { error } = await this.sb.rpc("append_chat_messages", {
+      p_session_id: sessionId, p_owner_id: ownerId, p_messages: msgs,
+    });
+    if (error?.code === "42501") throw new StoreAccessError();
     if (error) throw new Error(`Supabase 写入 chat_messages 失败: ${error.message}`);
   }
 
@@ -292,6 +238,7 @@ export class SupabaseStore implements DataStore {
       prompt: g.prompt,
       url: g.url,
       organ_id: g.organId ?? null,
+      owner_id: g.ownerId,
       created_at: now(),
     };
     const { error } = await this.tbl("generated_images").insert(row);

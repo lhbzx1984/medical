@@ -1,6 +1,6 @@
 // ─── 领域模型 ────────────────────────────────────────────────────────────────
 
-/** 可用 3D 器官模型（GLB 来自 thebuggeddev/anatomy；uterus 为程序化女性器官） */
+/** 可用 3D 器官模型（GLB 来自 thebuggeddev/anatomy；stomach 由 BodyParts3D 图谱网格转换；uterus 为程序化女性器官） */
 export type OrganId =
   | "brain"
   | "eyeball"
@@ -10,6 +10,7 @@ export type OrganId =
   | "pancreas"
   | "kidneys"
   | "intestine"
+  | "stomach"
   | "skin"
   | "uterus";
 
@@ -22,7 +23,9 @@ export const ORGAN_IDS: OrganId[] = [
   "pancreas",
   "kidneys",
   "intestine",
+  "stomach",
   "skin",
+  "uterus",
 ];
 
 export interface Patient {
@@ -65,7 +68,7 @@ export interface StructuredPlan {
   steps: SurgicalStep[];
   risks: PlanRisk[];
   postop: string[];
-  /** 模拟聚焦的 3D 器官（须为 ORGAN_IDS 之一，由生成流程校验回退） */
+  /** 模拟聚焦的 3D 器官（须为 ORGAN_IDS 之一，由生成流程校验） */
   focusOrgan: string;
   /** 手术区域，如 腹腔 / 胸腔 / 颅脑 */
   region: string;
@@ -96,6 +99,7 @@ export interface ExpertFeedback {
 
 export interface SurgicalPlan {
   id: string;
+  ownerId: string;
   patientId: string;
   title: string;
   patientName: string;
@@ -159,6 +163,8 @@ export interface ChatMsg {
 }
 
 export interface ChatContext {
+  planId?: string;
+  planVersion?: number;
   /** 学习模式：当前聚焦的器官 */
   organId?: string;
   organName?: string;
@@ -169,6 +175,7 @@ export interface ChatContext {
 
 export interface GeneratedImage {
   id: string;
+  ownerId: string;
   prompt: string;
   url: string;
   organId?: string;

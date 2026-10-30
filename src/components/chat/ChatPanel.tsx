@@ -30,21 +30,19 @@ export default function ChatPanel({
   const [streaming, setStreaming] = useState(false);
   const [genImage, setGenImage] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
-  const sessionIdRef = useRef<string>("");
+  const [sessionId, setSessionId] = useState(() => crypto.randomUUID());
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  if (!sessionIdRef.current && typeof crypto !== "undefined") {
-    sessionIdRef.current = crypto.randomUUID();
-  }
+  useEffect(() => () => abortRef.current?.abort(), []);
 
-  // 切换上下文时给出一条本地提示（不发送）
+  // 流式增量更新时跟随最新消息。
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  }, [msgs.length, streaming]);
+  }, [msgs, streaming]);
 
   const send = async (text: string) => {
     const content = text.trim();
-    if (!content || streaming) return;
+    if (!content || streaming || genImage || abortRef.current) return;
     const history: Msg[] = [...msgs, { role: "user", content }];
     setMsgs([...history, { role: "assistant", content: "" }]);
     setInput("");
@@ -52,15 +50,19 @@ export default function ChatPanel({
     const controller = new AbortController();
     abortRef.current = controller;
     try {
+      const payload = {
+        mode, sessionId, context,
+        messages: history.filter((m) => !m.error && m.content.trim()).slice(-24)
+          .map(({ role, content: c }) => ({ role, content: c.slice(0, 12000) })),
+      };
+      // Keep the newest question while staying below the server's request byte limit.
+      while (payload.messages.length > 1 && new TextEncoder().encode(JSON.stringify(payload)).byteLength > 120 * 1024) {
+        payload.messages.shift();
+      }
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          mode,
-          sessionId: sessionIdRef.current,
-          context,
-          messages: history.map(({ role, content: c }) => ({ role, content: c })),
-        }),
+        body: JSON.stringify(payload),
         signal: controller.signal,
       });
       if (!res.ok || !res.body) {
@@ -71,21 +73,28 @@ export default function ChatPanel({
       const decoder = new TextDecoder();
       let buffer = "";
       let acc = "";
-      for (;;) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const events = buffer.split("\n\n");
-        buffer = events.pop() ?? "";
-        for (const evt of events) {
-          const line = evt.trim();
-          if (!line.startsWith("data:")) continue;
-          try {
-            const payload = JSON.parse(line.slice(5).trim()) as {
+      let completed = false;
+      try {
+        for (;;) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const events = buffer.split(/\r?\n\r?\n/);
+          buffer = events.pop() ?? "";
+          for (const evt of events) {
+            const line = evt.trim();
+            if (!line.startsWith("data:")) continue;
+            let payload: {
               delta?: string;
               done?: boolean;
               error?: string;
             };
+            try {
+              payload = JSON.parse(line.slice(5).trim());
+            } catch {
+              continue;
+            }
+            if (payload.error) throw new Error(payload.error);
             if (payload.delta) {
               acc += payload.delta;
               setMsgs((prev) => {
@@ -94,21 +103,12 @@ export default function ChatPanel({
                 return next;
               });
             }
-            if (payload.error) {
-              setMsgs((prev) => {
-                const next = [...prev];
-                next[next.length - 1] = {
-                  role: "assistant",
-                  content: `⚠️ ${payload.error}`,
-                  error: true,
-                };
-                return next;
-              });
-            }
-          } catch {
-            /* 忽略心跳 */
+            if (payload.done) completed = true;
           }
         }
+        if (!completed) throw new Error("回答意外中断，请重试");
+      } finally {
+        reader.releaseLock();
       }
     } catch (e) {
       const msg =
@@ -118,9 +118,7 @@ export default function ChatPanel({
       setMsgs((prev) => {
         const next = [...prev];
         const last = next[next.length - 1];
-        next[next.length - 1] = last?.content
-          ? last
-          : { role: "assistant", content: msg, error: true };
+        next[next.length - 1] = { role: "assistant", content: last?.content ? `${last.content}\n\n${msg}` : msg, error: true };
         return next;
       });
     } finally {
@@ -130,7 +128,9 @@ export default function ChatPanel({
   };
 
   const generateIllustration = async () => {
-    if (genImage || streaming) return;
+    if (genImage || streaming || abortRef.current) return;
+    const controller = new AbortController();
+    abortRef.current = controller;
     const organ = context?.organId
       ? ORGANS[matchOrgan(context.organId)]
       : undefined;
@@ -156,6 +156,7 @@ export default function ChatPanel({
           size: "1K",
           ratio: "4:3",
         }),
+        signal: controller.signal,
       });
       const data = (await res.json()) as { url?: string; error?: string };
       if (!res.ok || !data.url) throw new Error(data.error ?? "生成失败");
@@ -169,13 +170,15 @@ export default function ChatPanel({
         const next = [...prev];
         next[next.length - 1] = {
           role: "assistant",
-          content: `⚠️ 插图生成失败：${e instanceof Error ? e.message : String(e)}`,
+          content: e instanceof Error && e.name === "AbortError" ? "（已停止生成）"
+            : `⚠️ 插图生成失败：${e instanceof Error ? e.message : String(e)}`,
           error: true,
         };
         return next;
       });
     } finally {
       setGenImage(false);
+      abortRef.current = null;
     }
   };
 
@@ -215,8 +218,12 @@ export default function ChatPanel({
           <button
             className="btn !px-2.5 !py-1 !text-[11.5px]"
             onClick={() => {
-              if (!streaming) setMsgs([]);
+              if (!streaming && !genImage) {
+                setMsgs([]);
+                setSessionId(crypto.randomUUID());
+              }
             }}
+            disabled={streaming || genImage}
             title="清空对话"
           >
             清空
@@ -285,7 +292,7 @@ export default function ChatPanel({
             </div>
           </div>
         ))}
-        {streaming && (
+        {(streaming || genImage) && (
           <div className="flex items-center gap-1.5 pl-1 text-[11.5px] text-[var(--muted)]">
             <span className="rec-dot text-[var(--accent)]">●</span> 智能体思考中…
             <button className="ml-1 underline hover:text-[var(--heading)]" onClick={() => abortRef.current?.abort()}>
@@ -316,7 +323,7 @@ export default function ChatPanel({
           <button
             className="btn btn-primary !px-3.5 !py-2"
             onClick={() => send(input)}
-            disabled={streaming || !input.trim()}
+            disabled={streaming || genImage || !input.trim()}
           >
             发送
           </button>

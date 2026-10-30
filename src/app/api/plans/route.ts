@@ -1,42 +1,34 @@
 // 病例（病人 + 初步方案）与手术规划列表。
 import { NextRequest } from "next/server";
 import { getStore } from "@/lib/store";
+import { requireActor } from "@/lib/auth";
+import { readJson, textField, integerField, enumField } from "@/lib/validation";
+import { apiError, limitAction } from "@/lib/http";
 
 
-export async function GET() {
-  const store = getStore();
-  const plans = await store.listPlans();
-  return Response.json({ plans, store: store.kind });
+export async function GET(req: Request) {
+  try {
+    const actor = await requireActor(req);
+    const store = getStore();
+    return Response.json({ plans: await store.listPlans(actor.id), store: store.kind });
+  } catch (error) { return apiError(error); }
 }
 
 export async function POST(req: NextRequest) {
-  let body: {
-    patientName?: string;
-    gender?: string;
-    age?: number;
-    medicalRecord?: string;
-    preliminaryPlan?: string;
-    title?: string;
-  };
   try {
-    body = await req.json();
-  } catch {
-    return Response.json({ error: "请求体不是合法 JSON" }, { status: 400 });
-  }
-  if (!body.patientName?.trim()) {
-    return Response.json({ error: "患者姓名不能为空" }, { status: 400 });
-  }
-  const store = getStore();
-  const patient = await store.createPatient({
-    name: body.patientName.trim(),
-    gender: body.gender,
-    age: body.age,
-    medicalRecord: body.medicalRecord,
-    preliminaryPlan: body.preliminaryPlan,
-  });
-  const plan = await store.createPlan({
-    patientId: patient.id,
-    title: body.title,
-  });
-  return Response.json({ patient, plan }, { status: 201 });
+    const actor = await requireActor(req);
+    const body = await readJson(req);
+    const input = {
+      ownerId: actor.id,
+      name: textField(body, "patientName", 100),
+      gender: enumField(body.gender ?? "", ["", "男", "女"], "gender"),
+      age: integerField(body.age ?? 0, 0, 130, "age"),
+      medicalRecord: textField(body, "medicalRecord", 20000),
+      preliminaryPlan: textField(body, "preliminaryPlan", 10000, true),
+      title: textField(body, "title", 200, true),
+    };
+    const store = getStore();
+    await limitAction(store, actor.id, "case-create", 10);
+    return Response.json(await store.createCase(input), { status: 201 });
+  } catch (error) { return apiError(error); }
 }

@@ -10,6 +10,8 @@ import type {
   PlanVersion,
   Patient,
   SimulationRun,
+  SimulationStep,
+  StructuredPlan,
   SurgicalPlan,
 } from "../types";
 
@@ -21,35 +23,62 @@ export interface NewPatient {
   preliminaryPlan?: string;
 }
 
+export interface NewCase extends NewPatient {
+  ownerId: string;
+  title?: string;
+}
+
+export interface PlanCommitInput {
+  planId: string;
+  ownerId: string;
+  expectedVersion: number;
+  content: StructuredPlan;
+  changelog: string;
+  source: "ai" | "expert_refine";
+  knowledgeUsed: string[];
+  simulation: { focusOrgan: string; region: string; steps: SimulationStep[] };
+  feedback?: { expertName: string; comment: string };
+}
+
+export interface PlanCommitResult {
+  version: PlanVersion;
+  simulation: SimulationRun;
+  feedback?: ExpertFeedback;
+}
+
+export class StoreConflictError extends Error {
+  constructor(message = "方案已被更新，请重新加载后再试") {
+    super(message);
+    this.name = "StoreConflictError";
+  }
+}
+
+export class StoreAccessError extends Error {
+  constructor(message = "无权访问该记录") {
+    super(message);
+    this.name = "StoreAccessError";
+  }
+}
+
 export interface DataStore {
   readonly kind: "supabase" | "memory";
 
-  // 病人
-  createPatient(input: NewPatient): Promise<Patient>;
-  getPatient(id: string): Promise<Patient | null>;
-  listPatients(): Promise<Patient[]>;
-
-  // 手术方案
-  createPlan(input: { patientId: string; title?: string }): Promise<SurgicalPlan>;
-  listPlans(): Promise<SurgicalPlan[]>;
-  getPlanDetail(planId: string): Promise<PlanDetail | null>;
-  addPlanVersion(v: Omit<PlanVersion, "id" | "createdAt">): Promise<PlanVersion>;
-  addFeedback(f: Omit<ExpertFeedback, "id" | "createdAt">): Promise<ExpertFeedback>;
-  addSimulation(s: Omit<SimulationRun, "id" | "createdAt">): Promise<SimulationRun>;
-  updatePlanStatus(
-    planId: string,
-    patch: Partial<Pick<SurgicalPlan, "status" | "currentVersion" | "title">>
-  ): Promise<void>;
+  createCase(input: NewCase): Promise<{ patient: Patient; plan: SurgicalPlan }>;
+  listPlans(ownerId: string): Promise<SurgicalPlan[]>;
+  getPlanDetail(planId: string, ownerId: string): Promise<PlanDetail | null>;
+  commitPlan(input: PlanCommitInput): Promise<PlanCommitResult>;
+  consumeRateLimit(ownerId: string, action: string, limit: number, windowSeconds: number): Promise<boolean>;
 
   // 手术知识库
   listKnowledge(q?: string): Promise<KnowledgeEntry[]>;
   addKnowledge(e: Omit<KnowledgeEntry, "id" | "createdAt">): Promise<KnowledgeEntry>;
 
   // 对话
-  ensureChatSession(sessionId: string, mode: ChatMode, title: string): Promise<void>;
+  ensureChatSession(sessionId: string, mode: ChatMode, title: string, ownerId: string): Promise<void>;
   addChatMessages(
     sessionId: string,
-    msgs: { role: "user" | "assistant"; content: string }[]
+    msgs: { role: "user" | "assistant"; content: string }[],
+    ownerId: string
   ): Promise<void>;
 
   // AI 生成图像记录
@@ -57,7 +86,7 @@ export interface DataStore {
 }
 
 export function id(): string {
-  return globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2);
+  return globalThis.crypto.randomUUID();
 }
 
 export function now(): string {

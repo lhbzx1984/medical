@@ -2,6 +2,7 @@
 // 所有面向 Agnes(agnes-2.5-flash) 的规划类 system prompt 集中在此维护。
 import type { ExpertFeedback, PlanVersion, Patient, SimulationStep } from "./types";
 import { ORGAN_IDS } from "./types";
+import { enumField, integerField, object, stringList, textField, ValidationError } from "./validation";
 
 const ORGAN_ENUM = ORGAN_IDS.join(" | ");
 
@@ -63,7 +64,7 @@ export function planRefineSystem(): string {
 export function planRefineUser(
   p: Patient,
   version: PlanVersion,
-  feedback: ExpertFeedback,
+  feedback: Pick<ExpertFeedback, "expertName" | "comment" | "version">,
   knowledge: { title: string; content: string }[]
 ): string {
   return [
@@ -124,22 +125,21 @@ const KNOWN_ACTIONS = [
 
 /** 归一化 LLM 生成的模拟步骤：补齐器械与动作类型（缺失时按步骤名推断） */
 export function normalizeSimSteps(rawSteps: unknown): SimulationStep[] {
-  const arr = Array.isArray(rawSteps) ? (rawSteps as Record<string, unknown>[]).slice(0, 12) : [];
-  return arr.map((s, i) => {
-    const inf = inferInstruments(String(s?.name ?? ""));
-    const actionRaw = String(s?.action ?? "");
-    const action = (KNOWN_ACTIONS as string[]).includes(actionRaw) ? actionRaw : inf.action;
-    const instruments = Array.isArray(s?.instruments) && s.instruments.length
-      ? (s.instruments as unknown[]).slice(0, 3).map(String)
-      : inf.instruments;
+  if (!Array.isArray(rawSteps) || !rawSteps.length || rawSteps.length > 12) {
+    throw new ValidationError("模拟必须包含 1 到 12 个完整步骤");
+  }
+  return rawSteps.map((value, i) => {
+    const s = object(value);
+    const name = textField(s, "name", 300);
+    const inf = inferInstruments(name);
     return {
       index: i + 1,
-      name: String(s?.name ?? `阶段${i + 1}`),
-      narration: String(s?.narration ?? ""),
-      view: s?.view === "overview" ? ("overview" as const) : ("organ" as const),
-      durationSec: Math.min(20, Math.max(6, Number(s?.durationSec) || 10)),
-      instruments,
-      action,
+      name,
+      narration: textField(s, "narration", 6000),
+      view: enumField(s.view, ["overview", "organ"], "view") as "overview" | "organ",
+      durationSec: integerField(s.durationSec, 6, 20, "durationSec"),
+      instruments: s.instruments === undefined ? inf.instruments : stringList(s.instruments, "instruments", 3, 100),
+      action: s.action === undefined ? inf.action : enumField(s.action, KNOWN_ACTIONS, "action"),
     };
   });
 }

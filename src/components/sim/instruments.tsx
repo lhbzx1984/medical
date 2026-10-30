@@ -190,19 +190,18 @@ interface RigProps {
   scale: number;
   /** 步骤内进度 0-1（由父级 useFrame 维护的 ref） */
   progressRef: React.MutableRefObject<number>;
-  seed: string;
 }
 
-export function InstrumentRig({ ids, action, focus, scale, progressRef, seed }: RigProps) {
+export function InstrumentRig({ ids, action, focus, scale, progressRef }: RigProps) {
   const groups = useRef<THREE.Group[]>([]);
   const built = useMemo(
     () => ids.map((id) => (BUILDERS[id]?.() ?? new THREE.Group())),
-    [ids.join("|"), seed]
+    [ids]
   );
 
-  useFrame((state) => {
+  useFrame(() => {
     const p = progressRef.current;
-    const t = state.clock.elapsedTime;
+    const t = p * 10;
     built.forEach((g, i) => {
       const root = groups.current[i];
       if (!root) return;

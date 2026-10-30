@@ -11,6 +11,7 @@ import { ContactShadows, Grid, Html, OrbitControls } from "@react-three/drei";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import * as THREE from "three";
 import { ORGANS, matchOrgan } from "@/lib/organ-models";
+import { normalizeSimSteps } from "@/lib/planning-prompt";
 import type { SimulationRun } from "@/lib/types";
 import { BodyOverviewScene } from "./BodyOverviewScene";
 import { OrganModel } from "./OrganModel";
@@ -31,6 +32,24 @@ interface CameraGoal {
   pos: THREE.Vector3;
   target: THREE.Vector3;
   key: string;
+}
+
+/** 动画和切步共用这一计时，暂停只保留已播放的时间。 */
+export function advancePlayback(
+  state: { elapsedSec: number; started: boolean },
+  deltaSec: number,
+  playing: boolean,
+  durationSec: number
+) {
+  const duration = Math.max(3, durationSec);
+  const elapsedSec = playing ? Math.min(duration, state.elapsedSec + Math.max(0, deltaSec)) : state.elapsedSec;
+  const started = state.started || playing;
+  return {
+    elapsedSec,
+    started,
+    progress: started ? Math.min(1, elapsedSec / duration) : 0.45,
+    completed: playing && state.elapsedSec < duration && elapsedSec >= duration,
+  };
 }
 
 function goalForStep(sim: SimulationRun | null, stepIndex: number): CameraGoal {
@@ -59,11 +78,10 @@ function CameraRig({ goal }: { goal: CameraGoal }) {
   const controls = useThree((s) => s.controls) as OrbitControlsImpl | null;
   const animRef = useRef(false);
   const goalRef = useRef(goal);
-  goalRef.current = goal;
-
   useEffect(() => {
+    goalRef.current = goal;
     animRef.current = true;
-  }, [goal.key]);
+  }, [goal]);
 
   useEffect(() => {
     if (!controls) return;
@@ -107,11 +125,13 @@ function StageContent({
   sim,
   stepIndex,
   playing,
+  onComplete,
   sex = "male",
 }: {
   sim: SimulationRun;
   stepIndex: number;
   playing: boolean;
+  onComplete: () => void;
   sex?: "male" | "female";
 }) {
   const step = sim.steps[stepIndex];
@@ -119,28 +139,30 @@ function StageContent({
   const focusId = matchOrgan(sim.focusOrgan);
   const organ = ORGANS[focusId];
   const overviewView = view === "overview";
+  const cameraGoal = useMemo(() => goalForStep(sim, stepIndex), [sim, stepIndex]);
 
   // 步骤内进度（驱动器械动画）；切换步骤时清零
-  const progressRef = useRef(0);
+  const progressRef = useRef(0.45);
+  const playbackRef = useRef({ elapsedSec: 0, started: false });
   useEffect(() => {
-    progressRef.current = 0;
-  }, [stepIndex]);
-  useFrame((_, dt) => {
-    if (playing && progressRef.current < 1) {
-      // 播放中：按步骤时长推进 进入→操作→退出
-      progressRef.current = Math.min(
-        1,
-        progressRef.current + dt / Math.max(3, step?.durationSec ?? 10)
-      );
-    } else if (!playing && progressRef.current < 0.02) {
-      // 手动浏览（未播放）：停在操作阶段中段，器械与定位环静态可见
-      progressRef.current += (0.45 - progressRef.current) * Math.min(1, dt * 2.5);
+    playbackRef.current = { elapsedSec: 0, started: false };
+    progressRef.current = 0.45;
+  }, [sim.id, stepIndex]);
+  useEffect(() => {
+    if (playing && playbackRef.current.elapsedSec >= Math.max(3, step?.durationSec ?? 10)) {
+      playbackRef.current = { elapsedSec: 0, started: false };
     }
+  }, [playing, step?.durationSec]);
+  useFrame((_, dt) => {
+    const next = advancePlayback(playbackRef.current, dt, playing, step?.durationSec ?? 10);
+    playbackRef.current = next;
+    progressRef.current = next.progress;
+    if (next.completed) onComplete();
   });
 
   const ids = useMemo(
     () => instrumentIds(step?.instruments ?? []),
-    [step?.instruments?.join("|")]
+    [step?.instruments]
   );
   const showRig = ids.length > 0 && step?.action !== "position" && step?.action !== "none";
   // 器官特写时焦点在器官朝向相机的一侧，避免器械没入器官体内
@@ -150,7 +172,7 @@ function StageContent({
 
   return (
     <>
-      <CameraRig goal={goalForStep(sim, stepIndex)} />
+      <CameraRig goal={cameraGoal} />
       <OrbitControls
         makeDefault
         enablePan={false}
@@ -196,7 +218,6 @@ function StageContent({
             focus={focusPos}
             scale={overviewView ? 0.16 : 0.55}
             progressRef={progressRef}
-            seed={`${stepIndex}-${ids.join("|")}`}
           />
         </Suspense>
       )}
@@ -238,21 +259,20 @@ export default function SimulationStage({
   onPlaying,
   sex = "male",
 }: SimulationStageProps) {
+  const completedRef = useRef(false);
+  useEffect(() => { completedRef.current = false; }, [simulation?.id, stepIndex]);
   const steps = simulation?.steps ?? [];
+  try {
+    if (simulation) {
+      if (typeof simulation.focusOrgan !== "string" || !Array.isArray(simulation.steps)) throw new Error("模拟元数据无效");
+      if (steps.length) normalizeSimSteps(steps);
+    }
+  } catch {
+    return <div role="alert" className="panel p-4 text-[var(--warn)]">该历史模拟脚本格式不完整，暂时无法播放。请重新生成方案，原有记录会保留。</div>;
+  }
   const step = steps[stepIndex];
   const focusId = matchOrgan(simulation?.focusOrgan ?? "skin");
   const organ = ORGANS[focusId];
-
-  // 播放计时：按每步 durationSec 自动推进
-  useEffect(() => {
-    if (!playing || !simulation) return;
-    const dur = (step?.durationSec ?? 8) * 1000;
-    const timer = setTimeout(() => {
-      if (stepIndex + 1 < steps.length) onStepIndex(stepIndex + 1);
-      else onPlaying(false);
-    }, dur);
-    return () => clearTimeout(timer);
-  }, [playing, stepIndex, simulation, step, steps.length, onStepIndex, onPlaying]);
 
   if (!simulation || !steps.length) {
     return (
@@ -272,7 +292,16 @@ export default function SimulationStage({
           gl={{ antialias: true, alpha: true }}
         >
           <Suspense fallback={<LoadingHint />}>
-            <StageContent sim={simulation} stepIndex={stepIndex} playing={playing} sex={sex} />
+            <StageContent
+              sim={simulation} stepIndex={stepIndex} playing={playing} sex={sex}
+              onComplete={() => {
+                if (stepIndex + 1 < steps.length) onStepIndex(stepIndex + 1);
+                else {
+                  completedRef.current = true;
+                  onPlaying(false);
+                }
+              }}
+            />
           </Suspense>
         </Canvas>
 
@@ -314,7 +343,7 @@ export default function SimulationStage({
             <button
               className="btn btn-primary !px-4"
               onClick={() => {
-                if (stepIndex === steps.length - 1 && !playing) onStepIndex(0);
+                if (completedRef.current && !playing) onStepIndex(0);
                 onPlaying(!playing);
               }}
             >

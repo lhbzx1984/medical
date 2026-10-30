@@ -14,10 +14,10 @@ import {
   ATLAS_SYSTEMS,
   FEMALE_HIDDEN_RE,
   SYSTEM_COLOR,
-  SYSTEM_ZH,
   AtlasJson,
   BuiltChunk,
   buildChunkGeometry,
+  createAtlasRaycast,
   explodeOffset,
   loadAtlasJson,
   loadChunkBuffer,
@@ -36,6 +36,35 @@ export interface StructureInfo {
   systemDesc: string;
   conceptId: string;
   sizeMm: [number, number, number];
+}
+
+function writeOffsets(data: Float32Array, texture: THREE.DataTexture, json: AtlasJson) {
+  json.parts.forEach((part, gi) => {
+    const off = explodeOffset(part);
+    data.set([...off, Math.max(0, ATLAS_SYSTEMS.findIndex((s) => s.id === part.system)) / 14], gi * 4);
+  });
+  texture.needsUpdate = true;
+}
+
+function writeStates(
+  data: Float32Array, texture: THREE.DataTexture, json: AtlasJson,
+  systems: Set<string>, sex: "male" | "female", selected: number | null, hits: number[] | null
+) {
+  const hitSet = hits ? new Set(hits) : null;
+  json.parts.forEach((part, gi) => {
+    const hidden = sex === "female" && (part.system === "reproductive" || FEMALE_HIDDEN_RE.test(part.name));
+    data.set([
+      systems.has(part.system) && !hidden ? 1 : 0,
+      selected === gi ? 1 : hitSet?.has(gi) ? 0.62 : 0,
+      hitSet && !hitSet.has(gi) && selected !== gi ? 0.82 : 0,
+      part.system === "integumentary" ? 0.14 : 1,
+    ], gi * 4);
+  });
+  texture.needsUpdate = true;
+}
+
+function setExplodeAmount(material: THREE.ShaderMaterial, value: number) {
+  material.uniforms.uExplode.value = value;
 }
 
 interface Props {
@@ -132,11 +161,10 @@ function FocusRig({ goal, resetKey }: { goal: FocusGoal | null; resetKey: number
   const controls = useThree((s) => s.controls) as OrbitControlsImpl | null;
   const animRef = useRef(false);
   const goalRef = useRef<FocusGoal | null>(goal);
-  goalRef.current = goal;
-
   useEffect(() => {
+    goalRef.current = goal;
     animRef.current = true;
-  }, [goal?.key, resetKey]);
+  }, [goal, resetKey]);
 
   useEffect(() => {
     if (!controls) return;
@@ -160,7 +188,7 @@ function FocusRig({ goal, resetKey }: { goal: FocusGoal | null; resetKey: number
 }
 
 export default function AtlasViewer({ onSelectStructure, sex = "male" }: Props) {
-  const [chunks, setChunks] = useState<(BuiltChunk & { geo: THREE.BufferGeometry })[]>([]);
+  const [chunks, setChunks] = useState<(BuiltChunk & { geo: THREE.BufferGeometry; raycast: THREE.Mesh["raycast"] })[]>([]);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
@@ -174,29 +202,22 @@ export default function AtlasViewer({ onSelectStructure, sex = "male" }: Props) 
   const [focusGoal, setFocusGoal] = useState<FocusGoal | null>(null);
   const [femaleSel, setFemaleSel] = useState(false);
   const [resetKey, setResetKey] = useState(0);
+  const [retryKey, setRetryKey] = useState(0);
+  const [controlsOpen, setControlsOpen] = useState(false);
 
-  const jsonRef = useRef<AtlasJson | null>(null);
+  const [json, setJson] = useState<AtlasJson | null>(null);
   const { material, stateData, offsetData, stateTex, offsetTex } = useAtlasMaterial();
 
   // 加载 atlas.json + 15 个 chunk（并行，逐个就绪）
   useEffect(() => {
     let alive = true;
+    const geometries: THREE.BufferGeometry[] = [];
     (async () => {
       try {
         const json = await loadAtlasJson();
         if (!alive) return;
-        jsonRef.current = json;
-        // 爆炸位移与系统索引写一次
-        for (let gi = 0; gi < json.parts.length; gi++) {
-          const off = explodeOffset(json.parts[gi]);
-          const sysIdx = ATLAS_SYSTEMS.findIndex((s) => s.id === json.parts[gi].system);
-          const o = gi * 4;
-          offsetData[o] = off[0];
-          offsetData[o + 1] = off[1];
-          offsetData[o + 2] = off[2];
-          offsetData[o + 3] = Math.max(0, sysIdx) / 14;
-        }
-        offsetTex.needsUpdate = true;
+        setJson(json);
+        writeOffsets(offsetData, offsetTex, json);
 
         const total = json.chunks.length;
         let done = 0;
@@ -206,6 +227,7 @@ export default function AtlasViewer({ onSelectStructure, sex = "male" }: Props) 
               const buf = await loadChunkBuffer(i);
               const built = buildChunkGeometry(json, i, buf);
               const geo = new THREE.BufferGeometry();
+              geometries.push(geo);
               geo.setAttribute("position", new THREE.BufferAttribute(built.positions, 3));
               geo.setAttribute("normal", new THREE.BufferAttribute(built.normals, 3));
               geo.setAttribute("partId", new THREE.BufferAttribute(built.partIds, 1));
@@ -215,7 +237,8 @@ export default function AtlasViewer({ onSelectStructure, sex = "male" }: Props) 
                 geo.dispose();
                 return;
               }
-              setChunks((prev) => [...prev, { ...built, geo }]);
+              const raycast = createAtlasRaycast(json.parts, i, stateData, offsetData, () => material.uniforms.uExplode.value);
+              setChunks((prev) => [...prev, { ...built, geo, raycast }]);
             } finally {
               done += 1;
               if (alive) setProgress(done / total);
@@ -229,44 +252,35 @@ export default function AtlasViewer({ onSelectStructure, sex = "male" }: Props) 
     })();
     return () => {
       alive = false;
+      geometries.forEach((geo) => geo.dispose());
     };
-  }, [offsetData, offsetTex]);
+  }, [offsetData, offsetTex, stateData, material, retryKey]);
 
   // 可见性 / 高亮 / 调暗 / 透明度写入 GPU 纹理
   useEffect(() => {
-    const json = jsonRef.current;
     if (!json) return;
-    const hitSet = hits ? new Set(hits) : null;
-    for (let gi = 0; gi < json.parts.length; gi++) {
-      const p = json.parts[gi];
-      const o = gi * 4;
-      // 女性模式：隐藏男性生殖系统及其血供（阴茎背动静脉、睾丸动静脉、阴部内静脉等）
-      const hidden =
-        sex === "female" &&
-        (p.system === "reproductive" || FEMALE_HIDDEN_RE.test(p.name));
-      stateData[o] = visibleSystems.has(p.system) && !hidden ? 1 : 0;
-      stateData[o + 1] = selected === gi ? 1 : hitSet?.has(gi) ? 0.62 : 0;
-      stateData[o + 2] = hitSet && !hitSet.has(gi) && selected !== gi ? 0.82 : 0;
-      // 体表（皮肤）以抖动点阵半透明呈现，可透视内部结构
-      stateData[o + 3] = p.system === "integumentary" ? 0.14 : 1;
-    }
-    stateTex.needsUpdate = true;
-  }, [visibleSystems, selected, hits, loaded, sex, stateData, stateTex]);
+    writeStates(stateData, stateTex, json, visibleSystems, sex, selected, hits);
+  }, [visibleSystems, selected, hits, json, sex, stateData, stateTex]);
 
   // 搜索（防抖）
   useEffect(() => {
     const t = setTimeout(() => {
-      const json = jsonRef.current;
       if (!json) return;
       setHits(query.trim() ? searchParts(json, query) : null);
     }, 250);
     return () => clearTimeout(t);
-  }, [query, loaded]);
+  }, [query, json]);
 
   // 爆炸系数
   useEffect(() => {
-    material.uniforms.uExplode.value = explode;
+    setExplodeAmount(material, explode);
   }, [explode, material]);
+
+  useEffect(() => () => {
+    material.dispose();
+    stateTex.dispose();
+    offsetTex.dispose();
+  }, [material, stateTex, offsetTex]);
 
   const pickPart = (vertexIndex: number, geometry: THREE.BufferGeometry): number | null => {
     const attr = geometry.getAttribute("partId");
@@ -275,7 +289,6 @@ export default function AtlasViewer({ onSelectStructure, sex = "male" }: Props) 
   };
 
   const focusPart = (gi: number) => {
-    const json = jsonRef.current;
     if (!json) return;
     const p = json.parts[gi];
     const c = partCenter(p);
@@ -283,7 +296,10 @@ export default function AtlasViewer({ onSelectStructure, sex = "male" }: Props) 
     const dy = p.bounds[1][1] - p.bounds[0][1];
     const dz = p.bounds[1][2] - p.bounds[0][2];
     const dist = Math.max(Math.hypot(dx, dy, dz) * 2.4, 0.22);
-    const target = new THREE.Vector3(c[0], c[1], c[2]);
+    const o = gi * 4;
+    const target = new THREE.Vector3(c[0], c[1], c[2]).add(
+      new THREE.Vector3(offsetData[o], offsetData[o + 1], offsetData[o + 2]).multiplyScalar(explode)
+    );
     // 保持当前观察方向，仅改变距离
     setFocusGoal((prev) => {
       const dir = prev
@@ -305,7 +321,7 @@ export default function AtlasViewer({ onSelectStructure, sex = "male" }: Props) 
   };
 
   const femaleInfo: StructureInfo | null = useMemo(() => {
-    if (!femaleSel) return null;
+    if (!femaleSel || sex !== "female") return null;
     const sys = ATLAS_SYSTEMS.find((s) => s.id === "reproductive");
     return {
       name: sex === "female" ? "子宫与附件（女性）" : "子宫与附件",
@@ -319,7 +335,6 @@ export default function AtlasViewer({ onSelectStructure, sex = "male" }: Props) 
   }, [femaleSel, sex]);
 
   const selectedInfo: StructureInfo | null = useMemo(() => {
-    const json = jsonRef.current;
     if (!json || selected === null) return null;
     const p = json.parts[selected];
     const sys = ATLAS_SYSTEMS.find((s) => s.id === p.system);
@@ -335,13 +350,17 @@ export default function AtlasViewer({ onSelectStructure, sex = "male" }: Props) 
         Math.round((p.bounds[1][2] - p.bounds[0][2]) * 1000),
       ],
     };
-  }, [selected, loaded]);
+  }, [selected, json]);
   const shownInfo = femaleInfo ?? selectedInfo;
 
   return (
-    <div className="fl flex h-full min-h-[560px] gap-3">
+    <div className="fl relative flex h-full min-h-[560px] gap-3">
+      <button className="btn absolute left-3 top-3 z-20 lg:hidden" onClick={() => setControlsOpen(true)}>
+        搜索与系统控制
+      </button>
       {/* 左侧控制面板 */}
-      <div className="panel hidden w-56 shrink-0 flex-col overflow-y-auto p-3 lg:flex">
+      <div className={`panel absolute inset-y-0 left-0 z-30 w-64 max-w-full shrink-0 flex-col overflow-y-auto p-3 lg:relative lg:inset-auto lg:z-auto lg:flex lg:w-56 ${controlsOpen ? "flex" : "hidden"}`}>
+        <button className="btn mb-3 lg:hidden" onClick={() => setControlsOpen(false)}>关闭控制面板</button>
         <div className="label !mt-0">结构搜索</div>
         <input
           className="input"
@@ -366,7 +385,7 @@ export default function AtlasViewer({ onSelectStructure, sex = "male" }: Props) 
                   focusPart(gi);
                 }}
               >
-                {jsonRef.current?.parts[gi]?.name}
+                {json?.parts[gi]?.name}
               </button>
             ))}
           </div>
@@ -479,6 +498,8 @@ export default function AtlasViewer({ onSelectStructure, sex = "male" }: Props) 
                 key={c.chunk}
                 geometry={c.geo}
                 material={material}
+                raycast={c.raycast}
+                frustumCulled={false}
                 onClick={(e) => {
                   e.stopPropagation();
                   const gi = pickPart(e.face?.a ?? 0, c.geo);
@@ -512,7 +533,16 @@ export default function AtlasViewer({ onSelectStructure, sex = "male" }: Props) 
         )}
         {error && (
           <div className="absolute inset-0 grid place-items-center bg-[rgba(7,13,24,0.8)] p-6 text-center text-[13px] text-red-300">
-            {error}
+            <div>
+              <p>{error}</p>
+              <button className="btn mt-3" onClick={() => {
+                setChunks([]);
+                setError(null);
+                setProgress(0);
+                setLoaded(false);
+                setRetryKey((key) => key + 1);
+              }}>重新加载图谱</button>
+            </div>
           </div>
         )}
 
@@ -536,7 +566,7 @@ export default function AtlasViewer({ onSelectStructure, sex = "male" }: Props) 
               </div>
               <button
                 className="text-[var(--muted)] hover:text-[var(--heading)]"
-                onClick={() => setSelected(null)}
+                onClick={() => { setSelected(null); setFemaleSel(false); }}
               >
                 ✕
               </button>

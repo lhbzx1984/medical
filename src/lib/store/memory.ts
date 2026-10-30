@@ -11,7 +11,7 @@ import type {
   SurgicalPlan,
 } from "../types";
 import { SEED_KNOWLEDGE } from "../knowledge/seed";
-import { DataStore, id, NewPatient, now } from "./base";
+import { DataStore, id, NewCase, now, PlanCommitInput, PlanCommitResult, StoreAccessError, StoreConflictError } from "./base";
 
 interface MemDb {
   patients: Map<string, Patient>;
@@ -20,13 +20,16 @@ interface MemDb {
   feedbacks: ExpertFeedback[];
   simulations: SimulationRun[];
   knowledge: KnowledgeEntry[];
-  chatSessions: Map<string, { id: string; mode: ChatMode; title: string }>;
+  chatSessions: Map<string, { id: string; mode: ChatMode; title: string; ownerId: string }>;
   chatMessages: { sessionId: string; role: "user" | "assistant"; content: string; createdAt: string }[];
   images: GeneratedImage[];
 }
 
 // 用 globalThis 缓存，避免开发模式热更新时丢数据
-const g = globalThis as unknown as { __medplanMemDb?: MemDb };
+const g = globalThis as unknown as {
+  __medplanMemDb?: MemDb;
+  __medplanRateWindows?: Map<string, { expires: number; count: number }>;
+};
 
 function db(): MemDb {
   if (!g.__medplanMemDb) {
@@ -48,8 +51,9 @@ function db(): MemDb {
 export class MemoryStore implements DataStore {
   readonly kind = "memory" as const;
 
-  async createPatient(input: NewPatient): Promise<Patient> {
-    const p: Patient = {
+  async createCase(input: NewCase): Promise<{ patient: Patient; plan: SurgicalPlan }> {
+    if (!input.ownerId) throw new StoreAccessError();
+    const patient: Patient = {
       id: id(),
       name: input.name,
       gender: input.gender ?? "",
@@ -58,45 +62,38 @@ export class MemoryStore implements DataStore {
       preliminaryPlan: input.preliminaryPlan ?? "",
       createdAt: now(),
     };
-    db().patients.set(p.id, p);
-    return p;
-  }
-
-  async getPatient(pid: string): Promise<Patient | null> {
-    return db().patients.get(pid) ?? null;
-  }
-
-  async listPatients(): Promise<Patient[]> {
-    return [...db().patients.values()].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  }
-
-  async createPlan(input: { patientId: string; title?: string }): Promise<SurgicalPlan> {
-    const patient = db().patients.get(input.patientId);
     const plan: SurgicalPlan = {
       id: id(),
-      patientId: input.patientId,
-      title: input.title || `${patient?.name ?? "病例"}·手术规划`,
-      patientName: patient?.name ?? "",
+      patientId: patient.id,
+      ownerId: input.ownerId,
+      title: input.title || `${patient.name}·手术规划`,
+      patientName: patient.name,
       status: "draft",
       currentVersion: 0,
       createdAt: now(),
       updatedAt: now(),
     };
-    db().plans.set(plan.id, plan);
-    return plan;
+    const result = structuredClone({ patient, plan });
+    const d = db();
+    d.patients.set(patient.id, patient);
+    d.plans.set(plan.id, plan);
+    return result;
   }
 
-  async listPlans(): Promise<SurgicalPlan[]> {
-    return [...db().plans.values()].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  async listPlans(ownerId: string): Promise<SurgicalPlan[]> {
+    if (!ownerId) throw new StoreAccessError();
+    return structuredClone([...db().plans.values()].filter(p => p.ownerId === ownerId)
+      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)));
   }
 
-  async getPlanDetail(planId: string): Promise<PlanDetail | null> {
+  async getPlanDetail(planId: string, ownerId: string): Promise<PlanDetail | null> {
+    if (!ownerId) throw new StoreAccessError();
     const d = db();
     const plan = d.plans.get(planId);
-    if (!plan) return null;
+    if (!plan || plan.ownerId !== ownerId) return null;
     const patient = d.patients.get(plan.patientId);
     if (!patient) return null;
-    return {
+    return structuredClone({
       plan,
       patient,
       versions: d.versions
@@ -108,41 +105,53 @@ export class MemoryStore implements DataStore {
       simulations: d.simulations
         .filter((s) => s.planId === planId)
         .sort((a, b) => a.version - b.version),
-    };
+    });
   }
 
-  async addPlanVersion(v: Omit<PlanVersion, "id" | "createdAt">): Promise<PlanVersion> {
-    const version: PlanVersion = { ...v, id: id(), createdAt: now() };
+  async commitPlan(input: PlanCommitInput): Promise<PlanCommitResult> {
     const d = db();
-    d.versions.push(version);
-    const plan = d.plans.get(v.planId);
-    if (plan) {
-      plan.currentVersion = Math.max(plan.currentVersion, v.version);
-      plan.status = v.source === "expert_refine" ? "refined" : plan.status === "draft" ? "simulated" : plan.status;
-      plan.updatedAt = now();
+    const plan = d.plans.get(input.planId);
+    if (!input.ownerId || !plan || plan.ownerId !== input.ownerId) throw new StoreAccessError();
+    if (plan.currentVersion !== input.expectedVersion) throw new StoreConflictError();
+    const nextVersion = input.expectedVersion + 1;
+    const createdAt = now();
+    const version: PlanVersion = { id: id(), planId: plan.id, version: nextVersion,
+      content: input.content, changelog: input.changelog, source: input.source,
+      knowledgeUsed: input.knowledgeUsed, createdAt };
+    const simulation: SimulationRun = { id: id(), planId: plan.id, version: nextVersion,
+      ...input.simulation, createdAt };
+    const feedback: ExpertFeedback | undefined = input.feedback ? { id: id(), planId: plan.id,
+      version: input.expectedVersion, ...input.feedback, createdAt } : undefined;
+    const result = structuredClone({ version, simulation, ...(feedback ? { feedback } : {}) });
+    // No await between the version check and all writes: a stale concurrent result cannot commit.
+    d.versions.push(result.version);
+    d.simulations.push(result.simulation);
+    if (result.feedback) d.feedbacks.push(result.feedback);
+    plan.currentVersion = nextVersion;
+    plan.status = input.source === "expert_refine" ? "refined" : "simulated";
+    plan.updatedAt = createdAt;
+    return structuredClone(result);
+  }
+
+  async consumeRateLimit(ownerId: string, action: string, limit: number, windowSeconds: number): Promise<boolean> {
+    if (!ownerId) throw new StoreAccessError();
+    if (!Number.isInteger(limit) || limit < 1 || !Number.isInteger(windowSeconds) || windowSeconds < 1) {
+      throw new RangeError("无效的限流配置");
     }
-    return version;
-  }
-
-  async addFeedback(f: Omit<ExpertFeedback, "id" | "createdAt">): Promise<ExpertFeedback> {
-    const fb: ExpertFeedback = { ...f, id: id(), createdAt: now() };
-    db().feedbacks.push(fb);
-    return fb;
-  }
-
-  async addSimulation(s: Omit<SimulationRun, "id" | "createdAt">): Promise<SimulationRun> {
-    const sim: SimulationRun = { ...s, id: id(), createdAt: now() };
-    db().simulations.push(sim);
-    return sim;
-  }
-
-  async updatePlanStatus(
-    planId: string,
-    patch: Partial<Pick<SurgicalPlan, "status" | "currentVersion" | "title">>
-  ): Promise<void> {
-    const plan = db().plans.get(planId);
-    if (!plan) return;
-    Object.assign(plan, patch, { updatedAt: now() });
+    const windows = g.__medplanRateWindows ??= new Map();
+    const timestamp = Date.now();
+    for (const [key, value] of windows) if (value.expires <= timestamp) windows.delete(key);
+    const key = JSON.stringify([ownerId, action]);
+    const current = windows.get(key);
+    if (!current) {
+      // shortcut: demo storage is one process; production uses the shared database counter.
+      if (windows.size >= 10_000) return false;
+      windows.set(key, {count: 1, expires: (Math.floor(timestamp / (windowSeconds * 1000)) + 1) * windowSeconds * 1000});
+      return true;
+    }
+    if (current.count >= limit) return false;
+    current.count += 1;
+    return true;
   }
 
   async listKnowledge(q?: string): Promise<KnowledgeEntry[]> {
@@ -165,17 +174,19 @@ export class MemoryStore implements DataStore {
     return entry;
   }
 
-  async ensureChatSession(sessionId: string, mode: ChatMode, title: string): Promise<void> {
+  async ensureChatSession(sessionId: string, mode: ChatMode, title: string, ownerId: string): Promise<void> {
     const d = db();
-    if (!d.chatSessions.has(sessionId)) {
-      d.chatSessions.set(sessionId, { id: sessionId, mode, title });
-    }
+    const existing = d.chatSessions.get(sessionId);
+    if (!ownerId || (existing && existing.ownerId !== ownerId)) throw new StoreAccessError();
+    if (!existing) d.chatSessions.set(sessionId, { id: sessionId, mode, title, ownerId });
   }
 
   async addChatMessages(
     sessionId: string,
-    msgs: { role: "user" | "assistant"; content: string }[]
+    msgs: { role: "user" | "assistant"; content: string }[],
+    ownerId: string
   ): Promise<void> {
+    if (!ownerId || db().chatSessions.get(sessionId)?.ownerId !== ownerId) throw new StoreAccessError();
     for (const m of msgs) {
       db().chatMessages.push({ sessionId, ...m, createdAt: now() });
     }

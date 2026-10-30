@@ -3,13 +3,20 @@
 // 学习中心 · 全身概览：2D 人体解剖图（男 / 女各一张，Agnes 生成）
 // 扫描线 + 器官脉冲标注 + SVG 补充结构（男性大脑 / 女性子宫附件）
 // 点击标注 → 选中器官（信息栏与 AI 导师联动）→ 可进入特写
-import Link from "next/link";
 import { BrainOverlay, UterusOverlay } from "@/components/site/AnatomyOverlays";
+import { ORGANS } from "@/lib/organ-models";
 import type { OrganId } from "@/lib/types";
+
+export type OverviewId = OrganId | "breast";
+
+export function overviewStructure(id: OverviewId) {
+  if (id === "breast") return { id, modelId: null, nameZh: "乳腺", nameEn: "Breast", system: "乳腺组织", brief: "乳腺位于胸前部，由腺体、导管与周围支持组织组成。当前暂无独立的乳腺特写模型。" };
+  return { ...ORGANS[id], modelId: id };
+}
 
 interface Label {
   name: string;
-  organId: OrganId;
+  organId: OverviewId;
   x: number; // 画面百分比
   y: number;
   side: "left" | "right";
@@ -20,7 +27,7 @@ const MALE_LABELS: Label[] = [
   { name: "肺", organId: "lungs", x: 37, y: 31.5, side: "left" },
   { name: "心脏", organId: "heart", x: 54, y: 36.5, side: "right" },
   { name: "肝", organId: "liver", x: 40.5, y: 47.5, side: "left" },
-  { name: "胃", organId: "intestine", x: 59.5, y: 49.5, side: "right" },
+  { name: "胃", organId: "stomach", x: 59.5, y: 49.5, side: "right" },
   { name: "肠", organId: "intestine", x: 52.5, y: 64, side: "right" },
 ];
 
@@ -29,10 +36,10 @@ const FEMALE_LABELS: Label[] = [
   { name: "肺", organId: "lungs", x: 40.5, y: 33, side: "left" },
   { name: "心脏", organId: "heart", x: 56, y: 35.5, side: "right" },
   { name: "肝", organId: "liver", x: 42, y: 46.5, side: "left" },
-  { name: "胃", organId: "intestine", x: 60.5, y: 49.5, side: "right" },
+  { name: "胃", organId: "stomach", x: 60.5, y: 49.5, side: "right" },
   { name: "肠", organId: "intestine", x: 53.5, y: 62.5, side: "right" },
   { name: "子宫", organId: "uterus", x: 58, y: 74.5, side: "right" },
-  { name: "乳腺", organId: "skin", x: 64.5, y: 26.5, side: "right" },
+  { name: "乳腺", organId: "breast", x: 64.5, y: 26.5, side: "right" },
 ];
 
 export default function Anatomy2D({
@@ -43,8 +50,8 @@ export default function Anatomy2D({
   onEnterCloseup,
 }: {
   sex: "male" | "female";
-  selectedId: OrganId | null;
-  onSelect: (id: OrganId) => void;
+  selectedId: OverviewId | null;
+  onSelect: (id: OverviewId) => void;
   onClearSelect: () => void;
   onEnterCloseup: (id: OrganId) => void;
 }) {
@@ -122,14 +129,18 @@ export default function Anatomy2D({
             ? "女性解剖：含子宫、卵巢与乳腺结构"
             : "男性解剖：体循环与呼吸系统概览"}
         </div>
-        {selectedId && (
+        {selectedId && overviewStructure(selectedId).modelId && (
           <button
             className="btn btn-primary !py-1 !text-[11.5px]"
-            onClick={() => onEnterCloseup(selectedId)}
+            onClick={() => {
+              const modelId = overviewStructure(selectedId).modelId;
+              if (modelId) onEnterCloseup(modelId);
+            }}
           >
             进入特写 →
           </button>
         )}
+        {selectedId && !overviewStructure(selectedId).modelId && <span className="text-[11px] text-[var(--muted)]">暂无特写模型</span>}
       </div>
     </div>
   );

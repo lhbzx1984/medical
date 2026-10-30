@@ -4,7 +4,7 @@
 //   hologram 模式 —— 菲涅尔边缘光"全息"风格（首页英雄图、手术模拟）
 //   skin 模式    —— 真实肤色人体外皮（学习中心），可淡出透视内部器官
 import * as THREE from "three";
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 
 // 人体半宽剖面（y: 0 脚底 → 1.78 头顶，单位米）
@@ -69,6 +69,11 @@ const hologramFragment = /* glsl */ `
 
 const SKIN_COLOR = "#e2a98c";
 
+function updateOutlineMaterial(material: THREE.Material, time: number, opacity: number) {
+  if (material instanceof THREE.ShaderMaterial) material.uniforms.uTime.value = time;
+  else material.opacity = opacity;
+}
+
 export function BodyOutline({
   mode = "hologram",
   rimColor = "#4cc3f7",
@@ -83,7 +88,6 @@ export function BodyOutline({
   sex?: "male" | "female";
 }) {
   const { body, armGeo, breastGeo } = useBodyOutlineMeshes();
-  const skinMats = useRef<THREE.MeshStandardMaterial[]>([]);
   const current = useRef(0.92);
 
   const material = useMemo(() => {
@@ -97,7 +101,6 @@ export function BodyOutline({
         depthWrite: false,
         side: THREE.DoubleSide,
       });
-      skinMats.current = [m];
       return m;
     }
     return new THREE.ShaderMaterial({
@@ -113,17 +116,22 @@ export function BodyOutline({
     });
   }, [mode, rimColor]);
 
+  useEffect(() => () => material.dispose(), [material]);
+  useEffect(() => () => {
+    body.dispose();
+    armGeo.dispose();
+    breastGeo.dispose();
+  }, [body, armGeo, breastGeo]);
+
   const t = useRef(0);
   useFrame((_, dt) => {
-    if (mode === "hologram") {
-      t.current += dt;
-      (material as THREE.ShaderMaterial).uniforms.uTime.value = t.current;
-    } else {
+    t.current += dt;
+    if (mode === "skin") {
       // 平滑过渡到目标不透明度
       const target = THREE.MathUtils.clamp(0.92 * opacity, 0.06, 0.96);
       current.current += (target - current.current) * Math.min(1, dt * 4);
-      for (const m of skinMats.current) m.opacity = current.current;
     }
+    updateOutlineMaterial(material, t.current, current.current);
   });
 
   return (
