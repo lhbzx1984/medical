@@ -108,7 +108,7 @@ KNOWLEDGE_RETRIEVER=keyword
 [`202610300008_knowledge_sources.sql`](supabase/migrations/202610300008_knowledge_sources.sql) 和
 [`202610300009_learning_quiz.sql`](supabase/migrations/202610300009_learning_quiz.sql)。
 
-在 Supabase Auth 中关闭公开注册，由管理员创建用户，用户通过 `/login` 登录。旧病历的 `owner_id` 默认为空，
+在 Supabase Auth 中关闭公开注册，由管理员创建用户，用户通过 `/login` 登录，并可在 `/account` 使用当前密码修改密码。旧病历的 `owner_id` 默认为空，
 任何普通用户都无法访问；管理员须核实后在数据库中将每条 `patients.owner_id` 分配给对应的
 `auth.users.id`。知识库供登录用户读取，内容由数据库管理员维护。应用不再提供无登录的内存演示存储。
 执行迁移前应备份数据库并核查现有授权；上线前应使用两个测试账号验证跨账号访问被拒绝。
