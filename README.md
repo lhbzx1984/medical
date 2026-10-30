@@ -69,6 +69,7 @@
 ```bash
 npm install
 npm run dev        # http://localhost:3000
+npm test           # 本地数据库权限与事务回归测试
 ```
 
 生产部署：
