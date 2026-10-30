@@ -363,6 +363,7 @@ export default function PlanningWorkspace() {
                 </div>
                 <div className="ml-auto flex items-center gap-2">
                   <button className="btn !py-1 !text-[12px]" disabled={!!busy || detail.plan.status === "finalized"} onClick={() => setEditing(true)}>编辑病例</button>
+                  {currentVersion && <a className="btn !py-1 !text-[12px]" href={`/planning/${encodeURIComponent(detail.plan.id)}/print/${currentVersion.version}`} target="_blank" rel="noopener noreferrer">打印 / PDF</a>}
                   {detail.versions.length > 0 && <button className="btn !py-1 !text-[12px]" disabled={!!busy || (detail.plan.status !== "finalized" && currentVersion?.version !== detail.plan.currentVersion)} onClick={() => void setFinalized()}>{detail.plan.status === "finalized" ? "撤销定稿" : "确认定稿"}</button>}
                   <button className="btn !py-1 !text-[12px]" disabled={!!busy} onClick={() => void setArchived()}>{detail.plan.archivedAt ? "恢复病例" : "归档病例"}</button>
                   {detail.versions.length === 0 ? (

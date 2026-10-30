@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import "./globals.css";
 import Header from "@/components/site/Header";
 
@@ -24,7 +25,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             "ui-sans-serif, system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif",
         }}
       >
-        <Header />
+        <Suspense fallback={<div className="h-14" />}><Header /></Suspense>
         <div className="flex-1">{children}</div>
         <footer className="border-t border-[var(--line)] px-6 py-4 text-center text-xs text-[var(--muted)]">
           © 2026 MedPlan Atlas · 本平台为教学演示用途，AI 生成内容不构成临床决策依据 ·

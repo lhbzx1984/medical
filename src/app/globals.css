@@ -502,3 +502,18 @@ html[data-theme="light"] body {
   opacity: 0;
   animation: bubbleIn 9s ease infinite;
 }
+
+@media print {
+  @page { margin: 15mm; }
+  html:has(.print-page) {
+    color-scheme: light;
+    --bg: #fff; --panel: #fff; --panel-2: #fff; --line: #ccc;
+    --text: #202020; --heading: #111; --muted: #555;
+    --accent: #065f54; --accent-soft: #eee; --chip-bg: #eee;
+    --warn: #713b00; --ok: #14532d;
+  }
+  body:has(.print-page) { background: white; background-image: none; }
+  body:has(.print-page) > header, body:has(.print-page) > footer, .print-controls { display: none !important; }
+  .print-page { max-width: none; padding: 0; }
+  .print-page .panel-2 { break-inside: avoid; }
+}
