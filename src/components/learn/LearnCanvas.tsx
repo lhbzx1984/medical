@@ -15,6 +15,7 @@ interface Props {
   mode: "overview" | "organ";
   organId: OrganId;
   useReferenceModel?: boolean;
+  showLabels?: boolean;
   /** 概览中当前选中的器官（null = 外皮实体状态） */
   selectedId: OrganId | null;
   onSelect: (id: OrganId) => void;
@@ -77,6 +78,7 @@ export default function LearnCanvas({
   mode,
   organId,
   useReferenceModel = true,
+  showLabels = false,
   selectedId,
   onSelect,
   onClearSelect,
@@ -104,10 +106,9 @@ export default function LearnCanvas({
         {overview ? (
           <BodyOverviewScene
             highlightOrgan={selectedId}
-            onSelectOrgan={onSelect}
-            shellMode="skin"
-            shellFade={selectedId ? 0.22 : 1}
-            showLabels
+            onSelectOrgan={(id) => id === selectedId ? onClearSelect() : onSelect(id)}
+            shellMode="hologram"
+            showLabels={showLabels}
             sex={sex}
           />
         ) : (

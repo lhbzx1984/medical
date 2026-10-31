@@ -54,6 +54,8 @@ export default function LearningCenter() {
   const [controlsOpen, setControlsOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [useReferenceModel, setUseReferenceModel] = useState(true);
+  const [overviewView, setOverviewView] = useState<"2d" | "3d">("2d");
+  const [show3DLabels, setShow3DLabels] = useState(false);
 
   const switchSex = useCallback((v: Sex) => {
     try { localStorage.setItem("mp-sex", v); } catch {}
@@ -136,7 +138,7 @@ export default function LearningCenter() {
         <div className="mb-3 grid grid-cols-1 gap-1.5">
           {(
             [
-              ["overview", "🗺️ 全身概览", "2D 解剖图 · 男女分视角"],
+              ["overview", "🗺️ 全身概览", "2D 解剖图 / 3D 器官同屏"],
               ["organ", "🫀 器官特写", "单器官 360° 观察"],
               ["atlas", "🧬 精细人体图谱", "2,234 结构 · 爆炸视图"],
             ] as [ViewMode, string, string][]
@@ -202,9 +204,28 @@ export default function LearningCenter() {
               ? "精细人体图谱"
               : mode === "organ"
                 ? `器官特写 · ${organ.nameZh}（${organ.nameEn}）`
-                : "全身概览 · 点击文字标注查看器官"}
+                : overviewView === "3d" ? "全身概览 · 3D 器官同屏" : "全身概览 · 点击文字标注查看器官"}
           </span>
           <div className="ml-auto flex items-center gap-2">
+            {mode === "overview" && (
+              <div className="flex gap-1" role="group" aria-label="全身概览视图">
+                {(["2d", "3d"] as const).map((view) => (
+                  <button
+                    key={view}
+                    className={`btn !py-1 !text-xs ${overviewView === view ? "!border-[var(--accent)] !text-[var(--accent)]" : ""}`}
+                    aria-pressed={overviewView === view}
+                    onClick={() => { setOverviewView(view); setSelected(null); }}
+                  >
+                    {view === "2d" ? "2D 解剖图" : "3D 同屏"}
+                  </button>
+                ))}
+              </div>
+            )}
+            {mode === "overview" && overviewView === "3d" && (
+              <button className="btn !py-1 !text-xs" aria-pressed={show3DLabels} onClick={() => setShow3DLabels((show) => !show)}>
+                {show3DLabels ? "隐藏标注" : "显示标注"}
+              </button>
+            )}
             {quizTarget && <button className="btn !py-1 !text-xs" onClick={() => setQuizOrgan(quizTarget)}>学习自测</button>}
             {mode === "organ" && organ.closeupGlb && (
               <button className="btn !py-1 !text-xs" onClick={() => setUseReferenceModel((current) => !current)}>
@@ -212,9 +233,11 @@ export default function LearningCenter() {
               </button>
             )}
             <button className="btn !px-2 !py-1 xl:hidden" aria-expanded={chatOpen} aria-controls="learning-chat" onClick={() => setChatOpen((open) => !open)}>AI 导师</button>
-            <span className="chip hidden sm:inline-flex">
-              {mode === "atlas" ? "BodyParts3D 4.0 · 15 系统" : `${organ.system}`}
-            </span>
+            {mode !== "overview" && (
+              <span className="chip hidden sm:inline-flex">
+                {mode === "atlas" ? "BodyParts3D 4.0 · 15 系统" : organ.system}
+              </span>
+            )}
           </div>
         </div>
 
@@ -231,7 +254,7 @@ export default function LearningCenter() {
             </div>
           ) : (
             <>
-              {mode === "overview" ? (
+              {mode === "overview" && overviewView === "2d" ? (
                 <Anatomy2D
                   sex={sex}
                   selectedId={selectedId}
@@ -241,10 +264,11 @@ export default function LearningCenter() {
                 />
               ) : (
                 <LearnCanvas
-                  mode="organ"
+                  mode={mode === "overview" ? "overview" : "organ"}
                   organId={organ.id}
                   useReferenceModel={useReferenceModel}
-                  selectedId={null}
+                  showLabels={show3DLabels}
+                  selectedId={mode === "overview" && selectedId !== "breast" ? selectedId : null}
                   onSelect={focusOrgan}
                   onClearSelect={() => setSelected(null)}
                   sex={sex}
@@ -258,7 +282,7 @@ export default function LearningCenter() {
                       {overviewTarget
                         ? `${overviewTarget.nameZh} · ${overviewTarget.nameEn}`
                         : mode === "overview"
-                          ? "完整人体 · 2D 解剖图"
+                          ? overviewView === "3d" ? "完整人体 · 3D 器官同屏" : "完整人体 · 2D 解剖图"
                           : `${organ.nameZh} · ${organ.nameEn}`}
                     </div>
                     {mode === "organ" && useReferenceModel && organ.referenceLabel && <div className="text-[11px] text-[var(--muted)]">{organ.referenceLabel} · 个体解剖存在差异</div>}
@@ -266,12 +290,15 @@ export default function LearningCenter() {
                       {overviewTarget
                         ? overviewTarget.brief
                         : mode === "overview"
-                          ? "点击器官旁的文字标注查看详情；性别切换可对比男性 / 女性解剖结构。"
+                          ? overviewView === "3d" ? "拖拽旋转、滚轮缩放，点击器官查看详情；模型为参考示意，器官可能存在重叠。" : "点击器官旁的文字标注查看详情；性别切换可对比男性 / 女性解剖结构。"
                           : organ.brief}
                     </div>
                   </div>
                   {mode === "overview" && (
                     <div className="pointer-events-auto flex flex-col items-end gap-1.5">
+                      {overviewView === "3d" && overviewTarget && (
+                        <button className="btn !py-1 !text-[11.5px]" onClick={() => setSelected(null)}>返回全身</button>
+                      )}
                       {overviewTarget?.modelId && (
                         <button
                           className="btn btn-primary !py-1 !text-[11.5px]"
@@ -282,9 +309,9 @@ export default function LearningCenter() {
                       )}
                       {overviewTarget && !overviewTarget.modelId && <span className="text-[11px] text-[var(--muted)]">暂无特写模型</span>}
                       <div className="text-right text-[11px] text-[var(--muted)]">
-                        点击标注查看器官
+                        {overviewView === "3d" ? "拖拽旋转 · 点击器官" : "点击标注查看器官"}
                         <br />
-                        再次点击取消选择
+                        {overviewView === "3d" ? "点击空白返回全身" : "再次点击取消选择"}
                       </div>
                     </div>
                   )}

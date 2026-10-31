@@ -130,6 +130,33 @@ test('stomach selection opens the sourced closeup and gives the tutor the same o
   }
 });
 
+test('overview switches between 2D and 3D without carrying an unsupported selection',()=>{
+  const panel=learningHarness('female');
+  try {
+    const original=panel.render();
+    const anatomy=original.find(n=>n.props?.onEnterCloseup);
+    assert.ok(anatomy, '2D overview is the default');
+    anatomy.props.onSelect('breast');
+    learningButton(panel.render(),'3D 同屏').props.onClick();
+    const three=panel.render();
+    const canvas=three.find(n=>n.props?.mode==='overview' && n.props.organId);
+    assert.ok(canvas, '3D overview canvas is mounted');
+    assert.equal(canvas.props.selectedId,null, '2D-only breast selection must not reach the 3D camera');
+    assert.equal(canvas.props.sex,'female');
+    assert.equal(canvas.props.showLabels,false);
+    learningButton(three,'显示标注').props.onClick();
+    assert.equal(panel.render().find(n=>n.props?.mode==='overview' && n.props.organId).props.showLabels,true);
+    canvas.props.onSelect('kidneys');
+    const selected=panel.render();
+    assert.equal(selected.find(n=>n.props?.mode==='overview' && n.props.organId).props.selectedId,'kidneys');
+    assert.equal(learningChat(selected).props.context.organId,'kidneys');
+    learningButton(selected,'2D 解剖图').props.onClick();
+    const back=panel.render();
+    assert.equal(back.find(n=>n.props?.onEnterCloseup).props.selectedId,null);
+    assert.match(learningChat(back).props.context.organName,/全身概览/);
+  } finally {panel.cleanup();}
+});
+
 test('an external sex update keeps the visible closeup and tutor context on an available organ',()=>{
   const panel=learningHarness();
   try {
