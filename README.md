@@ -268,11 +268,13 @@ $env:MEDPLAN_TEST_OUTPUT='D:/某个新目录'
 
 ## HuBMAP 器官模型来源
 
-心脏、肝脏和肺的器官特写使用 HuBMAP Human Reference Atlas 的男性参考器官模型；全身及模拟视图保留现有已配准模型。参考器官数据采用 CC BY 4.0：
+脑、左眼、心脏、肺、肝、胰的器官特写使用 HuBMAP Human Reference Atlas 的男性参考器官模型；子宫特写使用女性参考模型（不含附件）。全身及模拟视图保留现有已配准模型。参考器官数据采用 CC BY 4.0：
 
 - Browne, K., Schlehlein, H. 等，HuBMAP Human Reference Atlas 3D Reference Object Library，https://humanatlas.io/3d-reference-library 。
+- 肾、肠及胃特写采用 Innerscene 基于 MakeHuman 制作的 CC0 简化示意模型： https://www.innerscene.com/tools/library/3d-parts/kidneys-pair-c78928dd ， https://www.innerscene.com/tools/library/3d-parts/intestines-26224e6a ， https://www.innerscene.com/tools/library/3d-parts/stomach-e1e1d2ab 。皮肤组织沿用原有切面模型。
+- [男性脑 v1.4](https://purl.humanatlas.io/ref-organ/brain-male/v1.4)、[男性左眼 v1.3](https://purl.humanatlas.io/ref-organ/eye-male-left/v1.3)、[男性胰腺 v1.3](https://purl.humanatlas.io/ref-organ/pancreas-male/v1.3)、[女性子宫 v1.2](https://purl.humanatlas.io/ref-organ/uterus-female/v1.2)。
 - [男性心脏 v1.3](https://purl.humanatlas.io/ref-organ/heart-male/v1.3)、[男性肝脏 v1.2](https://purl.humanatlas.io/ref-organ/liver-male/v1.2)、[男性肺 v1.4](https://purl.humanatlas.io/ref-organ/lung-male/v1.4)。
-- 这些是男性参考器官，女性显示模式下也会显示同一参考模型，不代表患者的个体解剖。展示时模型会居中缩放，肝脏材质在深色画布中经过提亮。
+- 除子宫外，上述 HuBMAP 模型为男性参考器官；女性显示模式下仍会显示同一男性模型，不代表患者的个体解剖。展示时模型会居中缩放，肝脏材质在深色画布中经过提亮。
 
 ## 版权与致谢
 

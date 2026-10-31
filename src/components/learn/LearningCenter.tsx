@@ -53,6 +53,7 @@ export default function LearningCenter() {
   const sex = useSyncExternalStore(subscribeSex, storedSex, () => "male" as const);
   const [controlsOpen, setControlsOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
+  const [useReferenceModel, setUseReferenceModel] = useState(true);
 
   const switchSex = useCallback((v: Sex) => {
     try { localStorage.setItem("mp-sex", v); } catch {}
@@ -187,8 +188,8 @@ export default function LearningCenter() {
         </div>
 
         <div className="mt-3 border-t border-[var(--line)] pt-3 text-[10.5px] leading-5 text-[var(--muted)]">
-          数据来源：BodyParts3D 4.0（CC BY 4.0）；器官 GLB 模型来自 thebuggeddev/anatomy。
-          <br />胃模型：BodyParts3D, © The Database Center for Life Science licensed under CC Attribution 4.0 International。由图谱中的男性参考网格（经简化）转换，法线已重算，仅作教学示意，不代表女性或个体的胃。
+          数据来源：BodyParts3D 4.0、HuBMAP Human Reference Atlas（CC BY 4.0）、Innerscene（CC0）及 thebuggeddev/anatomy，详见项目说明。
+          <br />模型为参考或简化示意，个体解剖存在差异，仅供教学。
         </div>
       </aside>
 
@@ -205,6 +206,11 @@ export default function LearningCenter() {
           </span>
           <div className="ml-auto flex items-center gap-2">
             {quizTarget && <button className="btn !py-1 !text-xs" onClick={() => setQuizOrgan(quizTarget)}>学习自测</button>}
+            {mode === "organ" && organ.closeupGlb && (
+              <button className="btn !py-1 !text-xs" onClick={() => setUseReferenceModel((current) => !current)}>
+                {useReferenceModel ? "查看原模型" : "查看参考模型"}
+              </button>
+            )}
             <button className="btn !px-2 !py-1 xl:hidden" aria-expanded={chatOpen} aria-controls="learning-chat" onClick={() => setChatOpen((open) => !open)}>AI 导师</button>
             <span className="chip hidden sm:inline-flex">
               {mode === "atlas" ? "BodyParts3D 4.0 · 15 系统" : `${organ.system}`}
@@ -237,6 +243,7 @@ export default function LearningCenter() {
                 <LearnCanvas
                   mode="organ"
                   organId={organ.id}
+                  useReferenceModel={useReferenceModel}
                   selectedId={null}
                   onSelect={focusOrgan}
                   onClearSelect={() => setSelected(null)}
@@ -254,7 +261,7 @@ export default function LearningCenter() {
                           ? "完整人体 · 2D 解剖图"
                           : `${organ.nameZh} · ${organ.nameEn}`}
                     </div>
-                    {mode === "organ" && organ.referenceLabel && <div className="text-[11px] text-[var(--muted)]">{organ.referenceLabel} · 个体解剖存在差异</div>}
+                    {mode === "organ" && useReferenceModel && organ.referenceLabel && <div className="text-[11px] text-[var(--muted)]">{organ.referenceLabel} · 个体解剖存在差异</div>}
                     <div className="mt-0.5 text-[12.5px] leading-6 text-[var(--text)]">
                       {overviewTarget
                         ? overviewTarget.brief

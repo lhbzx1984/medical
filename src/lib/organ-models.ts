@@ -1,5 +1,5 @@
 // 3D 器官模型注册表。
-// 心脏、肝脏与肺的特写可使用 HuBMAP 男性参考模型；全身视图使用已配准的原始模型。
+// 特写使用注明来源的参考模型；全身视图使用已配准的原始模型。
 // 其他 GLB 与缩略图来自 thebuggeddev/anatomy；stomach.glb 由 BodyParts3D 精细图谱转换。
 // bodyPosition / bodySize 用于「人体概览」场景中的解剖学摆放：
 //   坐标系为 Y 轴向上、单位米、标准站立人体身高约 1.75m，面朝 +Z；+X 为患者左侧（与精细图谱一致）。
@@ -42,6 +42,8 @@ export const ORGANS: Record<OrganId, OrganInfo> = {
     brief:
       "中枢神经系统的核心器官，由大脑、小脑与脑干组成，主导感知、运动、记忆、语言与内脏调节。",
     glb: "/models/brain.glb",
+    closeupGlb: "/models/hra-brain-male.glb",
+    referenceLabel: "HuBMAP 男性参考器官模型",
     thumb: "/anatomy/brain/thumb.webp",
     organImg: "/anatomy/brain/organ.webp",
     // 取自精细图谱脑结构（含小脑、脑干）的包围盒：最长边为前后长 0.18，x 中心取 0。GLB 的前后轴在 x 上（枕后朝 +x），
@@ -58,6 +60,8 @@ export const ORGANS: Record<OrganId, OrganInfo> = {
     system: "感觉器官",
     brief: "视觉感受器，光线经角膜、晶状体折射后在视网膜成像，转换为神经冲动。",
     glb: "/models/eyeball.glb",
+    closeupGlb: "/models/hra-eye-male-left.glb",
+    referenceLabel: "HuBMAP 男性左眼参考模型",
     thumb: "/anatomy/eyeball/thumb.webp",
     organImg: "/anatomy/eyeball/organ.webp",
     // 取自精细图谱左眼（巩膜+角膜）：球径 0.026，x 中心 0.029。GLB 末端约 20% 是视神经残端（朝后内侧），球体中心比包围盒中心靠前 0.003，
@@ -121,6 +125,8 @@ export const ORGANS: Record<OrganId, OrganInfo> = {
     system: "消化/内分泌",
     brief: "兼具外分泌（胰酶）与内分泌（胰岛素、胰高血糖素）功能的腹膜后器官。",
     glb: "/models/pancreas.glb",
+    closeupGlb: "/models/hra-pancreas-male.glb",
+    referenceLabel: "HuBMAP 男性参考器官模型",
     thumb: "/anatomy/pancreas/thumb.webp",
     organImg: "/anatomy/pancreas/organ.webp",
     // 取自精细图谱胰腺的包围盒中心与最大边长（米）：胰头在患者右侧、胰尾伸向左侧，故 x 略偏左。
@@ -134,6 +140,8 @@ export const ORGANS: Record<OrganId, OrganInfo> = {
     system: "泌尿系统",
     brief: "成对腹膜后器官，过滤血液、调节水盐与酸碱平衡，生成尿液经输尿管排出。",
     glb: "/models/kidneys.glb",
+    closeupGlb: "/models/innerscene-kidneys.glb",
+    referenceLabel: "Innerscene 示意模型",
     thumb: "/anatomy/kidneys/thumb.webp",
     organImg: "/anatomy/kidneys/organ.webp",
     // 取自精细图谱左右肾的包围盒中心与最大边长（米，最大边为左右宽）。
@@ -148,6 +156,8 @@ export const ORGANS: Record<OrganId, OrganInfo> = {
     system: "消化系统",
     brief: "小肠与大肠构成消化管下段，负责吸收营养与水分、成形并排出粪便。",
     glb: "/models/intestine.glb",
+    closeupGlb: "/models/innerscene-intestine.glb",
+    referenceLabel: "Innerscene 示意模型",
     thumb: "/anatomy/intestine/thumb.webp",
     organImg: "/anatomy/intestine/organ.webp",
     bodyPosition: [0, 0.995, 0.01],
@@ -160,6 +170,8 @@ export const ORGANS: Record<OrganId, OrganInfo> = {
     system: "消化系统",
     brief: "连接食管与十二指肠的肌性消化器官，具有储存食物、混合与初步消化的功能；可分为贲门、胃底、胃体与幽门部。",
     glb: "/models/stomach.glb",
+    closeupGlb: "/models/innerscene-stomach.glb",
+    referenceLabel: "Innerscene 示意模型",
     thumb: "/anatomy/stomach/thumb.webp",
     organImg: "/anatomy/stomach/organ.webp",
     // 取自精细图谱中胃 FJ2564 的包围盒中心与最大边长（米）
@@ -188,6 +200,8 @@ export const ORGANS: Record<OrganId, OrganInfo> = {
     brief:
       "女性内生殖器官：子宫为梨形肌性器官，两侧经输卵管连接卵巢，受激素调控产生月经并孕育胎儿。",
     glb: "",
+    closeupGlb: "/models/hra-uterus-female.glb",
+    referenceLabel: "HuBMAP 女性子宫参考模型（不含附件）",
     thumb: "/cases/uterus-thumb.png",
     organImg: "/cases/uterus-thumb.png",
     bodyPosition: [0, 0.955, -0.01],

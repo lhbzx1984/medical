@@ -182,12 +182,15 @@ export function BodyOverviewScene({
 // 学习中心器官特写场景：单器官大视图
 export function OrganCloseupScene({
   organId,
+  useReferenceModel = true,
   onSelectOrgan,
 }: {
   organId: OrganId;
+  useReferenceModel?: boolean;
   onSelectOrgan?: (id: OrganId) => void;
 }) {
   const organ = ORGANS[organId];
+  const closeupGlb = useReferenceModel ? organ.closeupGlb : undefined;
   return (
     <group>
       <ambientLight intensity={0.7} />
@@ -195,7 +198,7 @@ export function OrganCloseupScene({
       <directionalLight position={[2, 3, 3]} intensity={1.2} />
       <directionalLight position={[-2.5, 1.5, -2]} intensity={0.4} color="#9fd8ff" />
       <Suspense fallback={null}>
-        {organ.procedural ? (
+        {organ.procedural && !closeupGlb ? (
           <FemaleReproductive
             targetSize={1.6}
             autoRotate
@@ -210,8 +213,8 @@ export function OrganCloseupScene({
           />
         ) : (
           <OrganModel
-            organ={organ.closeupGlb ? { ...organ, glb: organ.closeupGlb } : organ}
-            targetSize={organ.closeupGlb ? 1.25 : 1.6}
+            organ={closeupGlb ? { ...organ, glb: closeupGlb } : organ}
+            targetSize={closeupGlb ? 1.25 : 1.6}
             autoRotate
             onClick={
               onSelectOrgan

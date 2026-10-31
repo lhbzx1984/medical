@@ -14,6 +14,7 @@ import { BodyOverviewScene, OrganCloseupScene } from "@/components/sim/BodyOverv
 interface Props {
   mode: "overview" | "organ";
   organId: OrganId;
+  useReferenceModel?: boolean;
   /** 概览中当前选中的器官（null = 外皮实体状态） */
   selectedId: OrganId | null;
   onSelect: (id: OrganId) => void;
@@ -75,6 +76,7 @@ function CameraFocus({ mode, selectedId }: { mode: "overview" | "organ"; selecte
 export default function LearnCanvas({
   mode,
   organId,
+  useReferenceModel = true,
   selectedId,
   onSelect,
   onClearSelect,
@@ -109,7 +111,7 @@ export default function LearnCanvas({
             sex={sex}
           />
         ) : (
-          <OrganCloseupScene organId={organId} onSelectOrgan={onSelect} />
+          <OrganCloseupScene organId={organId} useReferenceModel={useReferenceModel} onSelectOrgan={onSelect} />
         )}
       </Canvas>
     </div>
