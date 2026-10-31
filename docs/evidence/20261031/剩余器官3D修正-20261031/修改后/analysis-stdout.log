@@ -1,0 +1,142 @@
+Read-only measurements for lungs / brain / eyeball (metres; +X patient left, +Y up, +Z front).
+BodyOutline PROFILE (r, y): (0.001, 0) (0.09, 0.015) (0.115, 0.06) (0.12, 0.12) (0.105, 0.4) (0.125, 0.52) (0.125, 0.82) (0.155, 0.93) (0.17, 0.99) (0.155, 1.08) (0.15, 1.16) (0.168, 1.28) (0.185, 1.36) (0.15, 1.46) (0.075, 1.52) (0.06, 1.56) (0.085, 1.62) (0.1, 1.7) (0.07, 1.76) (0.001, 1.78)
+
+=================== A. LUNGS ===================
+GLB box: lo [-0.451, 0.000, -0.307] hi [0.451, 0.979, 0.307] size [0.903, 0.979, 0.613] centre [0.000, 0.490, 0.000]; 190977 vertices
+body rows 0-32 of 0-39 (rows narrower than 1/3 of the width are the trachea stub): body box size [0.903, 0.808, 0.613] centre [0.000, 0.404, 0.000]; stub = 0.171 of 0.979 (17.5%)
+bbox centre - body centre (model units): [0.000, 0.086, 0.000]
+row  y(0=bottom)  x-width/ box-width   z-depth/ box-depth   mediastinal gap (fraction of width, central 60%)
+  0  0.00          0.96                 0.45                 0.00
+  3  0.07          0.99                 0.93                 0.21
+  6  0.15          1.00                 1.00                 0.12
+  9  0.23          1.00                 0.99                 0.11
+ 12  0.30          0.98                 0.97                 0.12
+ 15  0.38          0.97                 0.94                 0.10
+ 18  0.45          0.94                 0.90                 0.09
+ 21  0.53          0.89                 0.81                 0.05
+ 24  0.60          0.82                 0.73                 0.00
+ 27  0.68          0.72                 0.60                 0.03
+ 30  0.75          0.57                 0.41                 0.04
+ 33  0.82          0.08                 0.13                 0.00
+ 36  0.90          0.10                 0.19                 0.00
+ 39  0.97          0.12                 0.15                 0.00
+model halves of the lung body (x < centre | x >= centre): vertices 57251 | 124118; filled voxels 3497 | 3388; y 2% quantile (base) 0.058 | 0.043; y 98% quantile (apex) 0.788 | 0.770
+atlas ribs 1-10 (outer chest)      box [-0.137, 1.101, -0.096] .. [0.136, 1.449, 0.098]  centre [-0.001, 1.275, 0.001] size [0.273, 0.348, 0.194]  (20 meshes)
+atlas diaphragm                    box [-0.122, 1.064, -0.074] .. [0.121, 1.271, 0.105]  centre [-0.001, 1.167, 0.016] size [0.243, 0.207, 0.179]  (1 meshes)
+atlas segmental/lingular trees     box [-0.117, 1.203, -0.080] .. [0.123, 1.431, 0.078]  centre [0.003, 1.317, -0.001] size [0.239, 0.228, 0.158]  (98 meshes)
+atlas trachea                      box [-0.013, 1.363, -0.023] .. [0.013, 1.473, 0.010]  centre [-0.000, 1.418, -0.006] size [0.026, 0.110, 0.033]  (1 meshes)
+atlas main bronchi                 box [-0.050, 1.282, -0.039] .. [0.072, 1.376, -0.002]  centre [0.011, 1.329, -0.020] size [0.123, 0.094, 0.037]  (2 meshes)
+atlas heart cavities + atrial walls box [-0.036, 1.258, -0.030] .. [0.070, 1.358, 0.073]  centre [0.017, 1.308, 0.022] size [0.107, 0.100, 0.103]  (6 meshes)
+atlas diaphragm dome top: patient right (x<0) 1.271, patient left 1.260
+atlas Left clavicle                box [0.008, 1.387, -0.046] .. [0.144, 1.433, 0.047]  centre [0.076, 1.410, 0.001] size [0.136, 0.047, 0.093]
+atlas Right clavicle               box [-0.145, 1.387, -0.045] .. [-0.010, 1.434, 0.047]  centre [-0.078, 1.410, 0.001] size [0.136, 0.047, 0.092]
+atlas Body of sternum              box [-0.023, 1.258, 0.065] .. [0.024, 1.368, 0.114]  centre [0.000, 1.313, 0.090] size [0.047, 0.110, 0.049]
+atlas Left lobe of thymus          box [-0.004, 1.336, 0.020] .. [0.022, 1.395, 0.059]  centre [0.009, 1.365, 0.040] size [0.025, 0.059, 0.040]
+atlas Right lobe of thymus         box [-0.025, 1.339, 0.022] .. [0.002, 1.408, 0.044]  centre [-0.011, 1.374, 0.033] size [0.027, 0.069, 0.022]
+atlas Left first rib               box [0.014, 1.388, -0.036] .. [0.068, 1.449, 0.030]  centre [0.041, 1.418, -0.003] size [0.055, 0.060, 0.066]
+atlas Right first rib              box [-0.070, 1.388, -0.035] .. [-0.015, 1.449, 0.030]  centre [-0.042, 1.418, -0.003] size [0.055, 0.060, 0.066]
+ribs inner estimate: outer width 0.273 - 2 x rib thickness 0.008..0.012 = 0.249 .. 0.257; diaphragm width 0.243
+lung currently: bodyPosition [0.000, 1.341, 0.000] bodySize 0.271
+  rendered GLB box [-0.125, 1.206, -0.085] .. [0.125, 1.476, 0.085] size [0.250, 0.271, 0.170]; body (no trachea) y 1.206 .. 1.429 size [0.250, 0.224, 0.170]
+  vs ribs 1-10 outer box: margin x 1.1 / 1.2 cm (left/right, negative = outside), z 1.3 / 1.2 cm (front/back)
+  segmental trees inside rendered lung body box: 99.8% of 43104 atlas points
+
+candidate lung body widths (uniform scale; body = GLB without trachea stub):
+width   bodySize  body height  depth    stub    body-bottom for bronchi-centred  bodyPosition y
+0.243   0.264     0.218        0.165    0.046   body 1.208 .. 1.426 (trachea to 1.472)        1.340
+0.250   0.271     0.224        0.170    0.047   body 1.205 .. 1.429 (trachea to 1.476)        1.341
+0.257   0.279     0.230        0.175    0.049   body 1.202 .. 1.432 (trachea to 1.481)        1.342
+0.265   0.288     0.237        0.180    0.050   body 1.198 .. 1.436 (trachea to 1.486)        1.342
+heart-lung overlap (the lung GLB has only a ~narrow gap in the middle, no cardiac space):
+  current lungs: heart box [-0.029, 1.225, -0.020] .. [0.063, 1.375, 0.070]; heart vertices inside the filled lung (approximate): 18.2%; lung body x -0.125 .. 0.125
+  width 0.25 lungs centred y=1.317: heart box [-0.029, 1.225, -0.020] .. [0.063, 1.375, 0.070]; heart vertices inside the filled lung (approximate): 18.4%; lung body x -0.125 .. 0.125
+
+=================== B. BRAIN ===================
+atlas brain                        box [-0.071, 1.543, -0.110] .. [0.070, 1.709, 0.070]  centre [-0.001, 1.626, -0.020] size [0.141, 0.166, 0.180]  (82 meshes)
+brain GLB box size [0.980, 0.901, 0.808] (proportions [1.000, 0.919, 0.824]); atlas proportions [0.782, 0.922, 1.000]
+shape match after turning the GLB about Y (filled 3D occupancy IoU, both boxes normalised to a unit cube; mirror = x -> -x after the turn):
+  turn   0 deg         : IoU 0.753   turned box size [0.180, 0.165, 0.148] at bodySize 0.18
+  turn   0 deg + mirror: IoU 0.753   turned box size [0.180, 0.165, 0.148] at bodySize 0.18
+  turn  90 deg         : IoU 0.789   turned box size [0.148, 0.165, 0.180] at bodySize 0.18
+  turn  90 deg + mirror: IoU 0.789   turned box size [0.148, 0.165, 0.180] at bodySize 0.18
+  turn 180 deg         : IoU 0.710   turned box size [0.180, 0.165, 0.148] at bodySize 0.18
+  turn 180 deg + mirror: IoU 0.708   turned box size [0.180, 0.165, 0.148] at bodySize 0.18
+  turn 270 deg         : IoU 0.684   turned box size [0.148, 0.165, 0.180] at bodySize 0.18
+  turn 270 deg + mirror: IoU 0.685   turned box size [0.148, 0.165, 0.180] at bodySize 0.18
+lowest 15% of height, centroid offset from box centre (fraction of half size): atlas [-0.003, -0.832, -0.237]; model [0.325, -0.805, -0.070]
+atlas cerebellum                   box [-0.054, 1.565, -0.088] .. [0.053, 1.619, -0.032]  centre [-0.001, 1.592, -0.060] size [0.107, 0.053, 0.056]
+best match: turn 90 deg + mirror (IoU 0.789)
+
+=================== C. EYEBALL ===================
+atlas left sclera + cornea         box [0.016, 1.583, 0.039] .. [0.042, 1.609, 0.066]  centre [0.029, 1.596, 0.052] size [0.026, 0.026, 0.027]  (2 meshes)
+atlas right sclera + cornea        box [-0.044, 1.583, 0.039] .. [0.031, 1.609, 0.066]  centre [-0.006, 1.596, 0.052] size [0.074, 0.026, 0.027]  (2 meshes)
+atlas left sclera only             box [0.016, 1.583, 0.039] .. [0.042, 1.609, 0.063]  centre [0.029, 1.596, 0.051] size [0.026, 0.026, 0.025]
+eye GLB box size [0.979, 0.805, 0.853] (proportions [1.000, 0.822, 0.871]); atlas proportions [0.967, 0.964, 1.000]
+vertex centroid [0.059, 0.442, 0.027]; median radius 0.338 (model units); farthest 3% of vertices: mean direction [0.148, -0.475, -0.867], distance 0.230 (0.68 x median radius)
+eye: IoU after turning about Y (filled occupancy):
+  turn   0 deg         : IoU 0.648
+  turn   0 deg + mirror: IoU 0.649
+  turn  90 deg         : IoU 0.636
+  turn  90 deg + mirror: IoU 0.636
+  turn 180 deg         : IoU 0.677
+  turn 180 deg + mirror: IoU 0.676
+  turn 270 deg         : IoU 0.678
+  turn 270 deg + mirror: IoU 0.680
+optic-nerve direction in the GLB [0.148, -0.475, -0.867]; after a +90 deg turn about Y: [-0.867, -0.475, -0.148] (a left eye's nerve should leave backwards (-z) and towards the midline (-x))
+GLB x-axis slice widths / widest (40 slices, low x -> high x): 0.37 0.48 0.56 0.62 0.68 0.74 0.77 0.83 0.88 0.91 0.94 0.96 0.97 0.99 1.00 1.00 1.00 1.00 0.99 0.98 0.96 0.95 0.92 0.89 0.86 0.82 0.77 0.72 0.67 0.63 0.58 0.51 0.35 0.28 0.26 0.28 0.33 0.32 0.28 0.20; thin slices at the high-x end: 3
+globe = x slices 0-31 of 0-39 (80% of the GLB length), stub = slices 32-39 (20902 vertices)
+globe box size [0.783, 0.805, 0.797] centre [-0.098, 0.402, 0.028] (GLB box centre [0.000, 0.402, -0.000]); globe centre - box centre [-0.098, 0.000, 0.028] model units = [-0.003, 0.000, 0.001] m at bodySize 0.032
+globe diameter: y 0.805 z 0.797 model units; as fractions of the GLB's longest side 0.822 / 0.814; globe length along x 0.800
+optic-nerve direction (stub centroid - globe centre) [0.883, -0.099, -0.459], 0.550 model units; after a +90 deg turn about Y: [-0.459, -0.099, -0.883]
+  bodySize 0.03: globe diameter y 0.025 m, x(after turn) 0.024 m, front-back 0.024 m; atlas sclera 0.026 / cornea tip adds 0.002
+  bodySize 0.032: globe diameter y 0.026 m, x(after turn) 0.026 m, front-back 0.026 m; atlas sclera 0.026 / cornea tip adds 0.002
+  bodySize 0.034: globe diameter y 0.028 m, x(after turn) 0.028 m, front-back 0.027 m; atlas sclera 0.026 / cornea tip adds 0.002
+
+=================== D. HEAD ORGANS AGAINST THE BODY OUTLINE ===================
+atlas skin mesh: present
+brain (turned +90 deg about Y, bodySize 0.18): fraction of vertices outside the outline lathe, worst protrusion
+  y-centre  z-centre  x-centre   outside   worst protrusion   top   bottom   brain top vs outline top
+  1.626    -0.020    0.000     24.4%      2.7 cm          1.709 1.543   9.6 cm outline radius at the brain top
+  1.626    -0.010    0.000     15.3%      1.8 cm          1.709 1.543   9.6 cm outline radius at the brain top
+  1.626    0.000    0.000      8.3%      0.8 cm          1.709 1.543   9.6 cm outline radius at the brain top
+  1.626    0.010    0.000      4.7%      1.4 cm          1.709 1.543   9.6 cm outline radius at the brain top
+  1.650    -0.020    0.000     17.2%      2.1 cm          1.733 1.567   8.4 cm outline radius at the brain top
+  1.650    -0.010    0.000      9.2%      1.1 cm          1.733 1.567   8.4 cm outline radius at the brain top
+  1.650    0.000    0.000      0.8%      0.1 cm          1.733 1.567   8.4 cm outline radius at the brain top
+  1.650    0.010    0.000      2.5%      1.0 cm          1.733 1.567   8.4 cm outline radius at the brain top
+  1.670    -0.020    0.000     14.4%      1.7 cm          1.753 1.587   7.4 cm outline radius at the brain top
+  1.670    -0.010    0.000      4.7%      0.7 cm          1.753 1.587   7.4 cm outline radius at the brain top
+  1.670    0.000    0.000      0.0%      0.0 cm          1.753 1.587   7.4 cm outline radius at the brain top
+  1.670    0.010    0.000      1.2%      0.6 cm          1.753 1.587   7.4 cm outline radius at the brain top
+  1.687    -0.020    0.000     16.9%      1.4 cm          1.770 1.604   3.7 cm outline radius at the brain top
+  1.687    -0.010    0.000      3.4%      0.4 cm          1.770 1.604   3.7 cm outline radius at the brain top
+  1.687    0.000    0.000      0.0%      0.0 cm          1.770 1.604   3.7 cm outline radius at the brain top
+  1.687    0.010    0.000      1.6%      0.5 cm          1.770 1.604   3.7 cm outline radius at the brain top
+  1.700    -0.020    0.000     27.9%      3.9 cm          1.783 1.617   0.0 cm outline radius at the brain top
+  1.700    -0.010    0.000     17.9%      2.9 cm          1.783 1.617   0.0 cm outline radius at the brain top
+  1.700    0.000    0.000     10.0%      2.5 cm          1.783 1.617   0.0 cm outline radius at the brain top
+  1.700    0.010    0.000     16.1%      3.4 cm          1.783 1.617   0.0 cm outline radius at the brain top
+current brain placement (registry rotation applied):
+  [0.000, 1.686, -0.010] size 0.18 rotation 1.5708: outside 3.3%, worst 0.4 cm; y 1.603 .. 1.769; box size [0.148, 0.165, 0.180]
+eyeball (turned +90 deg about Y): fraction outside the outline lathe
+  (first line = registry value with the registry rotation; the others are candidate values turned +90 deg)
+  [0.028, 1.656, 0.059] size 0.032: outside 0.0%, worst 0.0 cm; box [0.014, 1.643, 0.043] .. [0.042, 1.669, 0.075] size [0.028, 0.026, 0.032]; outline radius at the eye height 9.2 cm
+  [0.029, 1.657, 0.052] size 0.03: outside 0.0%, worst 0.0 cm; box [0.016, 1.645, 0.037] .. [0.042, 1.669, 0.067] size [0.026, 0.025, 0.030]; outline radius at the eye height 9.2 cm
+  [0.029, 1.657, 0.051] size 0.03: outside 0.0%, worst 0.0 cm; box [0.016, 1.645, 0.036] .. [0.042, 1.669, 0.066] size [0.026, 0.025, 0.030]; outline radius at the eye height 9.2 cm
+  of which globe vertices inside the filled brain: 5.9% of 157150; optic-nerve stub vertices: 0.0% of 20902 (the nerve runs into the skull)
+same measure on the atlas itself (left sclera+cornea vs the atlas brain structures): 0.0% of the eye's points
+eye vertices inside the filled brain (registry values: brain [0.000, 1.686, -0.010], eye [0.028, 1.656, 0.059]): 5.2%
+
+atlas head reference: skin top 1.719, widest head half-width 0.080 at 1.64, narrowest neck 1.52; outline: top 1.78, widest r 0.100 at 1.70, narrowest neck 1.56 -> outline head sits 0.061 above the atlas at the top
+
+=================== E. CURRENT REGISTRY VS ATLAS (rotation applied as OrganModel does) ===================
+lungs [0.000, 1.341, 0.000] size 0.271: body (no trachea stub) box [-0.125, 1.206, -0.085] .. [0.125, 1.429, 0.085] size [0.250, 0.224, 0.170]; trachea top 1.476 (atlas trachea top 1.473)
+  inside ribs 1-10 outer box, margin per side (cm): x left 1.1 right 1.2; z front 1.3 back 1.2; apex 2.0 below the first-rib top
+  atlas segmental trees inside the lung body (cm, positive = inside): x 0.8 / 0.2; y -0.3 / -0.2; z 0.5 / 0.7
+  heart vertices inside the filled lung body (approximate, 5 mm cells): 18.2%
+brain [0.000, 1.686, -0.010] size 0.18 rotation 1.5708 rad: rendered box [-0.074, 1.603, -0.100] .. [0.074, 1.769, 0.080] size [0.148, 0.165, 0.180]
+  rendered - atlas (cm, x/y/z): centre 0.1 / 6.0 / 1.0; size 0.7 / -0.1 / -0.0; outline head top 1.78 - atlas skin top 1.719 = lift 0.061; centre y - atlas centre y = 0.060
+  vertices outside the outline lathe: 3.3%, worst 0.4 cm
+eyeball [0.028, 1.656, 0.059] size 0.032 rotation 1.5708 rad: globe box [0.016, 1.643, 0.049] .. [0.042, 1.669, 0.075] size [0.026, 0.026, 0.026] centre [0.029, 1.656, 0.062]
+  globe - atlas left sclera+cornea (cm, x/y/z): size -0.0 / 0.0 / -0.2; centre x -0.0, y 6.0 (head lift 0.06), z 1.0 (head shift 0.01)
+  vertices outside the outline lathe: 0.0%, worst 0.0 cm

@@ -1,0 +1,79 @@
+Read-only orientation and head checks (metres; +X patient left, +Y up, +Z front).
+
+== 1. Brain: which way is the back? (centroid of the lowest band, fraction of half size from box centre)
+  atlas: lowest 10% of height (331 points): x -0.00, z -0.24
+  model: lowest 10% of height (2882 points): x 0.32, z -0.03
+  atlas: lowest 25% of height (4891 points): x 0.00, z -0.22
+  model: lowest 25% of height (19906 points): x 0.32, z -0.02
+  atlas Cerebellum box [-0.054,1.565,-0.088] .. [0.053,1.619,-0.032] (behind the brain centre in z, as expected)
+
+== 2. Eye: end slices per axis (40 slices; width = widest cross extent / widest box side; offsets = centroid of the slice from the box centre, fraction of half size)
+  model x axis, low end:  x slice  0: width 0.35, y -0.00, z 0.16, 1868 points | x slice  1: width 0.45, y -0.01, z 0.21, 2082 points | x slice  2: width 0.53, y -0.02, z 0.11, 2075 points | x slice  3: width 0.59, y 0.06, z 0.21, 2135 points
+  model x axis, high end: x slice 36: width 0.32, y -0.15, z -0.61, 3159 points | x slice 37: width 0.30, y -0.15, z -0.67, 2240 points | x slice 38: width 0.27, y -0.14, z -0.70, 2399 points | x slice 39: width 0.19, y -0.16, z -0.75, 2387 points
+  model y axis, low end:  y slice  0: width 0.26, x -0.19, z 0.11, 839 points | y slice  1: width 0.33, x -0.15, z 0.14, 1442 points | y slice  2: width 0.39, x -0.19, z 0.29, 3089 points | y slice  3: width 0.44, x -0.18, z 0.24, 2579 points
+  model y axis, high end: y slice 36: width 0.45, x -0.10, z 0.09, 5910 points | y slice 37: width 0.40, x -0.13, z 0.06, 5070 points | y slice 38: width 0.33, x -0.14, z 0.10, 4324 points | y slice 39: width 0.24, x -0.17, z 0.09, 4571 points
+  model z axis, low end:  z slice  0: width 0.08, x 0.89, y -0.18, 416 points | z slice  1: width 0.11, x 0.90, y -0.17, 865 points | z slice  2: width 0.69, x 0.35, y -0.09, 1931 points | z slice  3: width 0.76, x 0.21, y -0.09, 2152 points
+  model z axis, high end: z slice 36: width 0.47, x -0.10, y -0.05, 3216 points | z slice 37: width 0.41, x -0.11, y -0.05, 3190 points | z slice 38: width 0.32, x -0.22, y -0.05, 2847 points | z slice 39: width 0.23, x -0.27, y -0.01, 1650 points
+  atlas eye parts:
+    Left cornea   box [0.023,1.589,0.061] .. [0.037,1.603,0.066]  centre [0.030,1.596,0.064]  size [0.014,0.014,0.005]  (listed bounds [0.023,1.589,0.061] .. [0.037,1.603,0.066])
+    Left sclera   box [0.016,1.583,0.039] .. [0.042,1.609,0.063]  centre [0.029,1.596,0.051]  size [0.026,0.026,0.025]  (listed bounds [0.016,1.583,0.039] .. [0.042,1.609,0.063])
+    Right cornea  box [-0.038,1.589,0.061] .. [0.031,1.603,0.066]  centre [-0.004,1.596,0.064]  size [0.069,0.014,0.005]  (listed bounds [-0.038,1.589,0.061] .. [0.031,1.603,0.066])
+    Right sclera  box [-0.044,1.583,0.039] .. [-0.017,1.609,0.063]  centre [-0.030,1.596,0.051]  size [0.026,0.026,0.025]  (listed bounds [-0.044,1.583,0.039] .. [0.031,1.609,0.063])
+
+== 3. Head: atlas skin against BodyOutline (lathe, so its radius applies to both width and depth)
+  y      outline r   atlas half-width x   atlas z range (half-depth)
+  1.30   0.172       0.238               -0.141 .. 0.122 (0.132)
+  1.31   0.174       0.239               -0.143 .. 0.120 (0.131)
+  1.32   0.176       0.240               -0.145 .. 0.111 (0.128)
+  1.33   0.179       0.241               -0.145 .. 0.107 (0.126)
+  1.34   0.181       0.240               -0.145 .. 0.106 (0.126)
+  1.35   0.183       0.240               -0.144 .. 0.100 (0.122)
+  1.36   0.185       0.239               -0.141 .. 0.096 (0.118)
+  1.37   0.181       0.237               -0.140 .. 0.090 (0.115)
+  1.38   0.178       0.233               -0.136 .. 0.079 (0.107)
+  1.39   0.174       0.230               -0.137 .. 0.071 (0.104)
+  1.40   0.171       0.223               -0.135 .. 0.063 (0.099)
+  1.41   0.167       0.215               -0.133 .. 0.056 (0.095)
+  1.42   0.164       0.204               -0.126 .. 0.049 (0.087)
+  1.43   0.160       0.181               -0.124 .. 0.038 (0.081)
+  1.44   0.157       0.150               -0.118 .. 0.032 (0.075)
+  1.45   0.153       0.132               -0.110 .. 0.027 (0.069)
+  1.46   0.150       0.108               -0.104 .. 0.028 (0.066)
+  1.47   0.137       0.092               -0.098 .. 0.029 (0.063)
+  1.48   0.125       0.074               -0.090 .. 0.035 (0.062)
+  1.49   0.112       0.064               -0.086 .. 0.080 (0.083)
+  1.50   0.100       0.059               -0.084 .. 0.085 (0.084)
+  1.51   0.087       0.059               -0.084 .. 0.085 (0.084)
+  1.52   0.075       0.058               -0.084 .. 0.083 (0.084)
+  1.53   0.071       0.060               -0.085 .. 0.088 (0.086)
+  1.54   0.067       0.063               -0.087 .. 0.091 (0.089)
+  1.55   0.064       0.064               -0.091 .. 0.093 (0.092)
+  1.56   0.060       0.066               -0.094 .. 0.105 (0.099)
+  1.57   0.064       0.069               -0.103 .. 0.105 (0.104)
+  1.58   0.068       0.070               -0.108 .. 0.101 (0.104)
+  1.59   0.073       0.071               -0.115 .. 0.094 (0.105)
+  1.60   0.077       0.075               -0.119 .. 0.089 (0.104)
+  1.61   0.081       0.078               -0.122 .. 0.083 (0.103)
+  1.62   0.085       0.077               -0.124 .. 0.083 (0.103)
+  1.63   0.087       0.079               -0.125 .. 0.084 (0.104)
+  1.64   0.089       0.080               -0.124 .. 0.083 (0.103)
+  1.65   0.091       0.078               -0.122 .. 0.080 (0.101)
+  1.66   0.093       0.078               -0.114 .. 0.078 (0.096)
+  1.67   0.094       0.076               -0.116 .. 0.073 (0.094)
+  1.68   0.096       0.072               -0.110 .. 0.070 (0.090)
+  1.69   0.098       0.066               -0.104 .. 0.061 (0.082)
+  1.70   0.100       0.057               -0.095 .. 0.050 (0.072)
+  1.71   0.095       0.044               -0.081 .. 0.040 (0.060)
+  1.72   0.090       0.022               -0.047 .. 0.018 (0.033)
+  atlas: skin top 1.719; narrowest neck 1.52 (half-width 0.058); widest head 1.64 (half-width 0.080)
+  outline: top 1.780; narrowest neck 1.56 (r 0.060); widest head 1.70 (r 0.100)
+  atlas Mandible: y 1.500 .. 1.584
+  atlas Frontal bone: y 1.599 .. 1.708
+  atlas Occipital bone: y 1.556 .. 1.663
+  atlas Hyoid bone: y 1.500 .. 1.519
+  atlas Left clavicle: y 1.387 .. 1.433
+  atlas Right clavicle: y 1.387 .. 1.434
+  atlas Left scapula: y 1.262 .. 1.428
+  atlas Manubrium of sternum: not in atlas
+  current brain: bodyPosition [0, 1.585, -0.01], bodySize 0.2
+  current eyeball: bodyPosition [0.034, 1.652, 0.06], bodySize 0.05

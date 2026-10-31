@@ -1,0 +1,87 @@
+(node:22780) [THREE_CJS_DEPRECATED] DeprecationWarning: `require("three")` is deprecated and will be removed.
+Replace `const THREE = require("three")` with `import * as THREE from "three"`.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✖ overview lungs fit inside the ribs and around the atlas airway trees (trachea stub left out) (161.5707ms)
+✖ overview brain faces front like the atlas brain and sits in the head of the body outline (123.4606ms)
+✖ overview eyeball is the atlas left eye in size and orientation and sits in the head of the body outline (113.3245ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 0
+ℹ fail 3
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 696.2973
+
+✖ failing tests:
+
+test at tests\atlas-regression.test.cjs:232:1
+✖ overview lungs fit inside the ribs and around the atlas airway trees (trachea stub left out) (161.5707ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+  + [
+  +   'x: lungs -0.157,0.157 are not 1 cm inside the ribs -0.137,0.136',
+  +   'z: lungs -0.106,0.106 are not 1 cm inside the ribs -0.096,0.098',
+  +   'y: airway trees 1.203,1.431 stick out of the lungs 1.125,1.405'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (<临时目录>\oldroot\tests\atlas-regression.test.cjs:259:10)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:385:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [ 'x: lungs -0.157,0.157 are not 1 cm inside the ribs -0.137,0.136', 'z: lungs -0.106,0.106 are not 1 cm inside the ribs -0.096,0.098', 'y: airway trees 1.203,1.431 stick out of the lungs 1.125,1.405' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at tests\atlas-regression.test.cjs:262:1
+✖ overview brain faces front like the atlas brain and sits in the head of the body outline (123.4606ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+  + [
+  +   'x size 0.200, atlas 0.141',
+  +   'y size 0.184, atlas 0.166',
+  +   'z size 0.165, atlas 0.180',
+  +   'y centre 1.585, atlas 1.626 + outline lift 0.061',
+  +   'lowest 15% of the brain is at z -0.016, not behind the centre -0.010',
+  +   '38.9% of the brain is outside the outline, worst 4.1 cm'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (<临时目录>\oldroot\tests\atlas-regression.test.cjs:289:10)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [ 'x size 0.200, atlas 0.141', 'y size 0.184, atlas 0.166', 'z size 0.165, atlas 0.180', 'y centre 1.585, atlas 1.626 + outline lift 0.061', 'lowest 15% of the brain is at z -0.016, not behind the centre -0.010', '38.9% of the brain is outside the outline, worst 4.1 cm' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at tests\atlas-regression.test.cjs:292:1
+✖ overview eyeball is the atlas left eye in size and orientation and sits in the head of the body outline (113.3245ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+  + [
+  +   'globe size 0.040,0.041,0.041, atlas sclera 0.026,0.026,0.025, sclera + cornea front-back 0.027',
+  +   'optic nerve centre 0.054,1.649,0.049 is not behind and medial to the globe centre 0.029,1.652,0.061'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (<临时目录>\oldroot\tests\atlas-regression.test.cjs:328:10)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [ 'globe size 0.040,0.041,0.041, atlas sclera 0.026,0.026,0.025, sclera + cornea front-back 0.027', 'optic nerve centre 0.054,1.649,0.049 is not behind and medial to the globe centre 0.029,1.652,0.061' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }

@@ -1,0 +1,239 @@
+--- a/src/lib/organ-models.ts
++++ b/src/lib/organ-models.ts
+@@ -3,6 +3,7 @@
+ // 例外：stomach.glb 由 scripts/extract-stomach-glb.mjs 从 BodyParts3D 精细图谱（FJ2564）转换，缩略图为其实际渲染。
+ // bodyPosition / bodySize 用于「人体概览」场景中的解剖学摆放：
+ //   坐标系为 Y 轴向上、单位米、标准站立人体身高约 1.75m，面朝 +Z；+X 为患者左侧（与精细图谱一致）。
++//   bodyRotation（可选）：GLB 自身朝向与图谱不同的器官在概览里绕竖直轴的旋转；器官特写与器官级视图仍按 GLB 原始朝向。
+ import { ORGAN_IDS, type OrganId } from "./types";
+ 
+ export interface OrganInfo {
+@@ -20,6 +21,8 @@
+   bodyPosition: [number, number, number];
+   /** 概览场景中的目标最大尺寸（米） */
+   bodySize: number;
++  /** 概览场景中的旋转（弧度，缺省不旋转）；绕包围盒中心，不改变 bodyPosition 与 bodySize 的含义 */
++  bodyRotation?: [number, number, number];
+   /** 概览中是否作为半透明体表外壳渲染 */
+   isShell?: boolean;
+   /** 程序化建模（无 GLB，如女性子宫附件） */
+@@ -39,8 +42,12 @@
+     glb: "/models/brain.glb",
+     thumb: "/anatomy/brain/thumb.webp",
+     organImg: "/anatomy/brain/organ.webp",
+-    bodyPosition: [0, 1.585, -0.01],
+-    bodySize: 0.2,
++    // 取自精细图谱脑结构（含小脑、脑干）的包围盒：最长边为前后长 0.18，x 中心取 0。GLB 的前后轴在 x 上（枕后朝 +x），
++    // 概览里绕竖直轴转 +90° 使枕后朝 -Z。人形轮廓的头部（颈最细 1.56、头顶 1.78）比图谱头部（下颌 1.50、头顶 1.719）整体高 0.06，
++    // 故 y 取图谱中心 1.626 加 0.06；z 取 -0.01（图谱 -0.02，轮廓中轴 0），个别顶点超出轮廓不超过 0.4 cm。
++    bodyPosition: [0, 1.686, -0.01],
++    bodySize: 0.18,
++    bodyRotation: [0, Math.PI / 2, 0],
+   },
+   eyeball: {
+     id: "eyeball",
+@@ -51,8 +58,11 @@
+     glb: "/models/eyeball.glb",
+     thumb: "/anatomy/eyeball/thumb.webp",
+     organImg: "/anatomy/eyeball/organ.webp",
+-    bodyPosition: [0.034, 1.652, 0.06],
+-    bodySize: 0.05,
++    // 取自精细图谱左眼（巩膜+角膜）：球径 0.026，x 中心 0.029。GLB 末端约 20% 是视神经残端（朝后内侧），球体中心比包围盒中心靠前 0.003，
++    // bodySize 取 0.032 使球径为 0.026；绕竖直轴转 +90° 使角膜朝前（+Z）、视神经朝后内侧。位置随轮廓头部上移 0.06、前移 0.01（同脑）。
++    bodyPosition: [0.028, 1.656, 0.059],
++    bodySize: 0.032,
++    bodyRotation: [0, Math.PI / 2, 0],
+   },
+   heart: {
+     id: "heart",
+@@ -76,8 +86,11 @@
+     glb: "/models/lungs.glb",
+     thumb: "/anatomy/lungs/thumb.webp",
+     organImg: "/anatomy/lungs/organ.webp",
+-    bodyPosition: [0, 1.295, 0.0],
+-    bodySize: 0.34,
++    // 图谱没有肺实质网格，按肋骨与气道取值：肺体宽 0.25（第 1—10 肋外包围盒宽 0.273，两侧各留 1.1 cm；图谱段支气管树宽 0.239，被包在肺内），
++    // 肺体居中于段支气管树的中心 y 1.317。GLB 顶部约 17.5% 是气管残端，包围盒中心比肺体中心高 0.024，故 y 取 1.341；
++    // 残端顶端 1.476 与图谱气管上端 1.473 相差不到 0.5 cm。
++    bodyPosition: [0, 1.341, 0],
++    bodySize: 0.271,
+   },
+   liver: {
+     id: "liver",
+--- a/src/components/sim/BodyOverviewScene.tsx
++++ b/src/components/sim/BodyOverviewScene.tsx
+@@ -116,6 +116,7 @@
+     <OrganModel
+       organ={organ}
+       position={organ.bodyPosition}
++      rotation={organ.bodyRotation}
+       highlight={highlight}
+       dimmed={dimmed}
+       onClick={onClick}
+--- a/tests/atlas-regression.test.cjs
++++ b/tests/atlas-regression.test.cjs
+@@ -166,3 +166,164 @@
+   }
+   assert.deepEqual(off, []);
+ });
++
++// Lungs, brain and eyeball (mackdown.md section 6). Helpers shared by the three tests below.
++const atlasParts = () => JSON.parse(fs.readFileSync(path.join(__dirname, '../public/atlas/atlas.json'), 'utf8')).parts;
++/** Union of the bounds of the atlas structures whose name (and, if given, system) matches. */
++function atlasBox(parts, re, system) {
++  const hits = parts.filter((p) => re.test(p.name) && (!system || p.system === system));
++  assert.ok(hits.length, `no atlas structure matches ${re}`);
++  return [0, 1, 2].map((k) => [Math.min(...hits.map((p) => p.bounds[0][k])), Math.max(...hits.map((p) => p.bounds[1][k]))]);
++}
++const boundsOf = (pts) => [0, 1, 2].map((k) => pts.reduce(([lo, hi], p) => [Math.min(lo, p[k]), Math.max(hi, p[k])], [Infinity, -Infinity]));
++const centreOf = (box) => box.map(([lo, hi]) => (lo + hi) / 2);
++const sizeOf = (box) => box.map(([lo, hi]) => hi - lo);
++/** Vertex positions of a single-mesh Meshopt GLB (int16 quantisation + node transform), decoded as in the tests above. */
++async function glbPoints(file) {
++  const { MeshoptDecoder } = await import('three/examples/jsm/libs/meshopt_decoder.module.js');
++  await MeshoptDecoder.ready;
++  const glb = fs.readFileSync(path.join(__dirname, '../public', file));
++  const jsonLength = glb.readUInt32LE(12);
++  const gltf = JSON.parse(glb.subarray(20, 20 + jsonLength).toString('utf8'));
++  const accessor = gltf.accessors[gltf.meshes[0].primitives[0].attributes.POSITION];
++  const { count, byteStride, byteOffset = 0, byteLength, mode, filter } = gltf.bufferViews[accessor.bufferView].extensions.EXT_meshopt_compression;
++  const raw = new Uint8Array(count * byteStride);
++  MeshoptDecoder.decodeGltfBuffer(raw, count, byteStride, glb.subarray(28 + jsonLength + byteOffset, 28 + jsonLength + byteOffset + byteLength), mode, filter);
++  const view = new DataView(raw.buffer);
++  const { translation, scale } = gltf.nodes[0];
++  return Array.from({ length: count }, (_, i) => [0, 1, 2].map((k) =>
++    Math.max(view.getInt16((accessor.byteOffset ?? 0) + i * byteStride + 2 * k, true) / 32767, -1) * scale[k] + translation[k]));
++}
++/** The overview placement: world = bodyPosition + R_y(bodyRotation) * (scale * (point - GLB box centre)); scale = bodySize / longest GLB side. */
++function placeOverview(organ, points, box) {
++  const [rx, ry, rz] = organ.bodyRotation ?? [0, 0, 0];
++  assert.ok(rx === 0 && rz === 0, `${organ.id}: this helper handles rotation about Y only`);
++  const s = organ.bodySize / Math.max(...sizeOf(box));
++  const [cx, cy, cz] = centreOf(box);
++  const [cos, sin] = [Math.cos(ry), Math.sin(ry)];
++  return points.map((p) => {
++    const [x, y, z] = [(p[0] - cx) * s, (p[1] - cy) * s, (p[2] - cz) * s];
++    return [organ.bodyPosition[0] + x * cos + z * sin, organ.bodyPosition[1] + y, organ.bodyPosition[2] - x * sin + z * cos];
++  });
++}
++/** BodyOutline's lathe profile (radius, height), read from the component so this test follows it. */
++function outlineProfile() {
++  const source = fs.readFileSync(path.join(__dirname, '../src/components/sim/BodyOutline.tsx'), 'utf8');
++  const block = /const PROFILE[^=]*=\s*\[([\s\S]*?)\n\];/.exec(source);
++  assert.ok(block, 'PROFILE not found in BodyOutline.tsx');
++  return [...block[1].matchAll(/\[\s*([-0-9.]+)\s*,\s*([-0-9.]+)\s*\]/g)].map((m) => [Number(m[1]), Number(m[2])]);
++}
++/** Share of points outside the (circular) outline and the worst protrusion in metres. */
++function outsideOutline(profile, points) {
++  const radius = (y) => {
++    if (y <= profile[0][1]) return profile[0][0];
++    for (let i = 1; i < profile.length; i++) {
++      const [r0, y0] = profile[i - 1], [r1, y1] = profile[i];
++      if (y <= y1) return r0 + ((y - y0) / (y1 - y0)) * (r1 - r0);
++    }
++    return 0;
++  };
++  let outside = 0, worst = 0;
++  for (const p of points) { const over = Math.hypot(p[0], p[2]) - radius(p[1]); if (over > 0) outside++; worst = Math.max(worst, over); }
++  return { fraction: outside / points.length, worst };
++}
++const f3 = (box) => `${box.map((v) => v.toFixed(3))}`;
++
++test('overview lungs fit inside the ribs and around the atlas airway trees (trachea stub left out)', async () => {
++  const { ORGANS } = loadTs('src/lib/organ-models.ts');
++  const parts = atlasParts();
++  const ribs = atlasBox(parts, /^(Left|Right) (first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth) rib$/);
++  const trees = atlasBox(parts, /(segmental|lingular) bronchial tree$/);
++  const trachea = atlasBox(parts, /^Trachea$/);
++  const points = await glbPoints(ORGANS.lungs.glb);
++  const box = boundsOf(points);
++  // The model carries the trachea above the lungs: height slices narrower than a third of its width are trachea, not lung.
++  const row = (p) => Math.min(39, Math.floor(((p[1] - box[1][0]) / (box[1][1] - box[1][0])) * 40));
++  const widths = Array.from({ length: 40 }, () => [Infinity, -Infinity]);
++  for (const p of points) { const w = widths[row(p)]; w[0] = Math.min(w[0], p[0]); w[1] = Math.max(w[1], p[0]); }
++  const lungRows = widths.flatMap(([lo, hi], i) => (hi - lo > (box[0][1] - box[0][0]) / 3 ? [i] : []));
++  const lungs = boundsOf(placeOverview(ORGANS.lungs, points.filter((p) => row(p) >= lungRows[0] && row(p) <= lungRows.at(-1)), box));
++  const top = boundsOf(placeOverview(ORGANS.lungs, points, box))[1][1];
++  // The atlas has no lung mesh, so the lungs follow the structures around them: at least 1 cm inside the outer box of ribs 1-10
++  // sideways and front/back with the apex not above the first rib, enclosing the segmental bronchial trees (5 mm tolerance),
++  // and the model's trachea ends where the atlas trachea does (1 cm).
++  const problems = [];
++  for (const k of [0, 2]) {
++    if (lungs[k][0] - ribs[k][0] < 0.01 || ribs[k][1] - lungs[k][1] < 0.01) problems.push(`${'xyz'[k]}: lungs ${f3(lungs[k])} are not 1 cm inside the ribs ${f3(ribs[k])}`);
++  }
++  if (lungs[1][1] > ribs[1][1]) problems.push(`lung apex ${lungs[1][1].toFixed(3)} is above the first rib ${ribs[1][1].toFixed(3)}`);
++  for (const k of [0, 1, 2]) {
++    if (trees[k][0] < lungs[k][0] - 0.005 || trees[k][1] > lungs[k][1] + 0.005) problems.push(`${'xyz'[k]}: airway trees ${f3(trees[k])} stick out of the lungs ${f3(lungs[k])}`);
++  }
++  if (Math.abs(top - trachea[1][1]) > 0.01) problems.push(`trachea top ${top.toFixed(3)}, atlas trachea top ${trachea[1][1].toFixed(3)}`);
++  assert.deepEqual(problems, []);
++});
++
++test('overview brain faces front like the atlas brain and sits in the head of the body outline', async () => {
++  const { ORGANS } = loadTs('src/lib/organ-models.ts');
++  const parts = atlasParts();
++  const brain = atlasBox(parts, /gyrus|occipital lobe|parietal lobule|insula|White matter of|Corpus callosum|^Cerebellum$|^Pons$|Medulla oblongata|^Midbrain$|Peduncle of midbrain|thalamus$|^Hypothalamus$|hippocampus|amygdala|caudate nucleus|putamen|globus pallidus|internal capsule|fornix of forebrain|colliculus$|geniculate body/, 'nervous');
++  const cerebellum = atlasBox(parts, /^Cerebellum$/);
++  const profile = outlineProfile();
++  // The outline's head sits this far above the atlas head (head top of the outline minus the atlas skin top).
++  const lift = profile.at(-1)[1] - atlasBox(parts, /^Skin$/)[1][1];
++  const points = await glbPoints(ORGANS.brain.glb);
++  const placed = placeOverview(ORGANS.brain, points, boundsOf(points));
++  const rendered = boundsOf(placed);
++  const problems = [];
++  // The GLB's front-back axis is its x axis; turned to face front, every side matches the atlas box to 1 cm.
++  sizeOf(rendered).forEach((v, k) => { if (Math.abs(v - sizeOf(brain)[k]) > 0.01) problems.push(`${'xyz'[k]} size ${v.toFixed(3)}, atlas ${sizeOf(brain)[k].toFixed(3)}`); });
++  // Centre: x like the atlas; y as far above the atlas as the outline head is; z within 1.5 cm (the outline's axis is 2 cm in front of the atlas head).
++  const [centre, atlasCentre] = [centreOf(rendered), centreOf(brain)];
++  if (Math.abs(centre[0] - atlasCentre[0]) > 0.01) problems.push(`x centre ${centre[0].toFixed(3)}, atlas ${atlasCentre[0].toFixed(3)}`);
++  if (Math.abs(centre[1] - atlasCentre[1] - lift) > 0.01) problems.push(`y centre ${centre[1].toFixed(3)}, atlas ${atlasCentre[1].toFixed(3)} + outline lift ${lift.toFixed(3)}`);
++  if (Math.abs(centre[2] - atlasCentre[2]) > 0.015) problems.push(`z centre ${centre[2].toFixed(3)}, atlas ${atlasCentre[2].toFixed(3)}`);
++  // The back of the head: the atlas cerebellum lies behind the brain centre, so the lowest part of the model must sit behind it too.
++  assert.ok(centreOf(cerebellum)[2] < atlasCentre[2], 'atlas cerebellum should lie behind the brain centre');
++  const low = placed.filter((p) => p[1] < rendered[1][0] + 0.15 * sizeOf(rendered)[1]);
++  const lowZ = low.reduce((sum, p) => sum + p[2], 0) / low.length;
++  if (lowZ - centre[2] > -0.1 * sizeOf(rendered)[2] / 2) problems.push(`lowest 15% of the brain is at z ${lowZ.toFixed(3)}, not behind the centre ${centre[2].toFixed(3)}`);
++  // Inside the body outline (a lathe, so its radius applies front-back as well): at most 5% of vertices out, none by more than 6 mm.
++  const fit = outsideOutline(profile, placed);
++  if (fit.fraction > 0.05 || fit.worst > 0.006) problems.push(`${(fit.fraction * 100).toFixed(1)}% of the brain is outside the outline, worst ${(fit.worst * 100).toFixed(1)} cm`);
++  assert.deepEqual(problems, []);
++});
++
++test('overview eyeball is the atlas left eye in size and orientation and sits in the head of the body outline', async () => {
++  const { ORGANS } = loadTs('src/lib/organ-models.ts');
++  const parts = atlasParts();
++  const sclera = atlasBox(parts, /^Left sclera$/);
++  const eye = atlasBox(parts, /^Left (sclera|cornea)$/);
++  const profile = outlineProfile();
++  const lift = profile.at(-1)[1] - atlasBox(parts, /^Skin$/)[1][1];
++  const points = await glbPoints(ORGANS.eyeball.glb);
++  const box = boundsOf(points);
++  // The globe is every slice along the GLB's x axis from the low end up to the first slice past the peak that is narrower than 0.4 of the
++  // widest cross-section; the rest of the model is the optic-nerve stub.
++  const slice = (p) => Math.min(39, Math.floor(((p[0] - box[0][0]) / (box[0][1] - box[0][0])) * 40));
++  const ext = Array.from({ length: 40 }, () => [Infinity, -Infinity, Infinity, -Infinity]);
++  for (const p of points) { const e = ext[slice(p)]; e[0] = Math.min(e[0], p[1]); e[1] = Math.max(e[1], p[1]); e[2] = Math.min(e[2], p[2]); e[3] = Math.max(e[3], p[2]); }
++  const cross = ext.map((e) => Math.max(e[1] - e[0], e[3] - e[2], 0));
++  let cut = cross.indexOf(Math.max(...cross));
++  while (cut < 40 && cross[cut] > 0.4 * Math.max(...cross)) cut++;
++  const globe = boundsOf(placeOverview(ORGANS.eyeball, points.filter((p) => slice(p) < cut), box));
++  const stub = placeOverview(ORGANS.eyeball, points.filter((p) => slice(p) >= cut), box);
++  const problems = [];
++  // Size: the globe is as wide and tall as the atlas sclera (2 mm) and as long front-back as sclera plus cornea (3 mm).
++  const [size, atlasSize] = [sizeOf(globe), sizeOf(sclera)];
++  if (Math.abs(size[0] - atlasSize[0]) > 0.002 || Math.abs(size[1] - atlasSize[1]) > 0.002 || Math.abs(size[2] - sizeOf(eye)[2]) > 0.003) {
++    problems.push(`globe size ${f3(size)}, atlas sclera ${f3(atlasSize)}, sclera + cornea front-back ${sizeOf(eye)[2].toFixed(3)}`);
++  }
++  // Position: x like the atlas left eye (5 mm), y as far above it as the outline head is above the atlas head, z within 1.5 cm.
++  const [centre, atlasCentre] = [centreOf(globe), centreOf(eye)];
++  if (Math.abs(centre[0] - atlasCentre[0]) > 0.005) problems.push(`x centre ${centre[0].toFixed(3)}, atlas ${atlasCentre[0].toFixed(3)}`);
++  if (Math.abs(centre[1] - atlasCentre[1] - lift) > 0.005) problems.push(`y centre ${centre[1].toFixed(3)}, atlas ${atlasCentre[1].toFixed(3)} + outline lift ${lift.toFixed(3)}`);
++  if (Math.abs(centre[2] - atlasCentre[2]) > 0.015) problems.push(`z centre ${centre[2].toFixed(3)}, atlas ${atlasCentre[2].toFixed(3)}`);
++  // Orientation: the optic nerve leaves the left eye backwards (at least 1 cm behind the globe centre) and towards the midline.
++  const stubCentre = [0, 1, 2].map((k) => stub.reduce((sum, p) => sum + p[k], 0) / stub.length);
++  if (!(stubCentre[2] < centre[2] - 0.01 && stubCentre[0] < centre[0])) problems.push(`optic nerve centre ${f3(stubCentre)} is not behind and medial to the globe centre ${f3(centre)}`);
++  // Inside the head of the body outline.
++  const fit = outsideOutline(profile, placeOverview(ORGANS.eyeball, points, box));
++  if (fit.worst > 0.002) problems.push(`the eyeball sticks out of the outline by ${(fit.worst * 100).toFixed(1)} cm`);
++  assert.deepEqual(problems, []);
++});

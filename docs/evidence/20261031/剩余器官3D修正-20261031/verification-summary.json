@@ -1,0 +1,121 @@
+{
+  "date": "2026-10-31",
+  "subject": "剩余器官 3D 修正（肺、脑、眼球在人体概览里的摆放）：合并提交之后，在本机项目目录（没有 .git）上的检查",
+  "evidenceNotes": "每一步写入新文件，没有覆盖旧证据文件夹。修改前的数字由修改前文件备份拼出的旧树重新量取（见 说明.md 第 3 节）。完整链路是合成替身，不是真实 Supabase 或真实 Agnes。",
+  "changes": {
+    "codeFiles": [
+      "src/lib/organ-models.ts（脑、眼球、肺的 bodyPosition/bodySize；新增可选字段 bodyRotation）",
+      "src/components/sim/BodyOverviewScene.tsx（OrganByInfo 传 rotation={organ.bodyRotation}，增加 1 行）",
+      "tests/atlas-regression.test.cjs（新增 3 项：肺、脑、眼球；只增不删，168 行变 329 行）"
+    ],
+    "patch": "本次改动.patch（3 个文件，+181 / -6 行）",
+    "notChanged": ["GLB 模型文件", "OrganModel.tsx", "BodyOutline.tsx", "图谱数据", "其余 8 个器官的取值", "package.json 与依赖", "supabase", ".env.local（未创建）"]
+  },
+  "registryBeforeAfter": {
+    "lungs": { "before": { "bodyPosition": [0, 1.295, 0], "bodySize": 0.34 }, "after": { "bodyPosition": [0, 1.341, 0], "bodySize": 0.271 } },
+    "brain": { "before": { "bodyPosition": [0, 1.585, -0.01], "bodySize": 0.2, "bodyRotation": null }, "after": { "bodyPosition": [0, 1.686, -0.01], "bodySize": 0.18, "bodyRotation": [0, "PI/2", 0] } },
+    "eyeball": { "before": { "bodyPosition": [0.034, 1.652, 0.06], "bodySize": 0.05, "bodyRotation": null }, "after": { "bodyPosition": [0.028, 1.656, 0.059], "bodySize": 0.032, "bodyRotation": [0, "PI/2", 0] } }
+  },
+  "measurementsBeforeAfter": {
+    "unitNote": "长度为厘米，负数表示在外面；来源 修改前/analysis-remaining-v2.txt 与 修改后/analysis-remaining.txt 的 E 节",
+    "lungs": {
+      "bodyWidthCm": [31.3, 25.0],
+      "ribMarginXLeftRightCm": [[-2.1, -2.0], [1.1, 1.2]],
+      "ribMarginZFrontBackCm": [[-0.9, -1.0], [1.3, 1.2]],
+      "atlasAirwayPointsInsideLungBoxPercent": [92.9, 99.8],
+      "tracheaTopM": { "before": 1.465, "after": 1.476, "atlas": 1.473 },
+      "heartVerticesInsideLungPercent": [33.9, 18.2]
+    },
+    "brain": {
+      "sizeMinusAtlasXYZCm": [[5.9, 1.8, -1.5], [0.7, -0.1, 0.0]],
+      "verticesOutsideOutlinePercent": [38.9, 3.3],
+      "worstProtrusionCm": [4.1, 0.4]
+    },
+    "eyeball": {
+      "globeSizeMinusAtlasXYZCm": [[1.4, 1.5, 1.3], [0.0, 0.0, -0.2]],
+      "opticNerve": "外侧偏后 -> 后内侧",
+      "verticesOutsideOutlinePercent": [0.0, 0.0],
+      "verticesInsideBrainPercentAfter": { "wholeEye": 5.2, "globeOnly": 5.9, "atlas": 0.0 }
+    }
+  },
+  "results": {
+    "newTestsOnOldRegistry": {
+      "command": "node --test tests/atlas-regression.test.cjs 的新增 3 项，在旧注册表拼出的旧树上",
+      "tests": 3,
+      "pass": 0,
+      "fail": 3,
+      "log": "修改前/new-tests-on-old-registry.log"
+    },
+    "newTestsOnNewRegistry": {
+      "command": "同一份测试，在新注册表上",
+      "tests": 3,
+      "pass": 3,
+      "fail": 0,
+      "log": "修改后/new-tests-on-new-registry.log"
+    },
+    "typecheck": {
+      "command": "node node_modules/typescript/bin/tsc --noEmit --incremental false（构建之后运行）",
+      "exit": 0,
+      "log": "修改后/tsc-退出码.log",
+      "firstRunLog": "修改后/tsc.log（第一次运行，没有输出，当时没有记录退出码）"
+    },
+    "eslint": {
+      "command": "npx eslint",
+      "exit": 0,
+      "errors": 0,
+      "warnings": 0,
+      "log": "修改后/lint-退出码.log",
+      "firstRunLog": "修改后/lint.log（第一次运行，没有输出，当时没有记录退出码）"
+    },
+    "unitTests": {
+      "command": "npm test",
+      "exit": 0,
+      "tests": 98,
+      "pass": 98,
+      "fail": 0,
+      "skipped": 0,
+      "log": "修改后/unit-tests.log",
+      "composition": "86 项回归 + 12 个 SQL 测试文件（合并提交上是 83 + 12 = 95）"
+    },
+    "build": {
+      "command": "npm run build",
+      "exit": 0,
+      "log": "修改后/build.log"
+    },
+    "e2e": {
+      "command": "node tests/e2e-server.cjs（MEDPLAN_TEST_OUTPUT 为新文件夹）+ node tests/e2e-flow.cjs",
+      "checks": 19,
+      "passed": 19,
+      "failed": 0,
+      "log": "修改后/e2e/e2e.log",
+      "results": "修改后/e2e/e2e-results.json",
+      "environment": "生产构建的 Next.js + 回环地址上的合成登录令牌服务 + PostgREST 子集翻译器（PGlite 执行 supabase/schema.sql）+ AI 桩；不是真实服务"
+    },
+    "browser": {
+      "tool": "应用内浏览器",
+      "viewport": "1024x768",
+      "account": "合成账号（只登录回环地址上的本地合成服务）",
+      "cases": ["肺", "脑", "眼球", "肝（未改动器官，对照）"],
+      "views": ["手术模拟：人体层面与器官层面", "学习中心：肺、脑、眼球器官特写"],
+      "screenshots": 10,
+      "screenshotFolder": "修改后/浏览器截图/",
+      "consoleErrors": 0,
+      "consoleWarnings": ["THREE.Clock: This module has been deprecated（既有提示，与本轮改动无关）"],
+      "limits": "眼球在人体层面只有约 3 厘米，朝向不能目视确认，由回归测试的数字断言；器官层面在 1024x768 窗口的窄画布里脑和眼球被画布边缘裁掉一部分（该视图代码未改，原因未追查）；一次只显示一个器官，心肺与眼脑重叠没有目视过"
+    }
+  },
+  "notVerified": [
+    "真实 Supabase（登录、PostgREST、行级安全、多连接并发、多实例）",
+    "真实 Agnes",
+    "390/768 像素与手机真机、各种 GPU",
+    "医学内容的专业审核（取值只代表本项目的教学示意，不声明医学准确性）",
+    "全部器官同屏的整体布局（没有这样的界面入口）"
+  ],
+  "notFixed": [
+    "肾两侧等高（单个合并模型，图谱右肾比左肾低约 1.8 厘米，摆放修正不了）",
+    "乳腺（图谱和资产里都没有乳腺结构）",
+    "肺模型没有心切迹，心脏约 18% 的顶点落在肺体内（粗略估算，不由测试断言）",
+    "眼球与脑约 5% 的顶点重叠（模型形状造成，图谱本身为 0%）",
+    "脑 3.3% 的顶点最多穿出人形轮廓 0.4 厘米"
+  ]
+}

@@ -3,6 +3,7 @@
 // 例外：stomach.glb 由 scripts/extract-stomach-glb.mjs 从 BodyParts3D 精细图谱（FJ2564）转换，缩略图为其实际渲染。
 // bodyPosition / bodySize 用于「人体概览」场景中的解剖学摆放：
 //   坐标系为 Y 轴向上、单位米、标准站立人体身高约 1.75m，面朝 +Z；+X 为患者左侧（与精细图谱一致）。
+//   bodyRotation（可选）：GLB 自身朝向与图谱不同的器官在概览里绕竖直轴的旋转；器官特写与器官级视图仍按 GLB 原始朝向。
 import { ORGAN_IDS, type OrganId } from "./types";
 
 export interface OrganInfo {
@@ -20,6 +21,8 @@ export interface OrganInfo {
   bodyPosition: [number, number, number];
   /** 概览场景中的目标最大尺寸（米） */
   bodySize: number;
+  /** 概览场景中的旋转（弧度，缺省不旋转）；绕包围盒中心，不改变 bodyPosition 与 bodySize 的含义 */
+  bodyRotation?: [number, number, number];
   /** 概览中是否作为半透明体表外壳渲染 */
   isShell?: boolean;
   /** 程序化建模（无 GLB，如女性子宫附件） */
@@ -39,8 +42,12 @@ export const ORGANS: Record<OrganId, OrganInfo> = {
     glb: "/models/brain.glb",
     thumb: "/anatomy/brain/thumb.webp",
     organImg: "/anatomy/brain/organ.webp",
-    bodyPosition: [0, 1.585, -0.01],
-    bodySize: 0.2,
+    // 取自精细图谱脑结构（含小脑、脑干）的包围盒：最长边为前后长 0.18，x 中心取 0。GLB 的前后轴在 x 上（枕后朝 +x），
+    // 概览里绕竖直轴转 +90° 使枕后朝 -Z。人形轮廓的头部（颈最细 1.56、头顶 1.78）比图谱头部（下颌 1.50、头顶 1.719）整体高 0.06，
+    // 故 y 取图谱中心 1.626 加 0.06；z 取 -0.01（图谱 -0.02，轮廓中轴 0），个别顶点超出轮廓不超过 0.4 cm。
+    bodyPosition: [0, 1.686, -0.01],
+    bodySize: 0.18,
+    bodyRotation: [0, Math.PI / 2, 0],
   },
   eyeball: {
     id: "eyeball",
@@ -51,8 +58,11 @@ export const ORGANS: Record<OrganId, OrganInfo> = {
     glb: "/models/eyeball.glb",
     thumb: "/anatomy/eyeball/thumb.webp",
     organImg: "/anatomy/eyeball/organ.webp",
-    bodyPosition: [0.034, 1.652, 0.06],
-    bodySize: 0.05,
+    // 取自精细图谱左眼（巩膜+角膜）：球径 0.026，x 中心 0.029。GLB 末端约 20% 是视神经残端（朝后内侧），球体中心比包围盒中心靠前 0.003，
+    // bodySize 取 0.032 使球径为 0.026；绕竖直轴转 +90° 使角膜朝前（+Z）、视神经朝后内侧。位置随轮廓头部上移 0.06、前移 0.01（同脑）。
+    bodyPosition: [0.028, 1.656, 0.059],
+    bodySize: 0.032,
+    bodyRotation: [0, Math.PI / 2, 0],
   },
   heart: {
     id: "heart",
@@ -76,8 +86,11 @@ export const ORGANS: Record<OrganId, OrganInfo> = {
     glb: "/models/lungs.glb",
     thumb: "/anatomy/lungs/thumb.webp",
     organImg: "/anatomy/lungs/organ.webp",
-    bodyPosition: [0, 1.295, 0.0],
-    bodySize: 0.34,
+    // 图谱没有肺实质网格，按肋骨与气道取值：肺体宽 0.25（第 1—10 肋外包围盒宽 0.273，两侧各留 1.1 cm；图谱段支气管树宽 0.239，被包在肺内），
+    // 肺体居中于段支气管树的中心 y 1.317。GLB 顶部约 17.5% 是气管残端，包围盒中心比肺体中心高 0.024，故 y 取 1.341；
+    // 残端顶端 1.476 与图谱气管上端 1.473 相差不到 0.5 cm。
+    bodyPosition: [0, 1.341, 0],
+    bodySize: 0.271,
   },
   liver: {
     id: "liver",

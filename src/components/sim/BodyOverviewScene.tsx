@@ -116,6 +116,7 @@ function OrganByInfo({
     <OrganModel
       organ={organ}
       position={organ.bodyPosition}
+      rotation={organ.bodyRotation}
       highlight={highlight}
       dimmed={dimmed}
       onClick={onClick}

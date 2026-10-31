@@ -1,0 +1,7 @@
+# SHA-256（修改后，2026-10-31）：三个代码文件与三份文档
+a8b2cecd10ac85b3a070144635c67606427a9312c6f373f68e37dcba481e9d01 *src/lib/organ-models.ts
+a18d31917cabf1e8230e3ea72e2053005127cef4dc97d4e4013dab7c63ea897e *src/components/sim/BodyOverviewScene.tsx
+8b646f813d96df05855a3bd66cd49aee1480450a0cd560a1e4c342ee2200d412 *tests/atlas-regression.test.cjs
+ac31a4d9881eb1853881d681c4f946f057a7c09800574c352568b69fc30b2bc9 *mackdown.md
+6334b264638a184ff91d67434dd368ebf8f54c8c0bef02ad9dd039f803d5dc57 *README.md
+33fe2f12989d4d63c3c2ca6e333459a5504d6a8ddd95d6a6c579dda98f58ab81 *CLAUDE_HANDOFF.md
