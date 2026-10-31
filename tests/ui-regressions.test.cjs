@@ -178,6 +178,26 @@ test('overview switches between 2D and 3D without carrying an unsupported select
   } finally {panel.cleanup();}
 });
 
+test('3D overview offers skeleton, artery and vein layers that open the body surface for viewing',()=>{
+  const panel=learningHarness('male');
+  try {
+    learningButton(panel.render(),'3D 同屏').props.onClick();
+    const canvas=()=>panel.render().find(n=>n.props?.mode==='overview' && n.props.organId);
+    assert.deepEqual(canvas().props.layers,{skeletal:false,arterial:false,venous:false}, 'layers start closed');
+    learningButton(panel.render(),'显示体表').props.onClick();
+    assert.equal(canvas().props.showBodySurface,true);
+    learningButton(panel.render(),'骨骼').props.onClick();
+    assert.deepEqual(canvas().props.layers,{skeletal:true,arterial:false,venous:false});
+    assert.equal(canvas().props.showBodySurface,false, 'opening a layer turns the opaque skin see-through so the layer is not hidden');
+    learningButton(panel.render(),'动脉').props.onClick();
+    learningButton(panel.render(),'静脉').props.onClick();
+    learningButton(panel.render(),'骨骼').props.onClick();
+    assert.deepEqual(canvas().props.layers,{skeletal:false,arterial:true,venous:true}, 'each layer toggles on its own');
+    learningButton(panel.render(),'2D 解剖图').props.onClick();
+    assert.equal(learningButton(panel.render(),'骨骼'),undefined, 'layer buttons belong to the 3D view only');
+  } finally {panel.cleanup();}
+});
+
 test('an external sex update keeps the visible closeup and tutor context on an available organ',()=>{
   const panel=learningHarness();
   try {

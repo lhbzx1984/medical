@@ -6,6 +6,7 @@
 import dynamic from "next/dynamic";
 import { useCallback, useMemo, useState, useSyncExternalStore } from "react";
 import { ORGAN_LIST, ORGANS } from "@/lib/organ-models";
+import { ANATOMY_LAYER_IDS, ANATOMY_LAYERS, NO_ANATOMY_LAYERS, type AnatomyLayerId, type AnatomyLayerState } from "@/lib/anatomy-layers";
 import type { OrganId } from "@/lib/types";
 import type { StructureInfo } from "@/components/atlas/AtlasViewer";
 import OrganQuiz from "./OrganQuiz";
@@ -57,6 +58,13 @@ export default function LearningCenter() {
   const [overviewView, setOverviewView] = useState<"2d" | "3d">("2d");
   const [show3DLabels, setShow3DLabels] = useState(false);
   const [showBodySurface, setShowBodySurface] = useState(false);
+  const [layers, setLayers] = useState<AnatomyLayerState>(NO_ANATOMY_LAYERS);
+
+  /** 打开骨骼 / 血管层时自动切到透视体表，否则层被不透明的皮肤挡住 */
+  const toggleLayer = useCallback((id: AnatomyLayerId) => {
+    if (!layers[id]) setShowBodySurface(false);
+    setLayers({ ...layers, [id]: !layers[id] });
+  }, [layers]);
 
   const switchSex = useCallback((v: Sex) => {
     try { localStorage.setItem("mp-sex", v); } catch {}
@@ -235,6 +243,20 @@ export default function LearningCenter() {
                 {showBodySurface ? "透视体表" : "显示体表"}
               </button>
             )}
+            {mode === "overview" && overviewView === "3d" && (
+              <div className="flex gap-1" role="group" aria-label="解剖层">
+                {ANATOMY_LAYER_IDS.map((id) => (
+                  <button
+                    key={id}
+                    className={`btn !py-1 !text-xs ${layers[id] ? "!border-[var(--accent)] !text-[var(--accent)]" : ""}`}
+                    aria-pressed={layers[id]}
+                    onClick={() => toggleLayer(id)}
+                  >
+                    {ANATOMY_LAYERS[id].nameZh}
+                  </button>
+                ))}
+              </div>
+            )}
             {quizTarget && <button className="btn !py-1 !text-xs" onClick={() => setQuizOrgan(quizTarget)}>学习自测</button>}
             {mode === "organ" && organ.closeupGlb && (
               <button className="btn !py-1 !text-xs" onClick={() => setUseReferenceModel((current) => !current)}>
@@ -278,6 +300,7 @@ export default function LearningCenter() {
                   useReferenceModel={useReferenceModel}
                   showLabels={show3DLabels}
                   showBodySurface={showBodySurface}
+                  layers={layers}
                   selectedId={mode === "overview" && selectedId !== "breast" ? selectedId : null}
                   onSelect={focusOrgan}
                   onClearSelect={() => setSelected(null)}
@@ -297,7 +320,12 @@ export default function LearningCenter() {
                     </div>
                     {mode === "organ" && useReferenceModel && organ.referenceLabel && <div className="text-[11px] text-[var(--muted)]">{organ.referenceLabel} · 个体解剖存在差异</div>}
                     {mode === "organ" && !useReferenceModel && organ.closeupGlb && <div className="text-[11px] text-[var(--muted)]">原器官模型 · 仅供教学示意</div>}
-                    {mode === "overview" && overviewView === "3d" && <div className="text-[11px] text-[var(--muted)]">HuBMAP {sex === "male" ? "男性" : "女性"}体表参考 · 器官为示意配准</div>}
+                    {mode === "overview" && overviewView === "3d" && (
+                      <div className="text-[11px] text-[var(--muted)]">
+                        {sex === "male" ? "BodyParts3D 男性体表" : "HuBMAP 女性体表参考"} · 器官为示意配准
+                        {sex === "female" && ANATOMY_LAYER_IDS.some((id) => layers[id]) && " · 骨骼与血管层取自男性图谱，仅作示意"}
+                      </div>
+                    )}
                     <div className="mt-0.5 text-[12.5px] leading-6 text-[var(--text)]">
                       {overviewTarget
                         ? overviewTarget.brief

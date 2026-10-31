@@ -6,16 +6,18 @@
 
 - 代码是 GitHub `main`（`8f3ea17`）与本地最终版（`97be433`）的合并结果：后端、登录、行级安全、原子保存、AI 配额采用远程；器官模型与图谱对齐、胃模型、模拟、学习中心、输入与 AI 方案校验、聊天流加固是本地成果。逐文件清单见 [`docs/merge-ledger-20261030.md`](docs/merge-ledger-20261030.md)。
 - 合并之后（2026-10-31）追加了“剩余器官 3D 修正”：肺、脑、眼球在人体概览里的摆放（`src/lib/organ-models.ts` 的取值与可选字段 `bodyRotation`、`BodyOverviewScene.tsx` 一行传参、`atlas-regression` 新增 3 项）。详见 `mackdown.md` 第 6.1 节。合并清单文件 `docs/merge-ledger-20261030.md` 只记录合并本身，没有重新生成。
+- 队友随后更新了 `main`（`3a1b1e0`），之后在它的基础上做了“写实人体与解剖层”：男性体表换为 BodyParts3D 皮肤（头发、眉毛、嘴唇），新增统一光照与写实材质（`StudioLighting.tsx`、`realistic-materials.ts`）、骨骼 / 动脉 / 静脉解剖层（`anatomy-layers.ts`、`AnatomyLayers.tsx`）和左右成对的眼球；`ReferenceBody` 从 `components/learn/` 移到 `components/sim/`；不再被引用的 `hra-skin-male.glb` 已删除。原有功能（精细人体图谱、器官特写、2D 解剖图、学习自测、AI 导师）保留。详见 `mackdown.md` 第 6.2、7.7 节。
 - 技术栈：Next.js 16.4.3（Turbopack、Cache Components）、React 19、three 0.186.1、@react-three/fiber 9.8.2、@react-three/drei 10.7.9、`@supabase/ssr` 0.12.7、supabase-js 2.118.0；测试用 PGlite 0.5.13（devDependency）。
 - 合并提交上的检查：类型检查退出码 0；ESLint 0 错误、0 警告；`npm test` 95/95；`npm run build` 退出码 0；合成完整链路 19/19。证据在 `docs/evidence/20261031/合并最终版定稿验证-20261031/`。
 - 追加剩余器官修正之后的检查：同样的五项都重新运行，`npm test` 变为 98/98，其余结果不变；另有应用内浏览器逐器官查看。证据在 `docs/evidence/20261031/剩余器官3D修正-20261031/`（`mackdown.md` 第 7.6 节）。
+- 写实人体与解剖层之后的检查：队友最新版 `main` 上先复验为 `npm test` 102/102、构建与类型检查与 ESLint 退出码 0、合成完整链路 19/19；改动后 `npm test` 107/107，其余四项结果不变，另有应用内浏览器逐页查看（男女体表、三个解剖层、精细人体图谱、规划页人体与器官层面、心脏特写）。证据在 `docs/evidence/20261031/写实人体与解剖层-20261031/`（`mackdown.md` 第 7.7 节）。
 - 没有验证：真实 Supabase、真实 Agnes、窄屏/真机/GPU、医学内容审核。完整链路用的是合成替身，不能当作真实服务的验收。
 
 ## 2. 怎么验证
 
 ```bash
 npm ci
-npm test            # 98 项，含 12 个在 PGlite 里执行 supabase/schema.sql 的 SQL 测试
+npm test            # 107 项，含 12 个在 PGlite 里执行 supabase/schema.sql 的 SQL 测试
 npm run lint
 npx tsc --noEmit --incremental false
 npm run build
@@ -45,5 +47,5 @@ npm run build
 3. 窄屏、真机与 GPU：390/768/1024 像素与桌面。
 4. 顶栏账号菜单按角色显示（需要“当前账号是否管理员”的来源）。
 5. 新建病例改为单个 RPC，消除没有方案的患者行（旧的 `create_case` 可参考提交 `97be433`，它是合并提交的第二个父提交；原分支 `local-medical-main-20261030` 已删除）。
-6. 器官待办（`mackdown.md` 第 6.1、8 节）：肺、脑、眼球的摆放已修正；乳腺没有模型；肾两侧等高需要拆成左右两个模型；肺模型没有心切迹（与心脏约 18% 顶点重叠）、眼球与脑约 5% 重叠，需要换模型或裁剪；没有同时显示全部器官的 3D 入口，整体布局不能目检。
+6. 器官待办（`mackdown.md` 第 6.1、8 节）：肺、脑、眼球的摆放已修正；乳腺没有模型；肾两侧等高需要拆成左右两个模型；肺模型没有心切迹（与心脏约 18% 顶点重叠）、眼球与脑约 5% 重叠，需要换模型或裁剪；没有同时显示全部器官的 3D 入口，整体布局不能目检。女性体表仍是没有面部的 HuBMAP 网格（只升级了材质），要同等写实需要新的女性网格，下载素材须先经用户批准；女性模式的骨骼与血管取自男性图谱，仅作示意；低端 GPU 与手机上的帧率没有验证（`mackdown.md` 第 8 节）。
 7. 确认无人依赖后，删除未使用的 `src/lib/store/memory.ts`。

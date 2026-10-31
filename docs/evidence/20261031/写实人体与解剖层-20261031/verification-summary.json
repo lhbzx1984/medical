@@ -1,0 +1,103 @@
+{
+  "date": "2026-10-31",
+  "subject": "写实人体、解剖层与统一光照：队友更新的 main（3a1b1e0）之后，在本机项目目录（没有 .git）上的检查",
+  "evidenceNotes": "每一步写入新文件，没有覆盖旧证据文件夹。改动之前的数字来自在 3a1b1e0 上运行的同一套检查（修改前/）。完整链路是合成替身，不是真实 Supabase、GoTrue、PostgREST 或真实 Agnes。没有找到单独的“修订说明”文件。",
+  "baseline": {
+    "commit": "3a1b1e0",
+    "build": { "command": "npm run build", "exit": 0, "log": "修改前/build.log" },
+    "typecheck": { "command": "node node_modules/typescript/bin/tsc --noEmit --incremental false（构建之后运行）", "exit": 0, "log": "修改前/tsc.log" },
+    "eslint": { "command": "npx eslint .", "exit": 0, "log": "修改前/lint.log" },
+    "unitTests": { "command": "npm test", "exit": 0, "tests": 102, "pass": 102, "fail": 0, "log": "修改前/unit-tests.log" },
+    "e2e": { "command": "node tests/e2e-server.cjs + node tests/e2e-flow.cjs", "passed": 19, "total": 19, "dir": "修改前/e2e/" },
+    "screenshot": "修改前/浏览器截图/01-3D同屏-全身概览.jpg"
+  },
+  "changes": {
+    "modified": [
+      "src/components/learn/LearnCanvas.tsx（不再自己摆体表；新增 layers 属性）",
+      "src/components/learn/LearningCenter.tsx（3D 同屏新增骨骼 / 动脉 / 静脉三个开关；女性模式的图层提示）",
+      "src/components/sim/BodyOverviewScene.tsx（统一光照、新体表、解剖层；bodyParts 的部件按索引取 key 并带上 bodyRotation）",
+      "src/components/sim/OrganModel.tsx（器官材质经 createOrganMaterial）",
+      "src/components/sim/SimulationStage.tsx（器官层面改用统一光照）",
+      "src/lib/organ-models.ts（脑、眼球的取值；眼球新增左右两个部件）",
+      "src/lib/reference-body.ts（fitReferenceBody 的目标身高改为参数，默认 1.719）",
+      "tests/atlas-regression.test.cjs（11 项变 15 项）",
+      "tests/ui-regressions.test.cjs（17 项变 18 项）",
+      "mackdown.md、README.md、CLAUDE_HANDOFF.md"
+    ],
+    "added": [
+      "src/components/sim/AnatomyLayers.tsx",
+      "src/components/sim/ReferenceBody.tsx（由 learn/ReferenceBody.tsx 移动并改写）",
+      "src/components/sim/StudioLighting.tsx",
+      "src/components/sim/realistic-materials.ts",
+      "src/lib/anatomy-layers.ts",
+      "scripts/extract-body-layers-glb.mjs",
+      "public/models/bp3d-skin-male.glb、bp3d-skeleton-male.glb、bp3d-arteries-male.glb、bp3d-veins-male.glb"
+    ],
+    "removed": [
+      "src/components/learn/ReferenceBody.tsx（已移到 sim/，学习中心与手术规划共用）",
+      "public/models/hra-skin-male.glb（19.9 MB，不再被任何代码或测试引用；相同内容在 3a1b1e0 的历史里，blob d8406eae）"
+    ],
+    "patch": "本次改动.patch（src、tests、scripts 共 16 个文件，+852 / -145 行；不含 GLB 二进制、文档与证据）",
+    "notChanged": ["AtlasViewer", "BodyOutline（仍是加载期间的占位轮廓）", "FemaleReproductive", "全部器官 GLB", "其余 8 个器官的 bodyPosition / bodySize", "AI 导师、学习自测", "手术规划的 API 与存储", "package.json 与依赖", "supabase", ".env.local（未创建）", "docs/merge-ledger-20261030.md"]
+  },
+  "assets": [
+    { "file": "public/models/bp3d-skin-male.glb", "triangles": 57644, "bytes": 1419560, "meshes": ["Skin", "Eyebrow", "Hair", "Lip"] },
+    { "file": "public/models/bp3d-skeleton-male.glb", "triangles": 142708, "bytes": 4598956, "meshes": ["Skeleton"] },
+    { "file": "public/models/bp3d-arteries-male.glb", "triangles": 154006, "bytes": 4429376, "meshes": ["Arteries"] },
+    { "file": "public/models/bp3d-veins-male.glb", "triangles": 117716, "bytes": 3122860, "meshes": ["Veins"] }
+  ],
+  "assetNote": "由 scripts/extract-body-layers-glb.mjs 从精细图谱（BodyParts3D 4.0，CC BY 4.0）转换，署名与改动声明写在各 GLB 的 asset.copyright / extras；体表与图层合计 472,074 个三角形。男性参考解剖的简化网格，仅作教学示意。",
+  "tests": {
+    "added": [
+      "overview shows both eyes, the right one mirroring the left across the midline of the body",
+      "overview organs sit inside the body skin (the eyeball fills its opening in the skin and has its own test)",
+      "body surface and anatomy layers are valid BodyParts3D conversions in the atlas frame",
+      "realistic skin shader patches match the installed three.js and really apply",
+      "3D overview offers skeleton, artery and vein layers that open the body surface for viewing"
+    ],
+    "rewritten": [
+      "reference body models fit the shared standing coordinate system -> reference bodies share the atlas standing coordinate system",
+      "overview brain faces front like the atlas brain and sits in the head of the body outline -> ... of the body skin",
+      "overview eyeball is the atlas left eye in size and orientation and sits in the head of the body outline -> ... in size, position and orientation"
+    ],
+    "deleted": 0,
+    "breakChecks": "皮肤着色补丁测试在第一次运行时真实失败（three r186 把漫反射写成 material.diffuseContribution，补丁最初没有生效），修正后通过；脑的旧取值在真实体表上只有 42.7% 的顶点在内。其余新增测试没有逐项做破坏检查。"
+  },
+  "results": {
+    "afterChange": {
+      "note": "改动就位后、删除 hra-skin-male.glb 与更新文档之前运行",
+      "build": { "exit": 0, "log": "修改后/build.log", "exitFile": "修改后/build.exit" },
+      "typecheck": { "exit": 0, "log": "修改后/tsc.log", "exitFile": "修改后/tsc.exit" },
+      "eslint": { "exit": 0, "errors": 0, "warnings": 0, "log": "修改后/eslint.log（无输出）", "exitFile": "修改后/eslint.exit" },
+      "unitTests": { "exit": 0, "tests": 107, "pass": 107, "fail": 0, "skipped": 0, "durationMs": 24773, "log": "修改后/unit.log", "composition": "95 项回归 + 12 个 SQL 测试" },
+      "e2e": { "passed": 19, "total": 19, "dir": "修改后/e2e/" }
+    },
+    "finalTree": {
+      "note": "删除 hra-skin-male.glb 并更新文档之后，在最终文件树上重新运行；写入新文件夹，没有覆盖上一轮",
+      "build": { "exit": 0, "log": "修改后/最终树检查/build.log" },
+      "typecheck": { "exit": 0, "log": "修改后/最终树检查/tsc.log" },
+      "eslint": { "exit": 0, "errors": 0, "warnings": 0, "log": "修改后/最终树检查/eslint.log" },
+      "unitTests": { "exit": 0, "tests": 107, "pass": 107, "fail": 0, "skipped": 0, "durationMs": 29486, "log": "修改后/最终树检查/unit.log" },
+      "e2e": { "passed": 19, "total": 19, "dir": "修改后/最终树检查/e2e/" }
+    }
+  },
+  "browser": {
+    "tool": "应用内浏览器，生产构建的合成应用 127.0.0.1:4401，合成账号，视口模拟 1280x800",
+    "screenshots": 12,
+    "screenshotDir": "修改后/浏览器截图/",
+    "pagesChecked": [
+      "学习中心 全身概览 3D 同屏：男性透视体表、骨骼层、三层同开、女性三层与实体体表、头部近景（透视与实体）、精细人体图谱、心脏器官特写",
+      "手术规划 3D 模拟：女性病例人体层面（子宫）、男性病例人体层面与器官层面（肝；AI 桩的合成方案，只有 focusOrgan 不同）"
+    ],
+    "console": "没有 error；只有既有的 three.js THREE.Clock 废弃提示。开发模式（next dev）下热更新偶尔出现 Encountered a script tag while rendering React component，来自 src/app/layout.tsx 的主题初始化脚本（与最新版 main 一致，没有改动），生产构建里没有出现。"
+  },
+  "notVerified": [
+    "真实 Supabase、真实 Agnes",
+    "390 / 768 像素窄屏、手机真机",
+    "低端 GPU 与手机上的帧率（体表与图层合计约 47 万三角形）",
+    "医学内容与解剖准确性（体表与器官是示意配准，写实程度是目视判断，没有第三方评审）",
+    "女性体表的写实程度（仍是 HuBMAP 参考网格，只升级了材质）；女性模式的骨骼与血管取自男性图谱",
+    "手术规划页 3D 画布下半部分（应用内浏览器的截图只覆盖视口左上部分）"
+  ],
+  "notDone": ["没有下载任何新素材（例如 MakeHuman 女性网格）", "没有部署网站，没有创建或修改 .env.local，没有向聊天索取密钥"]
+}

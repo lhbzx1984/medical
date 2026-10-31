@@ -1,0 +1,1367 @@
+diff --git a/scripts/extract-body-layers-glb.mjs b/scripts/extract-body-layers-glb.mjs
+new file mode 100644
+index 0000000..92c161d
+--- /dev/null
++++ b/scripts/extract-body-layers-glb.mjs
+@@ -0,0 +1,199 @@
++// 从精细人体图谱（BodyParts3D 4.0 经简化）抽取体表与解剖图层，写成自包含 GLB（public/models/bp3d-*-male.glb）：
++//   bp3d-skin-male.glb      体表（皮肤 FJ2810、眉 FJ2812、头发 FJ2813、唇 FJ2814），不做简化
++//   bp3d-skeleton-male.glb  骨骼系统（含牙），逐结构简化
++//   bp3d-arteries-male.glb  动脉（不含器官内的段/支，见 INTRA_ORGAN），逐结构简化
++//   bp3d-veins-male.glb     静脉（同上）
++// 用法：node scripts/extract-body-layers-glb.mjs [项目根目录]
++//
++// 与 extract-stomach-glb.mjs 相同的原则，只做格式转换与简化，不改解剖位置：
++//   - 坐标仍是图谱坐标（米，Y 向上，脚底 y=0），与 organ-models 的器官同一坐标系，所以体表与器官天然配准
++//   - 图谱里存储的法线与三角形绕向相反，不直接使用；逐结构用有符号体积确认绕向朝外（否则翻转索引），
++//     合并后按绕向重新计算面积加权的顶点法线
++//   - 简化用 meshoptimizer（three 自带），逐结构按比例收缩并保留至少 MIN_TRIANGLES 个三角形，
++//     避免小结构（指骨、牙、细小血管）被整体误差挤掉
++// 来源与改动声明写入 GLB 的 asset.copyright / asset.extras。
++import { gunzipSync } from "node:zlib";
++import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
++import { createHash } from "node:crypto";
++import path from "node:path";
++import { MeshoptSimplifier } from "three/examples/jsm/libs/meshopt_simplifier.module.js";
++
++const root = path.resolve(process.argv[2] ?? ".");
++const atlas = JSON.parse(readFileSync(path.join(root, "public/atlas/atlas.json"), "utf8"));
++const sha = (b) => createHash("sha256").update(b).digest("hex");
++const MIN_TRIANGLES = 120;
++// 器官内部的段/支（肝门静脉与肝静脉的分支、肺段、肾段等）会被不透明的器官包住，只会在器官表面戳出蓝/红色的毛刺，
++// 这里不进入血管图层；主干（门静脉主干、下腔静脉、肺动静脉主干、肾动静脉……）保留。
++// 图谱把「肝静脉段」（Hepatovenous segment II–IX，肝段实体而不是血管）也归在静脉系统里，会在肝的位置形成一整块蓝色，同样排除。
++const INTRA_ORGAN = /^Hepatovenous segment|segmental|^Tributary of (middle|left|right) hepatic vein|^(Left|Right|Middle) hepatic vein$|^(Left|Right) portal vein$|^Trunk of (left|right) portal vein|^Caudate lobe branch/i;
++
++const LAYERS = [
++  {
++    file: "bp3d-skin-male.glb",
++    meshes: [
++      { name: "Skin", ids: ["FJ2810"], color: [0.85, 0.62, 0.52, 1] },
++      { name: "Eyebrow", ids: ["FJ2812"], color: [0.16, 0.11, 0.09, 1] },
++      { name: "Hair", ids: ["FJ2813"], color: [0.17, 0.11, 0.08, 1] },
++      { name: "Lip", ids: ["FJ2814"], color: [0.71, 0.38, 0.35, 1] },
++    ],
++  },
++  { file: "bp3d-skeleton-male.glb", meshes: [{ name: "Skeleton", system: "skeletal", color: [0.9, 0.85, 0.74, 1], ratio: 0.4 }] },
++  { file: "bp3d-arteries-male.glb", meshes: [{ name: "Arteries", system: "arterial", exclude: INTRA_ORGAN, color: [0.7, 0.15, 0.17, 1], ratio: 0.5 }] },
++  { file: "bp3d-veins-male.glb", meshes: [{ name: "Veins", system: "venous", exclude: INTRA_ORGAN, color: [0.25, 0.35, 0.65, 1], ratio: 0.5 }] },
++];
++
++await MeshoptSimplifier.ready;
++const chunkCache = new Map();
++const chunkGz = (i) => {
++  if (!chunkCache.has(i)) {
++    const gz = readFileSync(path.join(root, `public/atlas/body-${i}.bin.gz`));
++    const raw = gunzipSync(gz);
++    chunkCache.set(i, { gz, buf: raw.buffer.slice(raw.byteOffset, raw.byteOffset + raw.byteLength) });
++  }
++  return chunkCache.get(i);
++};
++
++const signedVolume = (positions, indices) => {
++  let vol = 0;
++  for (let t = 0; t < indices.length; t += 3) {
++    const a = indices[t] * 3, b = indices[t + 1] * 3, c = indices[t + 2] * 3;
++    vol += positions[a] * (positions[b + 1] * positions[c + 2] - positions[b + 2] * positions[c + 1])
++      + positions[a + 1] * (positions[b + 2] * positions[c] - positions[b] * positions[c + 2])
++      + positions[a + 2] * (positions[b] * positions[c + 1] - positions[b + 1] * positions[c]);
++  }
++  return vol / 6;
++};
++
++/** 读取一个结构：校验、统一绕向朝外、（可选）简化，并丢掉简化后不再使用的顶点。 */
++function readPart(part, ratio) {
++  const { buf } = chunkGz(part.chunk);
++  const vc = part.vertexCount, ic = part.indexCount;
++  let positions = new Float32Array(buf.slice(part.positions, part.positions + vc * 12));
++  let indices = new Uint32Array(buf.slice(part.indices, part.indices + ic * 4));
++  for (const v of positions) if (!Number.isFinite(v)) throw new Error(`${part.id}: 存在非有限坐标`);
++  for (const i of indices) if (i >= vc) throw new Error(`${part.id}: 索引越界`);
++  if (ic % 3 !== 0) throw new Error(`${part.id}: 索引数不是 3 的倍数`);
++  let flipped = false;
++  if (signedVolume(positions, indices) < 0) {
++    for (let t = 0; t < ic; t += 3) { const tmp = indices[t + 1]; indices[t + 1] = indices[t + 2]; indices[t + 2] = tmp; }
++    flipped = true;
++  }
++  const before = ic / 3;
++  if (ratio && before > MIN_TRIANGLES) {
++    const target = Math.max(MIN_TRIANGLES, Math.round(before * ratio)) * 3;
++    const [simplified] = MeshoptSimplifier.simplify(indices, positions, 3, target, 0.05);
++    const remap = new Map();
++    const kept = [];
++    const out = new Uint32Array(simplified.length);
++    for (let k = 0; k < simplified.length; k++) {
++      const old = simplified[k];
++      let n = remap.get(old);
++      if (n === undefined) { n = kept.length; remap.set(old, n); kept.push(old); }
++      out[k] = n;
++    }
++    const next = new Float32Array(kept.length * 3);
++    kept.forEach((old, n) => { next[n * 3] = positions[old * 3]; next[n * 3 + 1] = positions[old * 3 + 1]; next[n * 3 + 2] = positions[old * 3 + 2]; });
++    positions = next; indices = out;
++  }
++  return { positions, indices, flipped, before, after: indices.length / 3 };
++}
++
++function mergeParts(parts, ratio) {
++  const items = parts.map((p) => readPart(p, ratio));
++  let V = 0, I = 0;
++  for (const it of items) { V += it.positions.length / 3; I += it.indices.length; }
++  const positions = new Float32Array(V * 3), indices = new Uint32Array(I);
++  let vo = 0, io = 0;
++  for (const it of items) {
++    positions.set(it.positions, vo * 3);
++    for (let k = 0; k < it.indices.length; k++) indices[io + k] = it.indices[k] + vo;
++    vo += it.positions.length / 3; io += it.indices.length;
++  }
++  const normals = new Float32Array(V * 3);
++  for (let t = 0; t < I; t += 3) {
++    const a = indices[t] * 3, b = indices[t + 1] * 3, c = indices[t + 2] * 3;
++    const ux = positions[b] - positions[a], uy = positions[b + 1] - positions[a + 1], uz = positions[b + 2] - positions[a + 2];
++    const vx = positions[c] - positions[a], vy = positions[c + 1] - positions[a + 1], vz = positions[c + 2] - positions[a + 2];
++    const nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
++    for (const k of [a, b, c]) { normals[k] += nx; normals[k + 1] += ny; normals[k + 2] += nz; }
++  }
++  for (let i = 0; i < V; i++) {
++    const l = Math.hypot(normals[i * 3], normals[i * 3 + 1], normals[i * 3 + 2]) || 1;
++    normals[i * 3] /= l; normals[i * 3 + 1] /= l; normals[i * 3 + 2] /= l;
++  }
++  return { positions, normals, indices, flipped: items.filter((it) => it.flipped).length, before: items.reduce((n, it) => n + it.before, 0), after: I / 3 };
++}
++
++const pad = (b, fill) => Buffer.concat([b, Buffer.alloc((4 - (b.length % 4)) % 4, fill)]);
++
++function writeGlb(file, meshes, usedChunks, extras) {
++  const views = [], accessors = [], gltfMeshes = [], nodes = [], materials = [];
++  const chunks = [];
++  let offset = 0;
++  const push = (arr, target) => {
++    const b = pad(Buffer.from(arr.buffer, arr.byteOffset, arr.byteLength), 0);
++    views.push({ buffer: 0, byteOffset: offset, byteLength: arr.byteLength, target });
++    chunks.push(b); offset += b.length;
++    return views.length - 1;
++  };
++  meshes.forEach((m, i) => {
++    const V = m.positions.length / 3;
++    const min = [Infinity, Infinity, Infinity], max = [-Infinity, -Infinity, -Infinity];
++    for (let v = 0; v < V; v++) for (let k = 0; k < 3; k++) { min[k] = Math.min(min[k], m.positions[v * 3 + k]); max[k] = Math.max(max[k], m.positions[v * 3 + k]); }
++    const index = V < 65536 ? new Uint16Array(m.indices) : m.indices;
++    const pos = accessors.push({ bufferView: push(m.positions, 34962), componentType: 5126, count: V, type: "VEC3", min, max }) - 1;
++    const nor = accessors.push({ bufferView: push(m.normals, 34962), componentType: 5126, count: V, type: "VEC3" }) - 1;
++    const idx = accessors.push({ bufferView: push(index, 34963), componentType: V < 65536 ? 5123 : 5125, count: m.indices.length, type: "SCALAR" }) - 1;
++    materials.push({ name: m.name.toLowerCase(), doubleSided: false, pbrMetallicRoughness: { baseColorFactor: m.color, metallicFactor: 0, roughnessFactor: 0.6 } });
++    gltfMeshes.push({ name: m.name, primitives: [{ attributes: { POSITION: pos, NORMAL: nor }, indices: idx, material: i }] });
++    nodes.push({ name: m.name, mesh: i });
++  });
++  const bin = Buffer.concat(chunks);
++  const gltf = {
++    asset: {
++      version: "2.0",
++      generator: "MedPlan Atlas scripts/extract-body-layers-glb.mjs",
++      copyright: "BodyParts3D, © The Database Center for Life Science licensed under CC Attribution 4.0 International",
++      extras: {
++        source: "BodyParts3D 4.0 via public/atlas",
++        scope: atlas.scope,
++        simplification: atlas.optimized,
++        inputSha256: { "atlas.json": sha(readFileSync(path.join(root, "public/atlas/atlas.json"))), ...Object.fromEntries([...usedChunks].map((i) => [`body-${i}.bin.gz`, sha(chunkGz(i).gz)])) },
++        notice: "男性参考解剖的简化网格，仅供教学示意，不是个体或女性解剖，也不是医学审核过的数据",
++        ...extras,
++      },
++    },
++    scene: 0,
++    scenes: [{ nodes: nodes.map((_, i) => i) }],
++    nodes, meshes: gltfMeshes, materials, accessors, bufferViews: views, buffers: [{ byteLength: bin.length }],
++  };
++  const json = pad(Buffer.from(JSON.stringify(gltf)), 0x20);
++  const header = Buffer.alloc(12);
++  header.write("glTF", 0, "ascii"); header.writeUInt32LE(2, 4); header.writeUInt32LE(12 + 8 + json.length + 8 + bin.length, 8);
++  const chunk = (len, type) => { const h = Buffer.alloc(8); h.writeUInt32LE(len, 0); h.write(type, 4, "ascii"); return h; };
++  const glb = Buffer.concat([header, chunk(json.length, "JSON"), json, chunk(bin.length, "BIN\0"), bin]);
++  const out = path.join(root, "public/models", file);
++  mkdirSync(path.dirname(out), { recursive: true });
++  writeFileSync(out, glb);
++  return { out, bytes: glb.length, sha256: sha(glb) };
++}
++
++for (const layer of LAYERS) {
++  const usedChunks = new Set();
++  const built = [], report = [];
++  for (const m of layer.meshes) {
++    const parts = m.ids
++      ? m.ids.map((id) => { const p = atlas.parts.find((q) => q.id === id); if (!p) throw new Error(`图谱中没有 ${id}`); return p; })
++      : atlas.parts.filter((p) => p.system === m.system && !(m.exclude && m.exclude.test(p.name)));
++    if (!parts.length) throw new Error(`${m.name}: 没有结构`);
++    parts.forEach((p) => usedChunks.add(p.chunk));
++    const merged = mergeParts(parts, m.ratio);
++    built.push({ name: m.name, color: m.color, ...merged });
++    report.push({ mesh: m.name, structures: parts.length, trianglesBefore: merged.before, trianglesAfter: merged.after, windingFlipped: merged.flipped });
++  }
++  const info = writeGlb(layer.file, built, usedChunks, {
++    changes: "格式转换为 GLB；统一朝外绕向并重新计算法线；" + (layer.meshes.some((m) => m.ratio) ? "逐结构 meshoptimizer 简化；" : "未简化；") + "坐标未改动",
++    structures: report,
++  });
++  console.log(JSON.stringify({ ...info, report }));
++}
+diff --git a/src/components/learn/LearnCanvas.tsx b/src/components/learn/LearnCanvas.tsx
+index ce8bdf7..cf13693 100644
+--- a/src/components/learn/LearnCanvas.tsx
++++ b/src/components/learn/LearnCanvas.tsx
+@@ -1,17 +1,16 @@
+ "use client";
+ 
+-// 学习中心 3D 画布：全身概览（真实肤色外皮 + 可点击器官标注）与器官特写两种模式。
++// 学习中心 3D 画布：全身概览（写实人体体表 + 可点击器官标注 + 可选骨骼 / 血管层）与器官特写两种模式。
+ // 概览中点击文字标注 / 3D 器官 → 外皮淡出并聚焦该器官；点空白处恢复外皮。
+-import { Suspense, useEffect, useRef } from "react";
++import { useEffect, useRef } from "react";
+ import { Canvas, useFrame, useThree } from "@react-three/fiber";
+ import { OrbitControls } from "@react-three/drei";
+ import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
+ import * as THREE from "three";
+ import { ORGANS } from "@/lib/organ-models";
++import type { AnatomyLayerState } from "@/lib/anatomy-layers";
+ import type { OrganId } from "@/lib/types";
+ import { BodyOverviewScene, OrganCloseupScene } from "@/components/sim/BodyOverviewScene";
+-import { BodyOutline } from "@/components/sim/BodyOutline";
+-import { ReferenceBody } from "./ReferenceBody";
+ 
+ interface Props {
+   mode: "overview" | "organ";
+@@ -19,6 +18,8 @@ interface Props {
+   useReferenceModel?: boolean;
+   showLabels?: boolean;
+   showBodySurface?: boolean;
++  /** 概览中打开的解剖层 */
++  layers?: AnatomyLayerState;
+   /** 概览中当前选中的器官（null = 外皮实体状态） */
+   selectedId: OrganId | null;
+   onSelect: (id: OrganId) => void;
+@@ -83,6 +84,7 @@ export default function LearnCanvas({
+   useReferenceModel = true,
+   showLabels = false,
+   showBodySurface = false,
++  layers,
+   selectedId,
+   onSelect,
+   onClearSelect,
+@@ -107,19 +109,15 @@ export default function LearnCanvas({
+           maxDistance={6}
+           target={[0, overview ? 1.0 : 0, 0]}
+         />
+-        {overview && (
+-          <Suspense fallback={<BodyOutline mode="hologram" sex={sex} />}>
+-            <ReferenceBody key={sex} sex={sex} solid={showBodySurface} />
+-          </Suspense>
+-        )}
+         {overview ? (
+           <BodyOverviewScene
+-            showShell={false}
++            showShell
+             highlightOrgan={selectedId}
+             onSelectOrgan={(id) => id === selectedId ? onClearSelect() : onSelect(id)}
+-            shellMode="hologram"
++            shellMode={showBodySurface ? "skin" : "hologram"}
+             showLabels={showLabels}
+             sex={sex}
++            layers={layers}
+           />
+         ) : (
+           <OrganCloseupScene organId={organId} useReferenceModel={useReferenceModel} onSelectOrgan={onSelect} />
+diff --git a/src/components/learn/LearningCenter.tsx b/src/components/learn/LearningCenter.tsx
+index f991e3b..d68a817 100644
+--- a/src/components/learn/LearningCenter.tsx
++++ b/src/components/learn/LearningCenter.tsx
+@@ -6,6 +6,7 @@
+ import dynamic from "next/dynamic";
+ import { useCallback, useMemo, useState, useSyncExternalStore } from "react";
+ import { ORGAN_LIST, ORGANS } from "@/lib/organ-models";
++import { ANATOMY_LAYER_IDS, ANATOMY_LAYERS, NO_ANATOMY_LAYERS, type AnatomyLayerId, type AnatomyLayerState } from "@/lib/anatomy-layers";
+ import type { OrganId } from "@/lib/types";
+ import type { StructureInfo } from "@/components/atlas/AtlasViewer";
+ import OrganQuiz from "./OrganQuiz";
+@@ -57,6 +58,13 @@ export default function LearningCenter() {
+   const [overviewView, setOverviewView] = useState<"2d" | "3d">("2d");
+   const [show3DLabels, setShow3DLabels] = useState(false);
+   const [showBodySurface, setShowBodySurface] = useState(false);
++  const [layers, setLayers] = useState<AnatomyLayerState>(NO_ANATOMY_LAYERS);
++
++  /** 打开骨骼 / 血管层时自动切到透视体表，否则层被不透明的皮肤挡住 */
++  const toggleLayer = useCallback((id: AnatomyLayerId) => {
++    if (!layers[id]) setShowBodySurface(false);
++    setLayers({ ...layers, [id]: !layers[id] });
++  }, [layers]);
+ 
+   const switchSex = useCallback((v: Sex) => {
+     try { localStorage.setItem("mp-sex", v); } catch {}
+@@ -235,6 +243,20 @@ export default function LearningCenter() {
+                 {showBodySurface ? "透视体表" : "显示体表"}
+               </button>
+             )}
++            {mode === "overview" && overviewView === "3d" && (
++              <div className="flex gap-1" role="group" aria-label="解剖层">
++                {ANATOMY_LAYER_IDS.map((id) => (
++                  <button
++                    key={id}
++                    className={`btn !py-1 !text-xs ${layers[id] ? "!border-[var(--accent)] !text-[var(--accent)]" : ""}`}
++                    aria-pressed={layers[id]}
++                    onClick={() => toggleLayer(id)}
++                  >
++                    {ANATOMY_LAYERS[id].nameZh}
++                  </button>
++                ))}
++              </div>
++            )}
+             {quizTarget && <button className="btn !py-1 !text-xs" onClick={() => setQuizOrgan(quizTarget)}>学习自测</button>}
+             {mode === "organ" && organ.closeupGlb && (
+               <button className="btn !py-1 !text-xs" onClick={() => setUseReferenceModel((current) => !current)}>
+@@ -278,6 +300,7 @@ export default function LearningCenter() {
+                   useReferenceModel={useReferenceModel}
+                   showLabels={show3DLabels}
+                   showBodySurface={showBodySurface}
++                  layers={layers}
+                   selectedId={mode === "overview" && selectedId !== "breast" ? selectedId : null}
+                   onSelect={focusOrgan}
+                   onClearSelect={() => setSelected(null)}
+@@ -297,7 +320,12 @@ export default function LearningCenter() {
+                     </div>
+                     {mode === "organ" && useReferenceModel && organ.referenceLabel && <div className="text-[11px] text-[var(--muted)]">{organ.referenceLabel} · 个体解剖存在差异</div>}
+                     {mode === "organ" && !useReferenceModel && organ.closeupGlb && <div className="text-[11px] text-[var(--muted)]">原器官模型 · 仅供教学示意</div>}
+-                    {mode === "overview" && overviewView === "3d" && <div className="text-[11px] text-[var(--muted)]">HuBMAP {sex === "male" ? "男性" : "女性"}体表参考 · 器官为示意配准</div>}
++                    {mode === "overview" && overviewView === "3d" && (
++                      <div className="text-[11px] text-[var(--muted)]">
++                        {sex === "male" ? "BodyParts3D 男性体表" : "HuBMAP 女性体表参考"} · 器官为示意配准
++                        {sex === "female" && ANATOMY_LAYER_IDS.some((id) => layers[id]) && " · 骨骼与血管层取自男性图谱，仅作示意"}
++                      </div>
++                    )}
+                     <div className="mt-0.5 text-[12.5px] leading-6 text-[var(--text)]">
+                       {overviewTarget
+                         ? overviewTarget.brief
+diff --git a/src/components/learn/ReferenceBody.tsx b/src/components/learn/ReferenceBody.tsx
+deleted file mode 100644
+index b0348c6..0000000
+--- a/src/components/learn/ReferenceBody.tsx
++++ /dev/null
+@@ -1,40 +0,0 @@
+-"use client";
+-
+-import { useGLTF } from "@react-three/drei";
+-import { useEffect, useMemo } from "react";
+-import * as THREE from "three";
+-import { fitReferenceBody } from "@/lib/reference-body";
+-
+-/** HuBMAP 体表参考模型；归一化至 1.78 米高的现有演示坐标系。 */
+-export function ReferenceBody({ sex, solid = false }: { sex: "male" | "female"; solid?: boolean }) {
+-  const { scene } = useGLTF(`/models/hra-skin-${sex}.glb`);
+-  const material = useMemo(() => new THREE.MeshStandardMaterial({
+-    color: "#d8aa96",
+-    roughness: 0.82,
+-    metalness: 0,
+-    transparent: !solid,
+-    opacity: solid ? 1 : 0.22,
+-    depthWrite: solid,
+-    side: THREE.FrontSide,
+-  }), [solid]);
+-  useEffect(() => () => material.dispose(), [material]);
+-  const body = useMemo(() => {
+-    const clone = scene.clone(true);
+-    const bounds = new THREE.Box3().setFromObject(clone);
+-    const fit = fitReferenceBody(bounds.min.toArray(), bounds.max.toArray());
+-    clone.position.set(...fit.position);
+-    clone.traverse((object) => {
+-      const mesh = object as THREE.Mesh;
+-      if (!mesh.isMesh) return;
+-      mesh.material = material;
+-      mesh.renderOrder = solid ? 0 : 1;
+-      // 体表仅作参照，不阻挡对内部器官的选择。
+-      mesh.raycast = () => {};
+-    });
+-    const group = new THREE.Group();
+-    group.add(clone);
+-    group.scale.setScalar(fit.scale);
+-    return group;
+-  }, [scene, material, solid]);
+-  return <primitive object={body} />;
+-}
+diff --git a/src/components/sim/AnatomyLayers.tsx b/src/components/sim/AnatomyLayers.tsx
+new file mode 100644
+index 0000000..94b3d2c
+--- /dev/null
++++ b/src/components/sim/AnatomyLayers.tsx
+@@ -0,0 +1,38 @@
++"use client";
++
++// 全身概览里的骨骼 / 动脉 / 静脉层：按需加载，只在打开对应层时才下载 GLB。
++// 层仅作参照，不阻挡对器官的点选。
++import { useGLTF } from "@react-three/drei";
++import { Suspense, useEffect, useMemo } from "react";
++import { ANATOMY_LAYER_IDS, ANATOMY_LAYERS, type AnatomyLayerId, type AnatomyLayerState } from "@/lib/anatomy-layers";
++import * as THREE from "three";
++import { createLayerMaterial } from "./realistic-materials";
++
++function AnatomyLayer({ id }: { id: AnatomyLayerId }) {
++  const { scene } = useGLTF(ANATOMY_LAYERS[id].glb);
++  const layer = useMemo(() => {
++    const object = scene.clone(true);
++    const material = createLayerMaterial(id);
++    object.traverse((child) => {
++      const mesh = child as THREE.Mesh;
++      if (!mesh.isMesh) return;
++      mesh.material = material;
++      mesh.raycast = () => {};
++    });
++    return { object, material };
++  }, [scene, id]);
++  useEffect(() => () => layer.material.dispose(), [layer]);
++  return <primitive object={layer.object} />;
++}
++
++export function AnatomyLayers({ layers }: { layers: AnatomyLayerState }) {
++  return (
++    <>
++      {ANATOMY_LAYER_IDS.filter((id) => layers[id]).map((id) => (
++        <Suspense key={id} fallback={null}>
++          <AnatomyLayer id={id} />
++        </Suspense>
++      ))}
++    </>
++  );
++}
+diff --git a/src/components/sim/BodyOverviewScene.tsx b/src/components/sim/BodyOverviewScene.tsx
+index 8a52afd..2e0f764 100644
+--- a/src/components/sim/BodyOverviewScene.tsx
++++ b/src/components/sim/BodyOverviewScene.tsx
+@@ -1,15 +1,19 @@
+ "use client";
+ 
+-// 人体概览场景：人形参照轮廓（全息 / 真实肤色）+ 器官按解剖位置摆放，用于
+-// 「手术模拟的人体层面」「首页英雄图」与「学习中心的全身概览」。
++// 人体概览场景：写实人体体表（透视 / 实体）+ 器官按解剖位置摆放 + 可选的骨骼、血管层，用于
++// 「手术模拟的人体层面」与「学习中心的全身概览」。体表加载期间以人形轮廓占位。
+ // 性别感知：女性模型包含程序化子宫附件（BodyParts3D 无女性生殖网格）。
+ import { Suspense } from "react";
+ import { Html } from "@react-three/drei";
+ import { ORGANS, ORGAN_LIST } from "@/lib/organ-models";
++import type { AnatomyLayerState } from "@/lib/anatomy-layers";
+ import type { OrganId } from "@/lib/types";
++import { AnatomyLayers } from "./AnatomyLayers";
+ import { OrganModel } from "./OrganModel";
+ import { BodyOutline } from "./BodyOutline";
+ import { FemaleReproductive } from "./FemaleReproductive";
++import { ReferenceBody } from "./ReferenceBody";
++import { StudioLighting } from "./StudioLighting";
+ 
+ export interface BodyOverviewSceneProps {
+   /** 高亮脉冲的器官 */
+@@ -20,17 +24,19 @@ export interface BodyOverviewSceneProps {
+   focusMode?: boolean;
+   /** 手术模拟：只展示患部器官（忽略其余器官） */
+   onlyFocus?: boolean;
+-  /** 轮廓模式：全息线框 / 真实肤色外皮 */
++  /** 体表模式：hologram = 透视（玻璃质，可见内部）/ skin = 实体肤色体表；加载占位的人形轮廓同样按此模式 */
+   shellMode?: "hologram" | "skin";
+-  /** skin 模式淡出系数（1 = 实体外皮） */
++  /** 占位轮廓在 skin 模式下的淡出系数（1 = 实体外皮） */
+   shellFade?: number;
+   /** 显示可点击的器官文字标注 */
+   showLabels?: boolean;
+   /** 模型性别（女性呈现子宫附件与乳房轮廓） */
+   sex?: "male" | "female";
+-  /** 是否渲染人形参照轮廓 */
++  /** 是否渲染人体体表 */
+   showShell?: boolean;
+   showOrgans?: boolean;
++  /** 打开的解剖层（骨骼 / 动脉 / 静脉）；缺省不显示 */
++  layers?: AnatomyLayerState;
+ }
+ 
+ /** 可点击的器官文字标注（跟随器官位置，点击 = 选中该器官） */
+@@ -105,12 +111,13 @@ function OrganByInfo({
+   if (organ.bodyParts?.length) {
+     return (
+       <>
+-        {organ.bodyParts.map((part) => (
++        {organ.bodyParts.map((part, index) => (
+           <OrganModel
+-            key={part.glb}
++            key={`${part.glb}-${index}`}
+             organ={{ ...organ, glb: part.glb }}
+             targetSize={part.size}
+             position={part.position}
++            rotation={organ.bodyRotation}
+             highlight={highlight}
+             dimmed={dimmed}
+             onClick={onClick}
+@@ -152,6 +159,7 @@ export function BodyOverviewScene({
+   sex = "male",
+   showShell = true,
+   showOrgans = true,
++  layers,
+ }: BodyOverviewSceneProps) {
+   const focus = (highlightOrgan ?? null) as OrganId | null;
+   const organs = ORGAN_LIST.filter(
+@@ -162,17 +170,19 @@ export function BodyOverviewScene({
+   );
+   return (
+     <group>
+-      {/* 灯光 */}
+-      <ambientLight intensity={0.75} />
+-      <hemisphereLight args={["#bcd9ff", "#1a2233", 0.7]} />
+-      <directionalLight position={[2.5, 4, 3]} intensity={1.15} />
+-      <directionalLight position={[-3, 2, -2.5]} intensity={0.35} color="#9fd8ff" />
++      <StudioLighting />
+ 
+-      {/* 人形参照轮廓 */}
++      {/* 人体体表（男性 BodyParts3D 皮肤，女性 HuBMAP 体表）；加载期间显示人形轮廓 */}
+       {showShell && (
+-        <BodyOutline mode={shellMode} opacity={shellMode === "skin" ? shellFade : 1} sex={sex} />
++        <Suspense
++          fallback={<BodyOutline mode={shellMode} opacity={shellMode === "skin" ? shellFade : 1} sex={sex} />}
++        >
++          <ReferenceBody key={sex} sex={sex} solid={shellMode === "skin"} />
++        </Suspense>
+       )}
+ 
++      {layers && <AnatomyLayers layers={layers} />}
++
+       <Suspense fallback={null}>
+         {showOrgans &&
+           organs.map((o) => (
+@@ -210,10 +220,7 @@ export function OrganCloseupScene({
+   const closeupGlb = useReferenceModel ? organ.closeupGlb : undefined;
+   return (
+     <group>
+-      <ambientLight intensity={0.7} />
+-      <hemisphereLight args={["#bcd9ff", "#1a2233", 0.7]} />
+-      <directionalLight position={[2, 3, 3]} intensity={1.2} />
+-      <directionalLight position={[-2.5, 1.5, -2]} intensity={0.4} color="#9fd8ff" />
++      <StudioLighting />
+       <Suspense fallback={null}>
+         {organ.procedural && !closeupGlb ? (
+           <FemaleReproductive
+diff --git a/src/components/sim/OrganModel.tsx b/src/components/sim/OrganModel.tsx
+index 55e847c..bf3bcfb 100644
+--- a/src/components/sim/OrganModel.tsx
++++ b/src/components/sim/OrganModel.tsx
+@@ -7,6 +7,7 @@ import * as THREE from "three";
+ import { useEffect, useMemo, useRef } from "react";
+ import type { OrganInfo } from "@/lib/organ-models";
+ import { setEmissiveIntensity } from "./material-utils";
++import { createOrganMaterial } from "./realistic-materials";
+ 
+ export interface OrganModelProps {
+   organ: OrganInfo;
+@@ -67,8 +68,8 @@ export function OrganModel({
+       const mesh = o as THREE.Mesh;
+       if (!mesh.isMesh) return;
+       const make = (m: THREE.Material) => {
+-        const mm = (m as THREE.MeshStandardMaterial).clone();
+-        mm.metalness = 0;
++        // 保留 GLB 原色与贴图，叠加器官表面的湿润高光（物理材质）。
++        const mm = createOrganMaterial(m, organ.id);
+         // 保留模型原色作为基准，针对参考肝脏略微提亮以适配深色视口。
+         if (organ.id === "liver" && organ.closeupGlb && organ.glb === organ.closeupGlb && mm.color) {
+           const original = typeof m.userData?.referenceBaseColor === "number" ? m.userData.referenceBaseColor : mm.color.getHex();
+@@ -93,7 +94,7 @@ export function OrganModel({
+           mm.opacity = 1;
+           mm.depthWrite = true;
+         }
+-        if (mm instanceof THREE.MeshStandardMaterial) mats.push(mm);
++        mats.push(mm);
+         return mm;
+       };
+       const original = normalized.originalMaterials.get(mesh)!;
+diff --git a/src/components/sim/ReferenceBody.tsx b/src/components/sim/ReferenceBody.tsx
+new file mode 100644
+index 0000000..e1652cf
+--- /dev/null
++++ b/src/components/sim/ReferenceBody.tsx
+@@ -0,0 +1,61 @@
++"use client";
++
++// 人体体表参考：
++//   男性 —— BodyParts3D 皮肤（含头发、眉毛、嘴唇），本身就在图谱坐标系里，与器官注册表直接对齐；
++//   女性 —— HuBMAP 女性体表参考，缩放到同一身高（BodyParts3D 图谱没有女性体表）。
++// solid 为实体皮肤，否则是玻璃质的透视体表；体表仅作参照，不阻挡对内部器官的选择。
++import { useGLTF } from "@react-three/drei";
++import { useEffect, useMemo } from "react";
++import * as THREE from "three";
++import { fitReferenceBody } from "@/lib/reference-body";
++import { createBrowMaterial, createHairMaterial, createLipMaterial, createSkinMaterial } from "./realistic-materials";
++
++export const REFERENCE_BODY_GLB = {
++  male: "/models/bp3d-skin-male.glb",
++  female: "/models/hra-skin-female.glb",
++} as const;
++
++export function ReferenceBody({ sex, solid = false }: { sex: "male" | "female"; solid?: boolean }) {
++  const { scene } = useGLTF(REFERENCE_BODY_GLB[sex]);
++  const body = useMemo(() => {
++    const glass = !solid;
++    const skin = createSkinMaterial({ glass });
++    const materials: THREE.Material[] = [skin];
++    const own = <T extends THREE.Material>(material: T) => {
++      materials.push(material);
++      return material;
++    };
++    const clone = scene.clone(true);
++    clone.traverse((object) => {
++      const mesh = object as THREE.Mesh;
++      if (!mesh.isMesh) return;
++      // 男性文件里皮肤、头发、眉毛、嘴唇是四个命名网格；女性体表是单一网格。
++      switch (sex === "male" ? mesh.name.toLowerCase() : "skin") {
++        case "hair":
++          mesh.material = own(createHairMaterial(glass));
++          break;
++        case "eyebrow":
++          mesh.material = own(createBrowMaterial(glass));
++          break;
++        case "lip":
++          mesh.material = own(createLipMaterial(glass));
++          break;
++        default:
++          mesh.material = skin;
++      }
++      mesh.renderOrder = glass ? (mesh.material === skin ? 5 : 6) : 0;
++      mesh.raycast = () => {};
++    });
++    const group = new THREE.Group();
++    group.add(clone);
++    if (sex === "female") {
++      const bounds = new THREE.Box3().setFromObject(clone);
++      const fit = fitReferenceBody(bounds.min.toArray(), bounds.max.toArray());
++      clone.position.set(...fit.position);
++      group.scale.setScalar(fit.scale);
++    }
++    return { group, materials };
++  }, [scene, sex, solid]);
++  useEffect(() => () => body.materials.forEach((material) => material.dispose()), [body]);
++  return <primitive object={body.group} />;
++}
+diff --git a/src/components/sim/SimulationStage.tsx b/src/components/sim/SimulationStage.tsx
+index 6023d5d..61dc98a 100644
+--- a/src/components/sim/SimulationStage.tsx
++++ b/src/components/sim/SimulationStage.tsx
+@@ -17,6 +17,7 @@ import { BodyOverviewScene } from "./BodyOverviewScene";
+ import { OrganModel } from "./OrganModel";
+ import { FemaleReproductive } from "./FemaleReproductive";
+ import { InstrumentRig, RegionMarker, instrumentIds } from "./instruments";
++import { StudioLighting } from "./StudioLighting";
+ 
+ export interface SimulationStageProps {
+   simulation: SimulationRun | null;
+@@ -195,10 +196,7 @@ function StageContent({
+         </>
+       ) : (
+         <>
+-          <ambientLight intensity={0.7} />
+-          <hemisphereLight args={["#bcd9ff", "#1a2233", 0.7]} />
+-          <directionalLight position={[2, 3, 3]} intensity={1.2} />
+-          <directionalLight position={[-2.5, 1.5, -2]} intensity={0.4} color="#9fd8ff" />
++          <StudioLighting />
+           <Suspense fallback={null}>
+             {organ.procedural ? (
+               <FemaleReproductive targetSize={1.35} highlight />
+diff --git a/src/components/sim/StudioLighting.tsx b/src/components/sim/StudioLighting.tsx
+new file mode 100644
+index 0000000..7671b84
+--- /dev/null
++++ b/src/components/sim/StudioLighting.tsx
+@@ -0,0 +1,39 @@
++"use client";
++
++// 摄影棚式灯光：程序化室内环境光（IBL，不依赖外部 HDR）+ 主光 / 补光 / 轮廓光。
++// 全身概览、器官特写与手术规划的器官视图共用，让湿润的器官与皮肤有可信的高光与反射。
++import { useThree } from "@react-three/fiber";
++import { useEffect } from "react";
++import * as THREE from "three";
++import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
++import { setSceneEnvironment } from "./realistic-materials";
++
++const ENVIRONMENT_INTENSITY = 0.55;
++
++export function StudioLighting() {
++  const gl = useThree((state) => state.gl);
++  const scene = useThree((state) => state.scene);
++
++  useEffect(() => {
++    const room = new RoomEnvironment();
++    const pmrem = new THREE.PMREMGenerator(gl);
++    const target = pmrem.fromScene(room, 0.04);
++    const previous = { texture: scene.environment, intensity: scene.environmentIntensity };
++    setSceneEnvironment(scene, target.texture, ENVIRONMENT_INTENSITY);
++    return () => {
++      setSceneEnvironment(scene, previous.texture, previous.intensity);
++      target.dispose();
++      pmrem.dispose();
++      room.dispose();
++    };
++  }, [gl, scene]);
++
++  return (
++    <>
++      <directionalLight color="#fff1e6" intensity={2} position={[2.5, 4, 3]} />
++      <directionalLight color="#9fd8ff" intensity={0.5} position={[-3, 2, -2.5]} />
++      <directionalLight color="#ffd7c4" intensity={0.9} position={[-1.5, 2.5, -3]} />
++      <hemisphereLight args={["#bcd9ff", "#1a2233", 0.25]} />
++    </>
++  );
++}
+diff --git a/src/components/sim/realistic-materials.ts b/src/components/sim/realistic-materials.ts
+new file mode 100644
+index 0000000..b774195
+--- /dev/null
++++ b/src/components/sim/realistic-materials.ts
+@@ -0,0 +1,199 @@
++// 写实材质集中处：皮肤（含玻璃质透视体表）、毛发、嘴唇、骨骼与血管层、器官表面。
++// 全身概览、学习中心与手术规划共用，避免各场景各写一套。皮肤的着色补丁是对 three.js 内置
++// MeshPhysicalMaterial 着色器的字符串替换；three 升级后替换目标若变化，tests/atlas-regression 会报出。
++import * as THREE from "three";
++import type { AnatomyLayerId } from "@/lib/anatomy-layers";
++
++type Shader = Parameters<THREE.Material["onBeforeCompile"]>[0];
++
++/** 着色器里被替换的 three.js 片段；测试按此核对当前 three 版本仍含这些目标。 */
++export const SKIN_SHADER_TARGETS = {
++  vertex: ["#include <common>", "#include <begin_vertex>"],
++  fragment: [
++    "#include <common>",
++    "#include <normal_fragment_maps>",
++    "#include <color_fragment>",
++    "#include <lights_physical_pars_fragment>",
++    "#include <opaque_fragment>",
++  ],
++  /** lights_physical_pars_fragment 内被改成「包裹光照」的那一行 */
++  diffuse: "reflectedLight.directDiffuse += irradiance * BRDF_Lambert( material.diffuseContribution ) * ( 1.0 - F );",
++} as const;
++
++const NOISE_GLSL = /* glsl */ `
++  varying vec3 vObjPos;
++  uniform vec3 uSssColor;
++  uniform float uGlassMin;
++  uniform float uGlassMax;
++  uniform float uGlassPow;
++  float hash31(vec3 p){ p = fract(p*0.3183099+vec3(.1,.2,.3)); p*=17.0; return fract(p.x*p.y*p.z*(p.x+p.y+p.z)); }
++  float vnoise(vec3 x){ vec3 i=floor(x), f=fract(x); f=f*f*(3.0-2.0*f);
++    return mix(mix(mix(hash31(i),hash31(i+vec3(1,0,0)),f.x), mix(hash31(i+vec3(0,1,0)),hash31(i+vec3(1,1,0)),f.x),f.y),
++               mix(mix(hash31(i+vec3(0,0,1)),hash31(i+vec3(1,0,1)),f.x), mix(hash31(i+vec3(0,1,1)),hash31(i+vec3(1,1,1)),f.x),f.y),f.z); }
++  float skinH(vec3 p){ return vnoise(p*900.0)*0.5 + vnoise(p*330.0)*0.35 + vnoise(p*110.0)*0.15; }
++`;
++
++// 皮肤微起伏：对象空间噪声高度 → 屏幕空间导数扰动法线；随屏幕像素密度淡出，远处保持光滑。
++const SKIN_BUMP_GLSL = /* glsl */ `
++  #include <normal_fragment_maps>
++  {
++    float px = length(fwidth(vObjPos));
++    float fade = clamp(1.0 - px * 900.0 * 0.9, 0.0, 1.0);
++    if (fade > 0.001) {
++      float h = skinH(vObjPos);
++      vec2 dH = vec2(dFdx(h), dFdy(h));
++      vec3 sx = normalize(dFdx(-vViewPosition)); vec3 sy = normalize(dFdy(-vViewPosition));
++      vec3 R1 = cross(sy, normal); vec3 R2 = cross(normal, sx);
++      float det = dot(sx, R1);
++      vec3 grad = sign(det) * (dH.x * R1 + dH.y * R2);
++      normal = normalize(abs(det) * normal - grad * 0.0007 * fade / max(px, 1e-4) * 0.01);
++    }
++  }
++`;
++
++// 肤色的低频变化：局部略偏红 / 偏黄，避免整块均匀的塑料感。
++const SKIN_TINT_GLSL = /* glsl */ `
++  #include <color_fragment>
++  { float t = vnoise(vObjPos*28.0); float t2 = vnoise(vObjPos*7.0);
++    diffuseColor.rgb *= 0.93 + 0.14 * t;
++    diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(1.06,0.94,0.92), t2); }
++`;
++
++// 次表面近似：包裹光照，明暗交界处带红橙色。
++const SKIN_WRAP_DIFFUSE = /* glsl */ `
++  float wrapNL = saturate((dot(geometryNormal, directLight.direction) + 0.45) / 1.45);
++  vec3 sssIrr = directLight.color * (wrapNL - dotNL);
++  reflectedLight.directDiffuse += (irradiance + sssIrr * uSssColor * 0.9) * BRDF_Lambert( material.diffuseContribution ) * ( 1.0 - F );
++`;
++
++// 菲涅尔透明：正对相机时通透，掠射角更实，得到「玻璃人」的体表。
++const SKIN_GLASS_ALPHA_GLSL = /* glsl */ `
++  float fr = pow(1.0 - abs(dot(normalize(normal), normalize(vViewPosition))), uGlassPow);
++  diffuseColor.a = mix(uGlassMin, uGlassMax + 0.35, fr);
++  #include <opaque_fragment>
++`;
++
++function patchSkinShader(shader: Shader, glass: boolean) {
++  shader.uniforms.uSssColor = { value: new THREE.Color("#ff6a3a") };
++  shader.uniforms.uGlassMin = { value: 0.06 };
++  shader.uniforms.uGlassMax = { value: 0.55 };
++  shader.uniforms.uGlassPow = { value: 2.2 };
++  shader.vertexShader = shader.vertexShader
++    .replace("#include <common>", "#include <common>\nvarying vec3 vObjPos;")
++    .replace("#include <begin_vertex>", "#include <begin_vertex>\nvObjPos = position;");
++  shader.fragmentShader = shader.fragmentShader
++    .replace("#include <common>", `#include <common>\n${NOISE_GLSL}`)
++    .replace("#include <normal_fragment_maps>", SKIN_BUMP_GLSL)
++    .replace("#include <color_fragment>", SKIN_TINT_GLSL)
++    .replace(
++      "#include <lights_physical_pars_fragment>",
++      THREE.ShaderChunk.lights_physical_pars_fragment.replace(SKIN_SHADER_TARGETS.diffuse, SKIN_WRAP_DIFFUSE),
++    );
++  if (glass) shader.fragmentShader = shader.fragmentShader.replace("#include <opaque_fragment>", SKIN_GLASS_ALPHA_GLSL);
++}
++
++export const SKIN_COLOR = "#cf9577";
++
++/** 皮肤：湿润的次表面包裹光、微起伏、肤色变化；glass 为菲涅尔透明的透视体表。 */
++export function createSkinMaterial({ glass = false, color = SKIN_COLOR }: { glass?: boolean; color?: string } = {}) {
++  const material = new THREE.MeshPhysicalMaterial({
++    color,
++    roughness: 0.55,
++    metalness: 0,
++    sheen: 0.6,
++    sheenRoughness: 0.5,
++    sheenColor: new THREE.Color("#ffd9c7"),
++    clearcoat: 0.12,
++    clearcoatRoughness: 0.45,
++    side: glass ? THREE.DoubleSide : THREE.FrontSide,
++    transparent: glass,
++    depthWrite: !glass,
++  });
++  material.onBeforeCompile = (shader) => patchSkinShader(shader, glass);
++  material.customProgramCacheKey = () => `medplan-skin-${glass}`;
++  return material;
++}
++
++/** 头发、眉毛、嘴唇：透视体表时略透明，不遮住内部。 */
++export function createHairMaterial(glass: boolean) {
++  return new THREE.MeshPhysicalMaterial({
++    color: "#2a1d16",
++    roughness: 0.55,
++    sheen: 1,
++    sheenColor: new THREE.Color("#6b4a38"),
++    transparent: glass,
++    opacity: glass ? 0.8 : 1,
++  });
++}
++
++export function createBrowMaterial(glass: boolean) {
++  return new THREE.MeshStandardMaterial({ color: "#2a1d16", roughness: 0.7, transparent: glass, opacity: glass ? 0.8 : 1 });
++}
++
++export function createLipMaterial(glass: boolean) {
++  return new THREE.MeshPhysicalMaterial({
++    color: "#b5605a",
++    roughness: 0.35,
++    clearcoat: 0.4,
++    clearcoatRoughness: 0.3,
++    transparent: glass,
++    opacity: glass ? 0.85 : 1,
++  });
++}
++
++/** 骨骼、动脉、静脉层的材质（颜色为教学惯例：动脉红、静脉蓝、骨骼象牙白）。 */
++export function createLayerMaterial(id: AnatomyLayerId) {
++  switch (id) {
++    case "skeletal":
++      return new THREE.MeshPhysicalMaterial({
++        color: "#e6d9bd",
++        roughness: 0.62,
++        clearcoat: 0.15,
++        clearcoatRoughness: 0.5,
++        sheen: 0.2,
++        sheenColor: new THREE.Color("#fff2d6"),
++      });
++    case "arterial":
++      return new THREE.MeshPhysicalMaterial({ color: "#b3262b", roughness: 0.38, clearcoat: 0.7, clearcoatRoughness: 0.2 });
++    case "venous":
++      return new THREE.MeshPhysicalMaterial({ color: "#3f5aa6", roughness: 0.4, clearcoat: 0.6, clearcoatRoughness: 0.25 });
++  }
++}
++
++type SurfacePreset = Partial<Pick<THREE.MeshPhysicalMaterial, "clearcoat" | "clearcoatRoughness" | "roughness" | "sheen">>;
++
++/** 各器官的表面：实质脏器与黏膜湿润、有清漆高光，肺略带绒感，眼球近似玻璃体。 */
++const ORGAN_SURFACE: Record<string, SurfacePreset> = {
++  liver: { clearcoat: 0.55, clearcoatRoughness: 0.28, roughness: 0.42, sheen: 0.2 },
++  heart: { clearcoat: 0.35, clearcoatRoughness: 0.35, roughness: 0.5, sheen: 0.15 },
++  lungs: { clearcoat: 0.25, clearcoatRoughness: 0.4, roughness: 0.55, sheen: 0.4 },
++  brain: { clearcoat: 0.6, clearcoatRoughness: 0.25, roughness: 0.4, sheen: 0.1 },
++  kidneys: { clearcoat: 0.6, clearcoatRoughness: 0.25, roughness: 0.38, sheen: 0.1 },
++  intestine: { clearcoat: 0.55, clearcoatRoughness: 0.3, roughness: 0.4, sheen: 0.15 },
++  stomach: { clearcoat: 0.5, clearcoatRoughness: 0.3, roughness: 0.42, sheen: 0.15 },
++  pancreas: { clearcoat: 0.3, clearcoatRoughness: 0.4, roughness: 0.5, sheen: 0.2 },
++  eyeball: { clearcoat: 1, clearcoatRoughness: 0.05, roughness: 0.25, sheen: 0 },
++};
++const DEFAULT_ORGAN_SURFACE: SurfacePreset = { clearcoat: 0.3, clearcoatRoughness: 0.4 };
++
++/** 保留 GLB 原有颜色与贴图，叠加器官表面的湿润高光，返回新的材质（不改动源材质）。 */
++export function createOrganMaterial(source: THREE.Material, organId: string) {
++  const material = new THREE.MeshPhysicalMaterial();
++  if (source instanceof THREE.MeshStandardMaterial) {
++    // 用基类的 copy：MeshPhysicalMaterial.copy 会读取源材质没有的 clearcoat / sheen 向量而报错。
++    THREE.MeshStandardMaterial.prototype.copy.call(material, source);
++  } else {
++    material.color.set("#c46a64");
++  }
++  material.metalness = 0;
++  Object.assign(material, ORGAN_SURFACE[organId] ?? DEFAULT_ORGAN_SURFACE);
++  material.sheenColor = new THREE.Color("#ffb4a8");
++  material.sheenRoughness = 0.6;
++  return material;
++}
++
++/** Three.js 场景由渲染循环管理，不是 React 的渲染状态。 */
++export function setSceneEnvironment(scene: THREE.Scene, environment: THREE.Texture | null, intensity: number) {
++  scene.environment = environment;
++  scene.environmentIntensity = intensity;
++}
+diff --git a/src/lib/anatomy-layers.ts b/src/lib/anatomy-layers.ts
+new file mode 100644
+index 0000000..a78694b
+--- /dev/null
++++ b/src/lib/anatomy-layers.ts
+@@ -0,0 +1,15 @@
++// 全身概览里可单独打开的解剖层：骨骼、动脉、静脉。
++// 三个 GLB 由 scripts/extract-body-layers-glb.mjs 从精细图谱（BodyParts3D 4.0 男性，CC BY 4.0）生成，
++// 与器官注册表同在图谱坐标系，无需再配准。
++export const ANATOMY_LAYER_IDS = ["skeletal", "arterial", "venous"] as const;
++
++export type AnatomyLayerId = (typeof ANATOMY_LAYER_IDS)[number];
++export type AnatomyLayerState = Record<AnatomyLayerId, boolean>;
++
++export const ANATOMY_LAYERS: Record<AnatomyLayerId, { nameZh: string; glb: string }> = {
++  skeletal: { nameZh: "骨骼", glb: "/models/bp3d-skeleton-male.glb" },
++  arterial: { nameZh: "动脉", glb: "/models/bp3d-arteries-male.glb" },
++  venous: { nameZh: "静脉", glb: "/models/bp3d-veins-male.glb" },
++};
++
++export const NO_ANATOMY_LAYERS: AnatomyLayerState = { skeletal: false, arterial: false, venous: false };
+diff --git a/src/lib/organ-models.ts b/src/lib/organ-models.ts
+index 6514109..d4dfa77 100644
+--- a/src/lib/organ-models.ts
++++ b/src/lib/organ-models.ts
+@@ -17,7 +17,7 @@ export interface OrganInfo {
+   glb: string;
+   referenceLabel?: string;
+   closeupGlb?: string;
+-  /** 概览中需独立配准的左右器官（如左右肾） */
++  /** 概览中需独立配准的左右器官（如左右肾、左右眼）；有此项时概览只画这些部件，bodyPosition 仍给标签与相机用 */
+   bodyParts?: { glb: string; position: [number, number, number]; size: number }[];
+   thumb: string;
+   organImg: string;
+@@ -35,6 +35,10 @@ export interface OrganInfo {
+   femaleOnly?: boolean;
+ }
+ 
++/** 概览中左眼球（患者左侧，+X）的中心与球体最长边（米）；右眼按身体中线对称。 */
++const LEFT_EYE: [number, number, number] = [0.028, 1.596, 0.049];
++const EYE_SIZE = 0.032;
++
+ export const ORGANS: Record<OrganId, OrganInfo> = {
+   brain: {
+     id: "brain",
+@@ -48,10 +52,10 @@ export const ORGANS: Record<OrganId, OrganInfo> = {
+     referenceLabel: "HuBMAP 男性参考器官模型",
+     thumb: "/anatomy/brain/thumb.webp",
+     organImg: "/anatomy/brain/organ.webp",
+-    // 取自精细图谱脑结构（含小脑、脑干）的包围盒：最长边为前后长 0.18，x 中心取 0。GLB 的前后轴在 x 上（枕后朝 +x），
+-    // 概览里绕竖直轴转 +90° 使枕后朝 -Z。人形轮廓的头部（颈最细 1.56、头顶 1.78）比图谱头部（下颌 1.50、头顶 1.719）整体高 0.06，
+-    // 故 y 取图谱中心 1.626 加 0.06；z 取 -0.01（图谱 -0.02，轮廓中轴 0），个别顶点超出轮廓不超过 0.4 cm。
+-    bodyPosition: [0, 1.686, -0.01],
++    // 取自精细图谱脑结构（含小脑、脑干）的包围盒：最长边为前后长 0.18，中心 [0, 1.626, -0.02]。GLB 的前后轴在 x 上（枕后朝 +x），
++    // 概览里绕竖直轴转 +90° 使枕后朝 -Z。人体体表用图谱自带的皮肤（头顶 1.719），与图谱同坐标系，所以脑、眼直接取图谱值，
++    // 不再为旧人形轮廓（头顶 1.78）上移 0.06。
++    bodyPosition: [0, 1.626, -0.02],
+     bodySize: 0.18,
+     bodyRotation: [0, Math.PI / 2, 0],
+   },
+@@ -66,11 +70,17 @@ export const ORGANS: Record<OrganId, OrganInfo> = {
+     referenceLabel: "HuBMAP 男性左眼参考模型",
+     thumb: "/anatomy/eyeball/thumb.webp",
+     organImg: "/anatomy/eyeball/organ.webp",
+-    // 取自精细图谱左眼（巩膜+角膜）：球径 0.026，x 中心 0.029。GLB 末端约 20% 是视神经残端（朝后内侧），球体中心比包围盒中心靠前 0.003，
+-    // bodySize 取 0.032 使球径为 0.026；绕竖直轴转 +90° 使角膜朝前（+Z）、视神经朝后内侧。位置随轮廓头部上移 0.06、前移 0.01（同脑）。
+-    bodyPosition: [0.028, 1.656, 0.059],
+-    bodySize: 0.032,
++    // 取自精细图谱左眼（巩膜+角膜）：球径 0.026，中心 [0.029, 1.596, 0.052]。GLB 末端约 20% 是视神经残端（朝后内侧），球体中心比包围盒中心靠前 0.003，
++    // bodySize 取 0.032 使球径为 0.026；绕竖直轴转 +90° 使角膜朝前（+Z）、视神经朝后内侧。z 取 0.049 使球体中心落在图谱眼中心；
++    // 体表用图谱皮肤，不再上移（同脑）。
++    bodyPosition: LEFT_EYE,
++    bodySize: EYE_SIZE,
+     bodyRotation: [0, Math.PI / 2, 0],
++    // 概览里左右眼各一枚：右眼是同一模型，按身体中线对称（x 取反），体表两个眼眶才都有眼球。标签与相机仍对着左眼。
++    bodyParts: [
++      { glb: "/models/eyeball.glb", position: LEFT_EYE, size: EYE_SIZE },
++      { glb: "/models/eyeball.glb", position: [-LEFT_EYE[0], LEFT_EYE[1], LEFT_EYE[2]], size: EYE_SIZE },
++    ],
+   },
+   heart: {
+     id: "heart",
+diff --git a/src/lib/reference-body.ts b/src/lib/reference-body.ts
+index c5aa1a2..fd2b4b2 100644
+--- a/src/lib/reference-body.ts
++++ b/src/lib/reference-body.ts
+@@ -1,9 +1,12 @@
+-/** 将参考体表包围盒适配到现有人体场景，脚底 y=0、头顶 y=1.78。 */
+-export function fitReferenceBody(min: readonly number[], max: readonly number[]) {
+-  const height = max[1] - min[1];
+-  if (!Number.isFinite(height) || height <= 0) throw new Error("Invalid reference body bounds");
++/** 共享站立坐标系里的人体高度（米）：等于精细图谱皮肤的顶部，器官注册表（organ-models.ts）按这个坐标系取值。 */
++export const REFERENCE_BODY_HEIGHT = 1.719;
++
++/** 将参考体表包围盒适配到现有人体场景，脚底 y=0、头顶 y=REFERENCE_BODY_HEIGHT。 */
++export function fitReferenceBody(min: readonly number[], max: readonly number[], height = REFERENCE_BODY_HEIGHT) {
++  const size = max[1] - min[1];
++  if (!Number.isFinite(size) || size <= 0) throw new Error("Invalid reference body bounds");
+   return {
+-    scale: 1.78 / height,
++    scale: height / size,
+     position: [-(min[0] + max[0]) / 2, -min[1], -(min[2] + max[2]) / 2] as [number, number, number],
+   };
+ }
+diff --git a/tests/atlas-regression.test.cjs b/tests/atlas-regression.test.cjs
+index 8655d9e..43feff7 100644
+--- a/tests/atlas-regression.test.cjs
++++ b/tests/atlas-regression.test.cjs
+@@ -192,20 +192,29 @@ test('overview uses independently aligned kidneys with atlas-consistent laterali
+   assert.ok(Math.abs((left.position[1] - right.position[1]) - 0.018) < 0.002, 'the right kidney should be lower');
+ });
+ 
+-test('reference body models fit the shared standing coordinate system', async () => {
+-  const { fitReferenceBody } = loadTs('src/lib/reference-body.ts');
++test('reference bodies share the atlas standing coordinate system', async () => {
++  const { fitReferenceBody, REFERENCE_BODY_HEIGHT } = loadTs('src/lib/reference-body.ts');
+   const { GLTFLoader } = await import('three/examples/jsm/loaders/GLTFLoader.js');
+-  for (const sex of ['male', 'female']) {
+-    const bytes = fs.readFileSync(path.join(__dirname, `../public/models/hra-skin-${sex}.glb`));
+-    const gltf = await new GLTFLoader().parseAsync(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength), '');
+-    const bounds = new THREE.Box3().setFromObject(gltf.scene);
+-    assert.ok(!bounds.isEmpty(), `${sex} body model must contain geometry`);
+-    const fit = fitReferenceBody(bounds.min.toArray(), bounds.max.toArray());
+-    assert.ok(Math.abs((bounds.min.y + fit.position[1]) * fit.scale) < 1e-6);
+-    assert.ok(Math.abs((bounds.max.y + fit.position[1]) * fit.scale - 1.78) < 1e-6);
+-    assert.ok(Math.abs(((bounds.min.x + bounds.max.x) / 2 + fit.position[0]) * fit.scale) < 1e-6);
+-  }
++  const load = async (file) => {
++    const bytes = fs.readFileSync(path.join(__dirname, `../public/models/${file}`));
++    return new GLTFLoader().parseAsync(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength), '');
++  };
++  // The organ registry is in the atlas frame, so the shared body height is the atlas skin top.
++  const atlasSkinTop = Math.max(...JSON.parse(fs.readFileSync(path.join(__dirname, '../public/atlas/atlas.json'), 'utf8')).parts
++    .filter((p) => p.name === 'Skin').map((p) => p.bounds[1][1]));
++  assert.ok(Math.abs(REFERENCE_BODY_HEIGHT - atlasSkinTop) < 0.001, `body height ${REFERENCE_BODY_HEIGHT}, atlas skin top ${atlasSkinTop}`);
++  // Female: the HuBMAP body is fitted to that height, standing on y=0 and centred on x/z.
++  const female = new THREE.Box3().setFromObject((await load('hra-skin-female.glb')).scene);
++  assert.ok(!female.isEmpty(), 'female body model must contain geometry');
++  const fit = fitReferenceBody(female.min.toArray(), female.max.toArray());
++  assert.ok(Math.abs((female.min.y + fit.position[1]) * fit.scale) < 1e-6);
++  assert.ok(Math.abs((female.max.y + fit.position[1]) * fit.scale - REFERENCE_BODY_HEIGHT) < 1e-6);
++  assert.ok(Math.abs(((female.min.x + female.max.x) / 2 + fit.position[0]) * fit.scale) < 1e-6);
+   assert.throws(() => fitReferenceBody([0,0,0], [1,0,1]), /Invalid/);
++  // Male: the BodyParts3D skin is already in the atlas frame and is used as it is (feet on y=0, top at the atlas skin top).
++  const skin = new THREE.Box3().setFromObject((await load('bp3d-skin-male.glb')).scene.getObjectByName('Skin'));
++  assert.ok(Math.abs(skin.min.y) < 0.005 && Math.abs(skin.max.y - REFERENCE_BODY_HEIGHT) < 0.002, `male skin spans y ${skin.min.y}..${skin.max.y}`);
++  assert.ok(Math.abs((skin.min.x + skin.max.x) / 2) < 0.01, 'male skin is centred on the atlas midline');
+ });
+ 
+ // Lungs, brain and eyeball (mackdown.md section 6). Helpers shared by the three tests below.
+@@ -219,7 +228,7 @@ function atlasBox(parts, re, system) {
+ const boundsOf = (pts) => [0, 1, 2].map((k) => pts.reduce(([lo, hi], p) => [Math.min(lo, p[k]), Math.max(hi, p[k])], [Infinity, -Infinity]));
+ const centreOf = (box) => box.map(([lo, hi]) => (lo + hi) / 2);
+ const sizeOf = (box) => box.map(([lo, hi]) => hi - lo);
+-/** Vertex positions of a single-mesh Meshopt GLB (int16 quantisation + node transform), decoded as in the tests above. */
++/** Vertex positions of a single-mesh GLB: Meshopt (int16 quantisation + node transform) as in the tests above, or plain Float32. */
+ async function glbPoints(file) {
+   const { MeshoptDecoder } = await import('three/examples/jsm/libs/meshopt_decoder.module.js');
+   await MeshoptDecoder.ready;
+@@ -227,11 +236,18 @@ async function glbPoints(file) {
+   const jsonLength = glb.readUInt32LE(12);
+   const gltf = JSON.parse(glb.subarray(20, 20 + jsonLength).toString('utf8'));
+   const accessor = gltf.accessors[gltf.meshes[0].primitives[0].attributes.POSITION];
+-  const { count, byteStride, byteOffset = 0, byteLength, mode, filter } = gltf.bufferViews[accessor.bufferView].extensions.EXT_meshopt_compression;
++  const bufferView = gltf.bufferViews[accessor.bufferView];
++  const { translation = [0, 0, 0], scale = [1, 1, 1] } = gltf.nodes[0];
++  if (!bufferView.extensions?.EXT_meshopt_compression) {
++    assert.equal(accessor.componentType, 5126, `${file}: positions are neither Meshopt nor Float32`);
++    const start = glb.byteOffset + 28 + jsonLength + (bufferView.byteOffset ?? 0) + (accessor.byteOffset ?? 0);
++    const floats = new Float32Array(glb.buffer.slice(start, start + accessor.count * 12));
++    return Array.from({ length: accessor.count }, (_, i) => [0, 1, 2].map((k) => floats[i * 3 + k] * scale[k] + translation[k]));
++  }
++  const { count, byteStride, byteOffset = 0, byteLength, mode, filter } = bufferView.extensions.EXT_meshopt_compression;
+   const raw = new Uint8Array(count * byteStride);
+   MeshoptDecoder.decodeGltfBuffer(raw, count, byteStride, glb.subarray(28 + jsonLength + byteOffset, 28 + jsonLength + byteOffset + byteLength), mode, filter);
+   const view = new DataView(raw.buffer);
+-  const { translation, scale } = gltf.nodes[0];
+   return Array.from({ length: count }, (_, i) => [0, 1, 2].map((k) =>
+     Math.max(view.getInt16((accessor.byteOffset ?? 0) + i * byteStride + 2 * k, true) / 32767, -1) * scale[k] + translation[k]));
+ }
+@@ -247,26 +263,50 @@ function placeOverview(organ, points, box) {
+     return [organ.bodyPosition[0] + x * cos + z * sin, organ.bodyPosition[1] + y, organ.bodyPosition[2] - x * sin + z * cos];
+   });
+ }
+-/** BodyOutline's lathe profile (radius, height), read from the component so this test follows it. */
+-function outlineProfile() {
+-  const source = fs.readFileSync(path.join(__dirname, '../src/components/sim/BodyOutline.tsx'), 'utf8');
+-  const block = /const PROFILE[^=]*=\s*\[([\s\S]*?)\n\];/.exec(source);
+-  assert.ok(block, 'PROFILE not found in BodyOutline.tsx');
+-  return [...block[1].matchAll(/\[\s*([-0-9.]+)\s*,\s*([-0-9.]+)\s*\]/g)].map((m) => [Number(m[1]), Number(m[2])]);
+-}
+-/** Share of points outside the (circular) outline and the worst protrusion in metres. */
+-function outsideOutline(profile, points) {
+-  const radius = (y) => {
+-    if (y <= profile[0][1]) return profile[0][0];
+-    for (let i = 1; i < profile.length; i++) {
+-      const [r0, y0] = profile[i - 1], [r1, y1] = profile[i];
+-      if (y <= y1) return r0 + ((y - y0) / (y1 - y0)) * (r1 - r0);
++/**
++ * The body surface of the overview: the BodyParts3D male skin. It is a shell with an inner and an outer surface, so a point lies in
++ * the body cavity when a ray along every axis direction meets it. The shell is open at the eyes, ears, nostrils and mouth, so a few
++ * head points can look outside although they are not.
++ */
++async function skinShell() {
++  const { GLTFLoader } = await import('three/examples/jsm/loaders/GLTFLoader.js');
++  const bytes = fs.readFileSync(path.join(__dirname, '../public/models/bp3d-skin-male.glb'));
++  const gltf = await new GLTFLoader().parseAsync(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength), '');
++  const { position, index } = (({ attributes, index }) => ({ position: attributes.position.array, index: index.array }))(gltf.scene.getObjectByName('Skin').geometry);
++  const triangles = index.length / 3;
++  const corners = new Float64Array(triangles * 9); // per triangle: three xyz corners
++  for (let t = 0; t < triangles; t++) for (let v = 0; v < 3; v++) for (let k = 0; k < 3; k++) corners[t * 9 + v * 3 + k] = position[index[t * 3 + v] * 3 + k];
++  // Per axis, each triangle's bounds on the other two axes, so a ray only tests the few triangles it can meet.
++  const bounds = [0, 1, 2].map((axis) => {
++    const [b, c] = [(axis + 1) % 3, (axis + 2) % 3], out = new Float64Array(triangles * 4);
++    for (let t = 0; t < triangles; t++) {
++      const [bs, cs] = [[0, 3, 6].map((o) => corners[t * 9 + o + b]), [0, 3, 6].map((o) => corners[t * 9 + o + c])];
++      out.set([Math.min(...bs), Math.max(...bs), Math.min(...cs), Math.max(...cs)], t * 4);
+     }
+-    return 0;
++    return out;
++  });
++  const crossesAlong = (p, axis, direction) => {
++    const [b, c] = [(axis + 1) % 3, (axis + 2) % 3], bound = bounds[axis];
++    for (let t = 0; t < triangles; t++) {
++      if (p[b] < bound[t * 4] || p[b] > bound[t * 4 + 1] || p[c] < bound[t * 4 + 2] || p[c] > bound[t * 4 + 3]) continue;
++      const o = t * 9;
++      const [ab, ac, bb, bc, cb, cc] = [corners[o + b], corners[o + c], corners[o + 3 + b], corners[o + 3 + c], corners[o + 6 + b], corners[o + 6 + c]];
++      const d = (bb - ab) * (cc - ac) - (bc - ac) * (cb - ab);
++      if (Math.abs(d) < 1e-14) continue;
++      const u = ((p[b] - ab) * (cc - ac) - (p[c] - ac) * (cb - ab)) / d;
++      const v = ((bb - ab) * (p[c] - ac) - (bc - ac) * (p[b] - ab)) / d;
++      if (u < 0 || v < 0 || u + v > 1) continue;
++      const hit = corners[o + axis] + u * (corners[o + 3 + axis] - corners[o + axis]) + v * (corners[o + 6 + axis] - corners[o + axis]);
++      if ((hit - p[axis]) * direction > 0) return true;
++    }
++    return false;
+   };
+-  let outside = 0, worst = 0;
+-  for (const p of points) { const over = Math.hypot(p[0], p[2]) - radius(p[1]); if (over > 0) outside++; worst = Math.max(worst, over); }
+-  return { fraction: outside / points.length, worst };
++  const inside = (p) => [0, 1, 2].every((axis) => crossesAlong(p, axis, 1) && crossesAlong(p, axis, -1));
++  /** Share of an evenly thinned sample (at most `max` points) of `points` inside the body cavity. */
++  return { fractionInside: (points, max = 400) => {
++    const sample = points.filter((_, i) => i % Math.ceil(points.length / max) === 0);
++    return sample.filter(inside).length / sample.length;
++  } };
+ }
+ const f3 = (box) => `${box.map((v) => v.toFixed(3))}`;
+ 
+@@ -300,43 +340,37 @@ test('overview lungs fit inside the ribs and around the atlas airway trees (trac
+   assert.deepEqual(problems, []);
+ });
+ 
+-test('overview brain faces front like the atlas brain and sits in the head of the body outline', async () => {
++test('overview brain faces front like the atlas brain and sits in the head of the body skin', async () => {
+   const { ORGANS } = loadTs('src/lib/organ-models.ts');
+   const parts = atlasParts();
+   const brain = atlasBox(parts, /gyrus|occipital lobe|parietal lobule|insula|White matter of|Corpus callosum|^Cerebellum$|^Pons$|Medulla oblongata|^Midbrain$|Peduncle of midbrain|thalamus$|^Hypothalamus$|hippocampus|amygdala|caudate nucleus|putamen|globus pallidus|internal capsule|fornix of forebrain|colliculus$|geniculate body/, 'nervous');
+   const cerebellum = atlasBox(parts, /^Cerebellum$/);
+-  const profile = outlineProfile();
+-  // The outline's head sits this far above the atlas head (head top of the outline minus the atlas skin top).
+-  const lift = profile.at(-1)[1] - atlasBox(parts, /^Skin$/)[1][1];
+   const points = await glbPoints(ORGANS.brain.glb);
+   const placed = placeOverview(ORGANS.brain, points, boundsOf(points));
+   const rendered = boundsOf(placed);
+   const problems = [];
+   // The GLB's front-back axis is its x axis; turned to face front, every side matches the atlas box to 1 cm.
+   sizeOf(rendered).forEach((v, k) => { if (Math.abs(v - sizeOf(brain)[k]) > 0.01) problems.push(`${'xyz'[k]} size ${v.toFixed(3)}, atlas ${sizeOf(brain)[k].toFixed(3)}`); });
+-  // Centre: x like the atlas; y as far above the atlas as the outline head is; z within 1.5 cm (the outline's axis is 2 cm in front of the atlas head).
++  // Centre: the body is the atlas skin, so the brain sits exactly where the atlas brain is (1 cm).
+   const [centre, atlasCentre] = [centreOf(rendered), centreOf(brain)];
+-  if (Math.abs(centre[0] - atlasCentre[0]) > 0.01) problems.push(`x centre ${centre[0].toFixed(3)}, atlas ${atlasCentre[0].toFixed(3)}`);
+-  if (Math.abs(centre[1] - atlasCentre[1] - lift) > 0.01) problems.push(`y centre ${centre[1].toFixed(3)}, atlas ${atlasCentre[1].toFixed(3)} + outline lift ${lift.toFixed(3)}`);
+-  if (Math.abs(centre[2] - atlasCentre[2]) > 0.015) problems.push(`z centre ${centre[2].toFixed(3)}, atlas ${atlasCentre[2].toFixed(3)}`);
++  centre.forEach((v, k) => { if (Math.abs(v - atlasCentre[k]) > 0.01) problems.push(`${'xyz'[k]} centre ${v.toFixed(3)}, atlas ${atlasCentre[k].toFixed(3)}`); });
+   // The back of the head: the atlas cerebellum lies behind the brain centre, so the lowest part of the model must sit behind it too.
+   assert.ok(centreOf(cerebellum)[2] < atlasCentre[2], 'atlas cerebellum should lie behind the brain centre');
+   const low = placed.filter((p) => p[1] < rendered[1][0] + 0.15 * sizeOf(rendered)[1]);
+   const lowZ = low.reduce((sum, p) => sum + p[2], 0) / low.length;
+   if (lowZ - centre[2] > -0.1 * sizeOf(rendered)[2] / 2) problems.push(`lowest 15% of the brain is at z ${lowZ.toFixed(3)}, not behind the centre ${centre[2].toFixed(3)}`);
+-  // Inside the body outline (a lathe, so its radius applies front-back as well): at most 5% of vertices out, none by more than 6 mm.
+-  const fit = outsideOutline(profile, placed);
+-  if (fit.fraction > 0.05 || fit.worst > 0.006) problems.push(`${(fit.fraction * 100).toFixed(1)}% of the brain is outside the outline, worst ${(fit.worst * 100).toFixed(1)} cm`);
++  // Inside the head of the skin shell: 96% of the vertices are (the rest sit at the open ears and eye sockets); placed 6 cm too high, as
++  // for the old lathe outline, only 43% would be.
++  const inside = (await skinShell()).fractionInside(placed);
++  if (inside < 0.93) problems.push(`only ${(inside * 100).toFixed(1)}% of the brain is inside the body skin`);
+   assert.deepEqual(problems, []);
+ });
+ 
+-test('overview eyeball is the atlas left eye in size and orientation and sits in the head of the body outline', async () => {
++test('overview eyeball is the atlas left eye in size, position and orientation', async () => {
+   const { ORGANS } = loadTs('src/lib/organ-models.ts');
+   const parts = atlasParts();
+   const sclera = atlasBox(parts, /^Left sclera$/);
+   const eye = atlasBox(parts, /^Left (sclera|cornea)$/);
+-  const profile = outlineProfile();
+-  const lift = profile.at(-1)[1] - atlasBox(parts, /^Skin$/)[1][1];
+   const points = await glbPoints(ORGANS.eyeball.glb);
+   const box = boundsOf(points);
+   // The globe is every slice along the GLB's x axis from the low end up to the first slice past the peak that is narrower than 0.4 of the
+@@ -355,16 +389,113 @@ test('overview eyeball is the atlas left eye in size and orientation and sits in
+   if (Math.abs(size[0] - atlasSize[0]) > 0.002 || Math.abs(size[1] - atlasSize[1]) > 0.002 || Math.abs(size[2] - sizeOf(eye)[2]) > 0.003) {
+     problems.push(`globe size ${f3(size)}, atlas sclera ${f3(atlasSize)}, sclera + cornea front-back ${sizeOf(eye)[2].toFixed(3)}`);
+   }
+-  // Position: x like the atlas left eye (5 mm), y as far above it as the outline head is above the atlas head, z within 1.5 cm.
++  // Position: the globe sits where the atlas left eye is (5 mm), the body being the atlas skin.
+   const [centre, atlasCentre] = [centreOf(globe), centreOf(eye)];
+-  if (Math.abs(centre[0] - atlasCentre[0]) > 0.005) problems.push(`x centre ${centre[0].toFixed(3)}, atlas ${atlasCentre[0].toFixed(3)}`);
+-  if (Math.abs(centre[1] - atlasCentre[1] - lift) > 0.005) problems.push(`y centre ${centre[1].toFixed(3)}, atlas ${atlasCentre[1].toFixed(3)} + outline lift ${lift.toFixed(3)}`);
+-  if (Math.abs(centre[2] - atlasCentre[2]) > 0.015) problems.push(`z centre ${centre[2].toFixed(3)}, atlas ${atlasCentre[2].toFixed(3)}`);
++  centre.forEach((v, k) => { if (Math.abs(v - atlasCentre[k]) > 0.005) problems.push(`${'xyz'[k]} centre ${v.toFixed(3)}, atlas ${atlasCentre[k].toFixed(3)}`); });
+   // Orientation: the optic nerve leaves the left eye backwards (at least 1 cm behind the globe centre) and towards the midline.
+   const stubCentre = [0, 1, 2].map((k) => stub.reduce((sum, p) => sum + p[k], 0) / stub.length);
+   if (!(stubCentre[2] < centre[2] - 0.01 && stubCentre[0] < centre[0])) problems.push(`optic nerve centre ${f3(stubCentre)} is not behind and medial to the globe centre ${f3(centre)}`);
+-  // Inside the head of the body outline.
+-  const fit = outsideOutline(profile, placeOverview(ORGANS.eyeball, points, box));
+-  if (fit.worst > 0.002) problems.push(`the eyeball sticks out of the outline by ${(fit.worst * 100).toFixed(1)} cm`);
++  // The cornea reaches the atlas cornea (3 mm), no further: the globe fills the opening of the skin shell at the eye.
++  if (Math.abs(globe[2][1] - eye[2][1]) > 0.003) problems.push(`globe front z ${globe[2][1].toFixed(3)}, atlas cornea front ${eye[2][1].toFixed(3)}`);
+   assert.deepEqual(problems, []);
+ });
++
++test('overview shows both eyes, the right one mirroring the left across the midline of the body', () => {
++  const { ORGANS } = loadTs('src/lib/organ-models.ts');
++  const { glb, bodyParts, bodyPosition, bodySize } = ORGANS.eyeball;
++  assert.equal(bodyParts.length, 2, 'one globe per eye socket of the skin');
++  const [left, right] = bodyParts;
++  assert.deepEqual(left.position, bodyPosition, 'the left eye is the one the label and the camera point at');
++  assert.deepEqual(right.position, [-bodyPosition[0], bodyPosition[1], bodyPosition[2]]);
++  assert.ok(bodyParts.every((part) => part.glb === glb && part.size === bodySize), 'both eyes are the registered eyeball at the registered size');
++});
++
++/** Vertex positions of any GLB (several nodes, plain Float32), in the GLB's own frame. */
++async function scenePoints(file) {
++  const { GLTFLoader } = await import('three/examples/jsm/loaders/GLTFLoader.js');
++  const bytes = fs.readFileSync(path.join(__dirname, '../public', file));
++  const gltf = await new GLTFLoader().parseAsync(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength), '');
++  gltf.scene.updateMatrixWorld(true);
++  const points = [], vertex = new THREE.Vector3();
++  gltf.scene.traverse((object) => {
++    if (!object.isMesh) return;
++    const position = object.geometry.attributes.position;
++    for (let i = 0; i < position.count; i++) { vertex.fromBufferAttribute(position, i).applyMatrix4(object.matrixWorld); points.push([vertex.x, vertex.y, vertex.z]); }
++  });
++  return points;
++}
++const glbNodeCount = (file) => {
++  const glb = fs.readFileSync(path.join(__dirname, '../public', file));
++  return JSON.parse(glb.subarray(20, 20 + glb.readUInt32LE(12)).toString('utf8')).nodes.length;
++};
++
++test('overview organs sit inside the body skin (the eyeball fills its opening in the skin and has its own test)', async () => {
++  const { ORGANS } = loadTs('src/lib/organ-models.ts');
++  const shell = await skinShell();
++  const report = [];
++  for (const organ of Object.values(ORGANS)) {
++    if (organ.isShell || organ.procedural || organ.id === 'eyeball') continue;
++    const placements = organ.bodyParts?.length
++      ? organ.bodyParts.map((part) => ({ file: part.glb, placed: { id: organ.id, bodyPosition: part.position, bodySize: part.size } }))
++      : [{ file: organ.glb, placed: organ }];
++    const inside = [];
++    for (const { file, placed } of placements) {
++      const points = glbNodeCount(file) === 1 ? await glbPoints(file) : await scenePoints(file);
++      inside.push(shell.fractionInside(placeOverview(placed, points, boundsOf(points)), 300));
++    }
++    const fraction = Math.min(...inside);
++    // The intestine model is wider than the atlas bowel at the flanks (97% inside); the other organs are entirely inside.
++    if (fraction < 0.95) report.push(`${organ.id}: only ${(fraction * 100).toFixed(1)}% of the vertices are inside the skin`);
++  }
++  assert.deepEqual(report, []);
++});
++
++test('body surface and anatomy layers are valid BodyParts3D conversions in the atlas frame', async () => {
++  const { ANATOMY_LAYER_IDS, ANATOMY_LAYERS } = loadTs('src/lib/anatomy-layers.ts');
++  const { GLTFLoader } = await import('three/examples/jsm/loaders/GLTFLoader.js');
++  const systems = new Set(atlasParts().map((p) => p.system));
++  const files = { '/models/bp3d-skin-male.glb': ['Skin', 'Eyebrow', 'Hair', 'Lip'] };
++  const meshNames = { skeletal: 'Skeleton', arterial: 'Arteries', venous: 'Veins' };
++  assert.deepEqual([...ANATOMY_LAYER_IDS], ['skeletal', 'arterial', 'venous']);
++  for (const id of ANATOMY_LAYER_IDS) {
++    assert.ok(systems.has(id), `${id} is not an atlas system`);
++    files[ANATOMY_LAYERS[id].glb] = [meshNames[id]];
++  }
++  let body;
++  for (const [url, names] of Object.entries(files)) {
++    const bytes = fs.readFileSync(path.join(__dirname, '../public', url));
++    assert.ok(bytes.length < 6e6, `${url} is ${(bytes.length / 1e6).toFixed(1)} MB, too heavy to load on demand`);
++    const gltf = await new GLTFLoader().parseAsync(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength), '');
++    assert.deepEqual(gltf.scene.children.map((child) => child.name), names, url);
++    assert.match(gltf.asset.copyright, /BodyParts3D.*Attribution 4\.0/, `${url} must carry the BodyParts3D licence notice`);
++    const box = new THREE.Box3().setFromObject(gltf.scene);
++    assert.ok(!box.isEmpty() && [...box.min.toArray(), ...box.max.toArray()].every(Number.isFinite), `${url} has no valid geometry`);
++    gltf.scene.traverse((object) => { if (object.isMesh) assert.ok(object.geometry.index.count / 3 >= 500, `${url} ${object.name} is nearly empty`); });
++    if (names[0] === 'Skin') body = box;
++    // Skeleton and vessels lie inside the skin's outline, to a hand's width at the extremities.
++    else for (let k = 0; k < 3; k++) assert.ok(box.min.getComponent(k) >= body.min.getComponent(k) - 0.02 && box.max.getComponent(k) <= body.max.getComponent(k) + 0.02, `${url} leaves the skin along ${'xyz'[k]}`);
++  }
++});
++
++test('realistic skin shader patches match the installed three.js and really apply', () => {
++  const { SKIN_SHADER_TARGETS, createSkinMaterial, createOrganMaterial } = loadTs('src/components/sim/realistic-materials.ts');
++  const { vertexShader, fragmentShader } = THREE.ShaderLib.physical;
++  for (const target of SKIN_SHADER_TARGETS.vertex) assert.ok(vertexShader.includes(target), `three.js vertex shader no longer has ${target}`);
++  for (const target of SKIN_SHADER_TARGETS.fragment) assert.ok(fragmentShader.includes(target), `three.js fragment shader no longer has ${target}`);
++  assert.ok(THREE.ShaderChunk.lights_physical_pars_fragment.includes(SKIN_SHADER_TARGETS.diffuse), 'the diffuse line that wraps the light changed');
++  for (const glass of [false, true]) {
++    const shader = { uniforms: {}, vertexShader, fragmentShader };
++    createSkinMaterial({ glass }).onBeforeCompile(shader, null);
++    assert.match(shader.vertexShader, /vObjPos = position;/);
++    assert.match(shader.fragmentShader, /sssIrr/, 'the wrap-around lighting was not applied');
++    assert.match(shader.fragmentShader, /skinH\(vObjPos\)/, 'the skin relief was not applied');
++    assert.equal(/uGlassMin, uGlassMax/.test(shader.fragmentShader), glass, 'only the see-through skin gets the Fresnel alpha');
++  }
++  // Organs keep the colour and texture of their model and gain a wet clear coat, without touching the model's own material.
++  const source = new THREE.MeshStandardMaterial({ color: '#b04030', roughness: 0.9, metalness: 0.6 });
++  const organ = createOrganMaterial(source, 'liver');
++  assert.ok(organ.isMeshPhysicalMaterial && organ.clearcoat > 0 && organ.metalness === 0);
++  assert.equal(organ.color.getHexString(), 'b04030');
++  assert.equal(source.metalness, 0.6, 'the source material must stay as it was');
++  assert.ok(createOrganMaterial(new THREE.MeshBasicMaterial(), 'heart').isMeshPhysicalMaterial, 'unknown material types fall back to a plain organ colour');
++});
+diff --git a/tests/ui-regressions.test.cjs b/tests/ui-regressions.test.cjs
+index 06f5041..86ae4ee 100644
+--- a/tests/ui-regressions.test.cjs
++++ b/tests/ui-regressions.test.cjs
+@@ -178,6 +178,26 @@ test('overview switches between 2D and 3D without carrying an unsupported select
+   } finally {panel.cleanup();}
+ });
+ 
++test('3D overview offers skeleton, artery and vein layers that open the body surface for viewing',()=>{
++  const panel=learningHarness('male');
++  try {
++    learningButton(panel.render(),'3D 同屏').props.onClick();
++    const canvas=()=>panel.render().find(n=>n.props?.mode==='overview' && n.props.organId);
++    assert.deepEqual(canvas().props.layers,{skeletal:false,arterial:false,venous:false}, 'layers start closed');
++    learningButton(panel.render(),'显示体表').props.onClick();
++    assert.equal(canvas().props.showBodySurface,true);
++    learningButton(panel.render(),'骨骼').props.onClick();
++    assert.deepEqual(canvas().props.layers,{skeletal:true,arterial:false,venous:false});
++    assert.equal(canvas().props.showBodySurface,false, 'opening a layer turns the opaque skin see-through so the layer is not hidden');
++    learningButton(panel.render(),'动脉').props.onClick();
++    learningButton(panel.render(),'静脉').props.onClick();
++    learningButton(panel.render(),'骨骼').props.onClick();
++    assert.deepEqual(canvas().props.layers,{skeletal:false,arterial:true,venous:true}, 'each layer toggles on its own');
++    learningButton(panel.render(),'2D 解剖图').props.onClick();
++    assert.equal(learningButton(panel.render(),'骨骼'),undefined, 'layer buttons belong to the 3D view only');
++  } finally {panel.cleanup();}
++});
++
+ test('an external sex update keeps the visible closeup and tutor context on an available organ',()=>{
+   const panel=learningHarness();
+   try {

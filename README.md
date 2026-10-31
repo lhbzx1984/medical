@@ -44,7 +44,7 @@
 
 ### 功能二：医学学习中心（`/learning`）
 
-- **全身概览**：在男女 2D 解剖图与 3D 器官同屏间切换；3D 支持旋转、缩放、显示标注、显示实体体表或透视内部，已有模型可进入特写。男女体表来自 HuBMAP 参考模型；器官与体表是不同来源的示意配准，可能互相遮挡或重叠。
+- **全身概览**：在男女 2D 解剖图与 3D 器官同屏间切换；3D 支持旋转、缩放、显示标注、显示实体体表或透视内部，已有模型可进入特写。男性体表是 BodyParts3D 的写实皮肤（含头发、眉毛、嘴唇，与器官在同一图谱坐标系里），女性体表仍是 HuBMAP 参考网格（只升级了材质，没有面部细节）；眼球左右各一个（右眼沿身体中线镜像左眼）。还可单独打开骨骼、动脉、静脉三个解剖层（打开时体表自动让开；女性模式沿用男性解剖层，仅作示意）。体表与器官是示意配准，不代表个体解剖。
   胃使用由图谱网格转换的独立特写模型；乳腺保留自身名称和导师上下文，尚无独立特写模型时明确提示
 - **器官特写**：脑 / 眼球 / 心脏 / 肺 / 肝 / 胰 / 肾 / 肠 / 皮肤组织 / 子宫附件（女性），360° 观察
 - **精细人体图谱**：BodyParts3D 4.0 的 **2,234 个可选择结构**，15 大解剖系统过滤、
@@ -189,7 +189,7 @@ src/
     api/…                       # 上表所有路由（服务端持有 API Key）
   components/
     planning/                   # 工作台 / 病例表单 / 方案文档
-    sim/                        # 模拟舞台 / 器官模型 / 人体概览场景
+    sim/                        # 模拟舞台 / 器官模型 / 人体概览场景 / 写实人体、解剖层与统一光照
     atlas/                      # 精细人体图谱（自定义 Shader + GPU 逐结构控制）
     learn/                      # 学习中心
     chat/                       # 流式对话面板（SSE + Markdown）
@@ -203,6 +203,7 @@ src/
     plan-generation.ts          # 生成与修订流程共用的编排逻辑（配额 → 检索 → AI → 校验 → 原子保存）
     planning-prompt.ts          # 规划生成 / 专家修订 / 模拟编排提示词
     organ-models.ts             # 器官注册表（GLB / 解剖位置 / focusOrgan 容错映射）
+    anatomy-layers.ts           # 骨骼 / 动脉 / 静脉解剖层注册表（图谱系统、模型文件、颜色）
     knowledge/                  # 知识库接口 + 关键词检索器 + 种子数据
     store/                      # DataStore 抽象：每个请求一个带用户会话的 SupabaseStore（memory.ts 为沿用的远程遗留实现，应用与测试均未使用）
 supabase/schema.sql             # 建库、升级和事务 RPC 脚本（migrations/ 为分步迁移）
@@ -215,7 +216,7 @@ docs/merge-ledger-20261030.md   # 逐文件合并清单（基线、远程、本�
 docs/evidence/                  # 验证证据的脱敏副本（日志、截图、JSON 结果），按日期分目录
 public/
   atlas/                        # BodyParts3D atlas.json + 15 个网格批次（gzip）
-  models/                       # 9 个器官 GLB（Meshopt）+ stomach.glb（由图谱 FJ2564 转换，未压缩）
+  models/                       # 9 个器官 GLB（Meshopt）+ stomach.glb（由图谱 FJ2564 转换，未压缩）+ bp3d-skin / skeleton / arteries / veins-male.glb（由图谱转换的男性体表与解剖层，scripts/extract-body-layers-glb.mjs）
   anatomy/                      # 器官缩略图
 ```
 
@@ -224,8 +225,19 @@ public/
 - **器官模型**：GLB 使用 Meshopt 压缩，`useGLTF(url, false, true)` 加载并归一化尺寸。
   源模型材质 `metalness=1`（金属度），在无环境贴图的场景中会渲染成黑色，
   加载后统一克隆材质并置 `metalness=0` 还原漫反射色彩
-- **全身概览**：器官按解剖位置（脚底 y=0，身高 1.78m）摆放；人形参照轮廓为程序化
-  "全息"旋转体 + 菲涅尔边缘光（`BodyOutline`，skin.glb 实为皮肤显微组织切片，不作外壳）
+- **全身概览**：器官与体表使用同一套图谱坐标（米，Y 向上，脚底 y=0，体表高 1.719 m）摆放。
+  男性体表是 BodyParts3D 的皮肤网格（含眉毛、头发、嘴唇，约 5.8 万三角形），女性体表是
+  HuBMAP 参考网格（缩放到同一高度）；人形"全息"轮廓（`BodyOutline`，程序化旋转体 + 菲涅尔
+  边缘光）只在体表加载期间占位（skin.glb 实为皮肤显微组织切片，不作外壳）
+- **写实材质与光照**：`StudioLighting` 为人体概览、器官特写和手术规划统一提供三点灯光与程序化
+  环境光（three 自带 `RoomEnvironment` 经 `PMREMGenerator` 预过滤，不加载外部 HDR 贴图）；
+  `realistic-materials.ts` 为体表、头发、眉毛、嘴唇和各器官设置 `MeshPhysicalMaterial`（清漆、
+  光泽层、粗糙度），皮肤着色器通过 `onBeforeCompile` 加入次表面散射近似、微法线和透视模式下的
+  菲涅尔透明度。着色器补丁依赖 three 的着色器源码，升级 three 时由回归测试检查补丁是否仍然生效
+- **解剖层**：学习中心 3D 同屏可单独打开骨骼、动脉、静脉（`anatomy-layers.ts`、
+  `AnatomyLayers.tsx`），网格由 BodyParts3D 对应系统转换，合计约 41 万三角形；打开任一层时体表
+  自动让开。器官内部的血管分支（如肝门静脉分支、肝静脉段）不进入血管层，以免在不透明的器官表面
+  戳出毛刺
 - **精细图谱**：每个 chunk（15 个）合并为一个 Mesh，顶点携带全局结构编号；
   `DataTexture(256×16 RGBA float)` 在 GPU 上控制每个结构的可见性 / 高亮 / 调暗 /
   透明度 / 爆炸位移；体表系统采用 4×4 Bayer 抖动点阵半透明呈现，可透视内部结构且无排序伪影；
@@ -243,7 +255,7 @@ npx tsc --noEmit --incremental false
 npm run build
 ```
 
-合并后的最终版（2026-10-31）实际结果：`npm test` **98/98 通过**（合并提交上是 95/95；之后追加的肺、脑、眼球摆放修正新增了 3 项回归），其中 12 个 SQL 测试在内存数据库 PGlite 中直接执行 `supabase/schema.sql`（事务回滚、唯一索引、所有者隔离、RLS、RPC 权限、迁移保护、AI 配额窗口、对话与插图的所有者隔离）；ESLint 0 错误、0 警告；独立类型检查和生产构建退出码均为 0。其余 86 项覆盖匿名与跨站请求、输入与 AI 方案校验、版本冲突与原子保存、AI 配额、认证故障状态、会话 Cookie、聊天流取消与截断、器官与图谱位置、模拟进度和界面状态。逐文件数字、验证范围和已知限制见 [`mackdown.md`](mackdown.md)。测试加载器仍会显示既有 Three.js CommonJS 废弃提示，生产代码使用 ESM。
+合并后的最终版（2026-10-31）实际结果：`npm test` **107/107 通过**（合并提交上是 95/95；其后肺、脑、眼球摆放修正新增 3 项回归，队友更新的 `main` 上是 102/102，写实人体与解剖层又新增 5 项回归），其中 12 个 SQL 测试在内存数据库 PGlite 中直接执行 `supabase/schema.sql`（事务回滚、唯一索引、所有者隔离、RLS、RPC 权限、迁移保护、AI 配额窗口、对话与插图的所有者隔离）；ESLint 0 错误、0 警告；独立类型检查和生产构建退出码均为 0。其余 95 项覆盖匿名与跨站请求、输入与 AI 方案校验、版本冲突与原子保存、AI 配额、认证故障状态、会话 Cookie、聊天流取消与截断、器官与图谱位置、写实材质与解剖层转换、模拟进度和界面状态。逐文件数字、验证范围和已知限制见 [`mackdown.md`](mackdown.md)。测试加载器仍会显示既有 Three.js CommonJS 废弃提示，生产代码使用 ESM。
 
 本地完整链路测试（仅合成数据，不访问真实服务）：
 
@@ -274,7 +286,7 @@ $env:MEDPLAN_TEST_OUTPUT='D:/某个新目录'
 - 肾、肠及胃特写采用 Innerscene 基于 MakeHuman 制作的 CC0 简化示意模型： https://www.innerscene.com/tools/library/3d-parts/kidneys-pair-c78928dd ， https://www.innerscene.com/tools/library/3d-parts/intestines-26224e6a ， https://www.innerscene.com/tools/library/3d-parts/stomach-e1e1d2ab 。皮肤组织沿用原有切面模型。
 - [男性脑 v1.4](https://purl.humanatlas.io/ref-organ/brain-male/v1.4)、[男性左眼 v1.3](https://purl.humanatlas.io/ref-organ/eye-male-left/v1.3)、[男性胰腺 v1.3](https://purl.humanatlas.io/ref-organ/pancreas-male/v1.3)、[女性子宫 v1.2](https://purl.humanatlas.io/ref-organ/uterus-female/v1.2)。
 - [男性左肾 v1.3](https://purl.humanatlas.io/ref-organ/kidney-male-left/v1.3)、[男性右肾 v1.3](https://purl.humanatlas.io/ref-organ/kidney-male-right/v1.3)。
-- 3D 全身概览体表：[男性体表 v1.4](https://purl.humanatlas.io/ref-organ/skin-male/v1.4)、[女性体表 v1.5](https://purl.humanatlas.io/ref-organ/skin-female/v1.5)，已居中、按场景高度缩放，并更换显示材质（肤色和透明度）；体表与器官并非同一个体的精确配准。
+- 3D 全身概览女性体表：[女性体表 v1.5](https://purl.humanatlas.io/ref-organ/skin-female/v1.5)，已居中、按场景高度缩放，并更换显示材质（肤色和透明度）；男性体表已改用 BodyParts3D 皮肤（见“版权与致谢”），原先的 HuBMAP 男性体表文件 `hra-skin-male.glb` 不再被引用，已从 `public/models` 删除；体表与器官并非同一个体的精确配准。
 - [男性心脏 v1.3](https://purl.humanatlas.io/ref-organ/heart-male/v1.3)、[男性肝脏 v1.2](https://purl.humanatlas.io/ref-organ/liver-male/v1.2)、[男性肺 v1.4](https://purl.humanatlas.io/ref-organ/lung-male/v1.4)。
 - 除子宫外，上述 HuBMAP 模型为男性参考器官；女性显示模式下仍会显示同一男性模型，不代表患者的个体解剖。展示时模型会居中缩放，肝脏材质在深色画布中经过提亮。
 
@@ -285,5 +297,6 @@ $env:MEDPLAN_TEST_OUTPUT='D:/某个新目录'
 - [BodyParts3D 4.0](https://lifesciencedb.jp/bp3d/)：解剖数据，**CC BY 4.0**（redistributing 时请保留署名）
 - [DBCLS BodyParts3D](https://lifesciencedb.jp/bp3d/) 提供 Anatomography 数据
 - 胃模型：BodyParts3D, © The Database Center for Life Science licensed under CC Attribution 4.0 International；由 `scripts/extract-stomach-glb.mjs` 转换（格式转换、法线重算），男性参考解剖的简化网格，仅作教学示意
+- 3D 全身概览的男性体表（皮肤、眉毛、头发、嘴唇）与骨骼、动脉、静脉图层：BodyParts3D, © The Database Center for Life Science licensed under CC Attribution 4.0 International；由 `scripts/extract-body-layers-glb.mjs` 转换（格式转换、网格简化、法线重算，署名写入各 GLB 的 `asset.copyright`），男性参考解剖，仅作教学示意
 
 原创应用代码遵循 MIT 许可；解剖数据遵循其自身 CC BY 4.0 许可。

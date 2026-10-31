@@ -17,7 +17,7 @@ export interface OrganInfo {
   glb: string;
   referenceLabel?: string;
   closeupGlb?: string;
-  /** 概览中需独立配准的左右器官（如左右肾） */
+  /** 概览中需独立配准的左右器官（如左右肾、左右眼）；有此项时概览只画这些部件，bodyPosition 仍给标签与相机用 */
   bodyParts?: { glb: string; position: [number, number, number]; size: number }[];
   thumb: string;
   organImg: string;
@@ -35,6 +35,10 @@ export interface OrganInfo {
   femaleOnly?: boolean;
 }
 
+/** 概览中左眼球（患者左侧，+X）的中心与球体最长边（米）；右眼按身体中线对称。 */
+const LEFT_EYE: [number, number, number] = [0.028, 1.596, 0.049];
+const EYE_SIZE = 0.032;
+
 export const ORGANS: Record<OrganId, OrganInfo> = {
   brain: {
     id: "brain",
@@ -48,10 +52,10 @@ export const ORGANS: Record<OrganId, OrganInfo> = {
     referenceLabel: "HuBMAP 男性参考器官模型",
     thumb: "/anatomy/brain/thumb.webp",
     organImg: "/anatomy/brain/organ.webp",
-    // 取自精细图谱脑结构（含小脑、脑干）的包围盒：最长边为前后长 0.18，x 中心取 0。GLB 的前后轴在 x 上（枕后朝 +x），
-    // 概览里绕竖直轴转 +90° 使枕后朝 -Z。人形轮廓的头部（颈最细 1.56、头顶 1.78）比图谱头部（下颌 1.50、头顶 1.719）整体高 0.06，
-    // 故 y 取图谱中心 1.626 加 0.06；z 取 -0.01（图谱 -0.02，轮廓中轴 0），个别顶点超出轮廓不超过 0.4 cm。
-    bodyPosition: [0, 1.686, -0.01],
+    // 取自精细图谱脑结构（含小脑、脑干）的包围盒：最长边为前后长 0.18，中心 [0, 1.626, -0.02]。GLB 的前后轴在 x 上（枕后朝 +x），
+    // 概览里绕竖直轴转 +90° 使枕后朝 -Z。人体体表用图谱自带的皮肤（头顶 1.719），与图谱同坐标系，所以脑、眼直接取图谱值，
+    // 不再为旧人形轮廓（头顶 1.78）上移 0.06。
+    bodyPosition: [0, 1.626, -0.02],
     bodySize: 0.18,
     bodyRotation: [0, Math.PI / 2, 0],
   },
@@ -66,11 +70,17 @@ export const ORGANS: Record<OrganId, OrganInfo> = {
     referenceLabel: "HuBMAP 男性左眼参考模型",
     thumb: "/anatomy/eyeball/thumb.webp",
     organImg: "/anatomy/eyeball/organ.webp",
-    // 取自精细图谱左眼（巩膜+角膜）：球径 0.026，x 中心 0.029。GLB 末端约 20% 是视神经残端（朝后内侧），球体中心比包围盒中心靠前 0.003，
-    // bodySize 取 0.032 使球径为 0.026；绕竖直轴转 +90° 使角膜朝前（+Z）、视神经朝后内侧。位置随轮廓头部上移 0.06、前移 0.01（同脑）。
-    bodyPosition: [0.028, 1.656, 0.059],
-    bodySize: 0.032,
+    // 取自精细图谱左眼（巩膜+角膜）：球径 0.026，中心 [0.029, 1.596, 0.052]。GLB 末端约 20% 是视神经残端（朝后内侧），球体中心比包围盒中心靠前 0.003，
+    // bodySize 取 0.032 使球径为 0.026；绕竖直轴转 +90° 使角膜朝前（+Z）、视神经朝后内侧。z 取 0.049 使球体中心落在图谱眼中心；
+    // 体表用图谱皮肤，不再上移（同脑）。
+    bodyPosition: LEFT_EYE,
+    bodySize: EYE_SIZE,
     bodyRotation: [0, Math.PI / 2, 0],
+    // 概览里左右眼各一枚：右眼是同一模型，按身体中线对称（x 取反），体表两个眼眶才都有眼球。标签与相机仍对着左眼。
+    bodyParts: [
+      { glb: "/models/eyeball.glb", position: LEFT_EYE, size: EYE_SIZE },
+      { glb: "/models/eyeball.glb", position: [-LEFT_EYE[0], LEFT_EYE[1], LEFT_EYE[2]], size: EYE_SIZE },
+    ],
   },
   heart: {
     id: "heart",

@@ -192,20 +192,29 @@ test('overview uses independently aligned kidneys with atlas-consistent laterali
   assert.ok(Math.abs((left.position[1] - right.position[1]) - 0.018) < 0.002, 'the right kidney should be lower');
 });
 
-test('reference body models fit the shared standing coordinate system', async () => {
-  const { fitReferenceBody } = loadTs('src/lib/reference-body.ts');
+test('reference bodies share the atlas standing coordinate system', async () => {
+  const { fitReferenceBody, REFERENCE_BODY_HEIGHT } = loadTs('src/lib/reference-body.ts');
   const { GLTFLoader } = await import('three/examples/jsm/loaders/GLTFLoader.js');
-  for (const sex of ['male', 'female']) {
-    const bytes = fs.readFileSync(path.join(__dirname, `../public/models/hra-skin-${sex}.glb`));
-    const gltf = await new GLTFLoader().parseAsync(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength), '');
-    const bounds = new THREE.Box3().setFromObject(gltf.scene);
-    assert.ok(!bounds.isEmpty(), `${sex} body model must contain geometry`);
-    const fit = fitReferenceBody(bounds.min.toArray(), bounds.max.toArray());
-    assert.ok(Math.abs((bounds.min.y + fit.position[1]) * fit.scale) < 1e-6);
-    assert.ok(Math.abs((bounds.max.y + fit.position[1]) * fit.scale - 1.78) < 1e-6);
-    assert.ok(Math.abs(((bounds.min.x + bounds.max.x) / 2 + fit.position[0]) * fit.scale) < 1e-6);
-  }
+  const load = async (file) => {
+    const bytes = fs.readFileSync(path.join(__dirname, `../public/models/${file}`));
+    return new GLTFLoader().parseAsync(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength), '');
+  };
+  // The organ registry is in the atlas frame, so the shared body height is the atlas skin top.
+  const atlasSkinTop = Math.max(...JSON.parse(fs.readFileSync(path.join(__dirname, '../public/atlas/atlas.json'), 'utf8')).parts
+    .filter((p) => p.name === 'Skin').map((p) => p.bounds[1][1]));
+  assert.ok(Math.abs(REFERENCE_BODY_HEIGHT - atlasSkinTop) < 0.001, `body height ${REFERENCE_BODY_HEIGHT}, atlas skin top ${atlasSkinTop}`);
+  // Female: the HuBMAP body is fitted to that height, standing on y=0 and centred on x/z.
+  const female = new THREE.Box3().setFromObject((await load('hra-skin-female.glb')).scene);
+  assert.ok(!female.isEmpty(), 'female body model must contain geometry');
+  const fit = fitReferenceBody(female.min.toArray(), female.max.toArray());
+  assert.ok(Math.abs((female.min.y + fit.position[1]) * fit.scale) < 1e-6);
+  assert.ok(Math.abs((female.max.y + fit.position[1]) * fit.scale - REFERENCE_BODY_HEIGHT) < 1e-6);
+  assert.ok(Math.abs(((female.min.x + female.max.x) / 2 + fit.position[0]) * fit.scale) < 1e-6);
   assert.throws(() => fitReferenceBody([0,0,0], [1,0,1]), /Invalid/);
+  // Male: the BodyParts3D skin is already in the atlas frame and is used as it is (feet on y=0, top at the atlas skin top).
+  const skin = new THREE.Box3().setFromObject((await load('bp3d-skin-male.glb')).scene.getObjectByName('Skin'));
+  assert.ok(Math.abs(skin.min.y) < 0.005 && Math.abs(skin.max.y - REFERENCE_BODY_HEIGHT) < 0.002, `male skin spans y ${skin.min.y}..${skin.max.y}`);
+  assert.ok(Math.abs((skin.min.x + skin.max.x) / 2) < 0.01, 'male skin is centred on the atlas midline');
 });
 
 // Lungs, brain and eyeball (mackdown.md section 6). Helpers shared by the three tests below.
@@ -219,7 +228,7 @@ function atlasBox(parts, re, system) {
 const boundsOf = (pts) => [0, 1, 2].map((k) => pts.reduce(([lo, hi], p) => [Math.min(lo, p[k]), Math.max(hi, p[k])], [Infinity, -Infinity]));
 const centreOf = (box) => box.map(([lo, hi]) => (lo + hi) / 2);
 const sizeOf = (box) => box.map(([lo, hi]) => hi - lo);
-/** Vertex positions of a single-mesh Meshopt GLB (int16 quantisation + node transform), decoded as in the tests above. */
+/** Vertex positions of a single-mesh GLB: Meshopt (int16 quantisation + node transform) as in the tests above, or plain Float32. */
 async function glbPoints(file) {
   const { MeshoptDecoder } = await import('three/examples/jsm/libs/meshopt_decoder.module.js');
   await MeshoptDecoder.ready;
@@ -227,11 +236,18 @@ async function glbPoints(file) {
   const jsonLength = glb.readUInt32LE(12);
   const gltf = JSON.parse(glb.subarray(20, 20 + jsonLength).toString('utf8'));
   const accessor = gltf.accessors[gltf.meshes[0].primitives[0].attributes.POSITION];
-  const { count, byteStride, byteOffset = 0, byteLength, mode, filter } = gltf.bufferViews[accessor.bufferView].extensions.EXT_meshopt_compression;
+  const bufferView = gltf.bufferViews[accessor.bufferView];
+  const { translation = [0, 0, 0], scale = [1, 1, 1] } = gltf.nodes[0];
+  if (!bufferView.extensions?.EXT_meshopt_compression) {
+    assert.equal(accessor.componentType, 5126, `${file}: positions are neither Meshopt nor Float32`);
+    const start = glb.byteOffset + 28 + jsonLength + (bufferView.byteOffset ?? 0) + (accessor.byteOffset ?? 0);
+    const floats = new Float32Array(glb.buffer.slice(start, start + accessor.count * 12));
+    return Array.from({ length: accessor.count }, (_, i) => [0, 1, 2].map((k) => floats[i * 3 + k] * scale[k] + translation[k]));
+  }
+  const { count, byteStride, byteOffset = 0, byteLength, mode, filter } = bufferView.extensions.EXT_meshopt_compression;
   const raw = new Uint8Array(count * byteStride);
   MeshoptDecoder.decodeGltfBuffer(raw, count, byteStride, glb.subarray(28 + jsonLength + byteOffset, 28 + jsonLength + byteOffset + byteLength), mode, filter);
   const view = new DataView(raw.buffer);
-  const { translation, scale } = gltf.nodes[0];
   return Array.from({ length: count }, (_, i) => [0, 1, 2].map((k) =>
     Math.max(view.getInt16((accessor.byteOffset ?? 0) + i * byteStride + 2 * k, true) / 32767, -1) * scale[k] + translation[k]));
 }
@@ -247,26 +263,50 @@ function placeOverview(organ, points, box) {
     return [organ.bodyPosition[0] + x * cos + z * sin, organ.bodyPosition[1] + y, organ.bodyPosition[2] - x * sin + z * cos];
   });
 }
-/** BodyOutline's lathe profile (radius, height), read from the component so this test follows it. */
-function outlineProfile() {
-  const source = fs.readFileSync(path.join(__dirname, '../src/components/sim/BodyOutline.tsx'), 'utf8');
-  const block = /const PROFILE[^=]*=\s*\[([\s\S]*?)\n\];/.exec(source);
-  assert.ok(block, 'PROFILE not found in BodyOutline.tsx');
-  return [...block[1].matchAll(/\[\s*([-0-9.]+)\s*,\s*([-0-9.]+)\s*\]/g)].map((m) => [Number(m[1]), Number(m[2])]);
-}
-/** Share of points outside the (circular) outline and the worst protrusion in metres. */
-function outsideOutline(profile, points) {
-  const radius = (y) => {
-    if (y <= profile[0][1]) return profile[0][0];
-    for (let i = 1; i < profile.length; i++) {
-      const [r0, y0] = profile[i - 1], [r1, y1] = profile[i];
-      if (y <= y1) return r0 + ((y - y0) / (y1 - y0)) * (r1 - r0);
+/**
+ * The body surface of the overview: the BodyParts3D male skin. It is a shell with an inner and an outer surface, so a point lies in
+ * the body cavity when a ray along every axis direction meets it. The shell is open at the eyes, ears, nostrils and mouth, so a few
+ * head points can look outside although they are not.
+ */
+async function skinShell() {
+  const { GLTFLoader } = await import('three/examples/jsm/loaders/GLTFLoader.js');
+  const bytes = fs.readFileSync(path.join(__dirname, '../public/models/bp3d-skin-male.glb'));
+  const gltf = await new GLTFLoader().parseAsync(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength), '');
+  const { position, index } = (({ attributes, index }) => ({ position: attributes.position.array, index: index.array }))(gltf.scene.getObjectByName('Skin').geometry);
+  const triangles = index.length / 3;
+  const corners = new Float64Array(triangles * 9); // per triangle: three xyz corners
+  for (let t = 0; t < triangles; t++) for (let v = 0; v < 3; v++) for (let k = 0; k < 3; k++) corners[t * 9 + v * 3 + k] = position[index[t * 3 + v] * 3 + k];
+  // Per axis, each triangle's bounds on the other two axes, so a ray only tests the few triangles it can meet.
+  const bounds = [0, 1, 2].map((axis) => {
+    const [b, c] = [(axis + 1) % 3, (axis + 2) % 3], out = new Float64Array(triangles * 4);
+    for (let t = 0; t < triangles; t++) {
+      const [bs, cs] = [[0, 3, 6].map((o) => corners[t * 9 + o + b]), [0, 3, 6].map((o) => corners[t * 9 + o + c])];
+      out.set([Math.min(...bs), Math.max(...bs), Math.min(...cs), Math.max(...cs)], t * 4);
     }
-    return 0;
+    return out;
+  });
+  const crossesAlong = (p, axis, direction) => {
+    const [b, c] = [(axis + 1) % 3, (axis + 2) % 3], bound = bounds[axis];
+    for (let t = 0; t < triangles; t++) {
+      if (p[b] < bound[t * 4] || p[b] > bound[t * 4 + 1] || p[c] < bound[t * 4 + 2] || p[c] > bound[t * 4 + 3]) continue;
+      const o = t * 9;
+      const [ab, ac, bb, bc, cb, cc] = [corners[o + b], corners[o + c], corners[o + 3 + b], corners[o + 3 + c], corners[o + 6 + b], corners[o + 6 + c]];
+      const d = (bb - ab) * (cc - ac) - (bc - ac) * (cb - ab);
+      if (Math.abs(d) < 1e-14) continue;
+      const u = ((p[b] - ab) * (cc - ac) - (p[c] - ac) * (cb - ab)) / d;
+      const v = ((bb - ab) * (p[c] - ac) - (bc - ac) * (p[b] - ab)) / d;
+      if (u < 0 || v < 0 || u + v > 1) continue;
+      const hit = corners[o + axis] + u * (corners[o + 3 + axis] - corners[o + axis]) + v * (corners[o + 6 + axis] - corners[o + axis]);
+      if ((hit - p[axis]) * direction > 0) return true;
+    }
+    return false;
   };
-  let outside = 0, worst = 0;
-  for (const p of points) { const over = Math.hypot(p[0], p[2]) - radius(p[1]); if (over > 0) outside++; worst = Math.max(worst, over); }
-  return { fraction: outside / points.length, worst };
+  const inside = (p) => [0, 1, 2].every((axis) => crossesAlong(p, axis, 1) && crossesAlong(p, axis, -1));
+  /** Share of an evenly thinned sample (at most `max` points) of `points` inside the body cavity. */
+  return { fractionInside: (points, max = 400) => {
+    const sample = points.filter((_, i) => i % Math.ceil(points.length / max) === 0);
+    return sample.filter(inside).length / sample.length;
+  } };
 }
 const f3 = (box) => `${box.map((v) => v.toFixed(3))}`;
 
@@ -300,43 +340,37 @@ test('overview lungs fit inside the ribs and around the atlas airway trees (trac
   assert.deepEqual(problems, []);
 });
 
-test('overview brain faces front like the atlas brain and sits in the head of the body outline', async () => {
+test('overview brain faces front like the atlas brain and sits in the head of the body skin', async () => {
   const { ORGANS } = loadTs('src/lib/organ-models.ts');
   const parts = atlasParts();
   const brain = atlasBox(parts, /gyrus|occipital lobe|parietal lobule|insula|White matter of|Corpus callosum|^Cerebellum$|^Pons$|Medulla oblongata|^Midbrain$|Peduncle of midbrain|thalamus$|^Hypothalamus$|hippocampus|amygdala|caudate nucleus|putamen|globus pallidus|internal capsule|fornix of forebrain|colliculus$|geniculate body/, 'nervous');
   const cerebellum = atlasBox(parts, /^Cerebellum$/);
-  const profile = outlineProfile();
-  // The outline's head sits this far above the atlas head (head top of the outline minus the atlas skin top).
-  const lift = profile.at(-1)[1] - atlasBox(parts, /^Skin$/)[1][1];
   const points = await glbPoints(ORGANS.brain.glb);
   const placed = placeOverview(ORGANS.brain, points, boundsOf(points));
   const rendered = boundsOf(placed);
   const problems = [];
   // The GLB's front-back axis is its x axis; turned to face front, every side matches the atlas box to 1 cm.
   sizeOf(rendered).forEach((v, k) => { if (Math.abs(v - sizeOf(brain)[k]) > 0.01) problems.push(`${'xyz'[k]} size ${v.toFixed(3)}, atlas ${sizeOf(brain)[k].toFixed(3)}`); });
-  // Centre: x like the atlas; y as far above the atlas as the outline head is; z within 1.5 cm (the outline's axis is 2 cm in front of the atlas head).
+  // Centre: the body is the atlas skin, so the brain sits exactly where the atlas brain is (1 cm).
   const [centre, atlasCentre] = [centreOf(rendered), centreOf(brain)];
-  if (Math.abs(centre[0] - atlasCentre[0]) > 0.01) problems.push(`x centre ${centre[0].toFixed(3)}, atlas ${atlasCentre[0].toFixed(3)}`);
-  if (Math.abs(centre[1] - atlasCentre[1] - lift) > 0.01) problems.push(`y centre ${centre[1].toFixed(3)}, atlas ${atlasCentre[1].toFixed(3)} + outline lift ${lift.toFixed(3)}`);
-  if (Math.abs(centre[2] - atlasCentre[2]) > 0.015) problems.push(`z centre ${centre[2].toFixed(3)}, atlas ${atlasCentre[2].toFixed(3)}`);
+  centre.forEach((v, k) => { if (Math.abs(v - atlasCentre[k]) > 0.01) problems.push(`${'xyz'[k]} centre ${v.toFixed(3)}, atlas ${atlasCentre[k].toFixed(3)}`); });
   // The back of the head: the atlas cerebellum lies behind the brain centre, so the lowest part of the model must sit behind it too.
   assert.ok(centreOf(cerebellum)[2] < atlasCentre[2], 'atlas cerebellum should lie behind the brain centre');
   const low = placed.filter((p) => p[1] < rendered[1][0] + 0.15 * sizeOf(rendered)[1]);
   const lowZ = low.reduce((sum, p) => sum + p[2], 0) / low.length;
   if (lowZ - centre[2] > -0.1 * sizeOf(rendered)[2] / 2) problems.push(`lowest 15% of the brain is at z ${lowZ.toFixed(3)}, not behind the centre ${centre[2].toFixed(3)}`);
-  // Inside the body outline (a lathe, so its radius applies front-back as well): at most 5% of vertices out, none by more than 6 mm.
-  const fit = outsideOutline(profile, placed);
-  if (fit.fraction > 0.05 || fit.worst > 0.006) problems.push(`${(fit.fraction * 100).toFixed(1)}% of the brain is outside the outline, worst ${(fit.worst * 100).toFixed(1)} cm`);
+  // Inside the head of the skin shell: 96% of the vertices are (the rest sit at the open ears and eye sockets); placed 6 cm too high, as
+  // for the old lathe outline, only 43% would be.
+  const inside = (await skinShell()).fractionInside(placed);
+  if (inside < 0.93) problems.push(`only ${(inside * 100).toFixed(1)}% of the brain is inside the body skin`);
   assert.deepEqual(problems, []);
 });
 
-test('overview eyeball is the atlas left eye in size and orientation and sits in the head of the body outline', async () => {
+test('overview eyeball is the atlas left eye in size, position and orientation', async () => {
   const { ORGANS } = loadTs('src/lib/organ-models.ts');
   const parts = atlasParts();
   const sclera = atlasBox(parts, /^Left sclera$/);
   const eye = atlasBox(parts, /^Left (sclera|cornea)$/);
-  const profile = outlineProfile();
-  const lift = profile.at(-1)[1] - atlasBox(parts, /^Skin$/)[1][1];
   const points = await glbPoints(ORGANS.eyeball.glb);
   const box = boundsOf(points);
   // The globe is every slice along the GLB's x axis from the low end up to the first slice past the peak that is narrower than 0.4 of the
@@ -355,16 +389,113 @@ test('overview eyeball is the atlas left eye in size and orientation and sits in
   if (Math.abs(size[0] - atlasSize[0]) > 0.002 || Math.abs(size[1] - atlasSize[1]) > 0.002 || Math.abs(size[2] - sizeOf(eye)[2]) > 0.003) {
     problems.push(`globe size ${f3(size)}, atlas sclera ${f3(atlasSize)}, sclera + cornea front-back ${sizeOf(eye)[2].toFixed(3)}`);
   }
-  // Position: x like the atlas left eye (5 mm), y as far above it as the outline head is above the atlas head, z within 1.5 cm.
+  // Position: the globe sits where the atlas left eye is (5 mm), the body being the atlas skin.
   const [centre, atlasCentre] = [centreOf(globe), centreOf(eye)];
-  if (Math.abs(centre[0] - atlasCentre[0]) > 0.005) problems.push(`x centre ${centre[0].toFixed(3)}, atlas ${atlasCentre[0].toFixed(3)}`);
-  if (Math.abs(centre[1] - atlasCentre[1] - lift) > 0.005) problems.push(`y centre ${centre[1].toFixed(3)}, atlas ${atlasCentre[1].toFixed(3)} + outline lift ${lift.toFixed(3)}`);
-  if (Math.abs(centre[2] - atlasCentre[2]) > 0.015) problems.push(`z centre ${centre[2].toFixed(3)}, atlas ${atlasCentre[2].toFixed(3)}`);
+  centre.forEach((v, k) => { if (Math.abs(v - atlasCentre[k]) > 0.005) problems.push(`${'xyz'[k]} centre ${v.toFixed(3)}, atlas ${atlasCentre[k].toFixed(3)}`); });
   // Orientation: the optic nerve leaves the left eye backwards (at least 1 cm behind the globe centre) and towards the midline.
   const stubCentre = [0, 1, 2].map((k) => stub.reduce((sum, p) => sum + p[k], 0) / stub.length);
   if (!(stubCentre[2] < centre[2] - 0.01 && stubCentre[0] < centre[0])) problems.push(`optic nerve centre ${f3(stubCentre)} is not behind and medial to the globe centre ${f3(centre)}`);
-  // Inside the head of the body outline.
-  const fit = outsideOutline(profile, placeOverview(ORGANS.eyeball, points, box));
-  if (fit.worst > 0.002) problems.push(`the eyeball sticks out of the outline by ${(fit.worst * 100).toFixed(1)} cm`);
+  // The cornea reaches the atlas cornea (3 mm), no further: the globe fills the opening of the skin shell at the eye.
+  if (Math.abs(globe[2][1] - eye[2][1]) > 0.003) problems.push(`globe front z ${globe[2][1].toFixed(3)}, atlas cornea front ${eye[2][1].toFixed(3)}`);
   assert.deepEqual(problems, []);
+});
+
+test('overview shows both eyes, the right one mirroring the left across the midline of the body', () => {
+  const { ORGANS } = loadTs('src/lib/organ-models.ts');
+  const { glb, bodyParts, bodyPosition, bodySize } = ORGANS.eyeball;
+  assert.equal(bodyParts.length, 2, 'one globe per eye socket of the skin');
+  const [left, right] = bodyParts;
+  assert.deepEqual(left.position, bodyPosition, 'the left eye is the one the label and the camera point at');
+  assert.deepEqual(right.position, [-bodyPosition[0], bodyPosition[1], bodyPosition[2]]);
+  assert.ok(bodyParts.every((part) => part.glb === glb && part.size === bodySize), 'both eyes are the registered eyeball at the registered size');
+});
+
+/** Vertex positions of any GLB (several nodes, plain Float32), in the GLB's own frame. */
+async function scenePoints(file) {
+  const { GLTFLoader } = await import('three/examples/jsm/loaders/GLTFLoader.js');
+  const bytes = fs.readFileSync(path.join(__dirname, '../public', file));
+  const gltf = await new GLTFLoader().parseAsync(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength), '');
+  gltf.scene.updateMatrixWorld(true);
+  const points = [], vertex = new THREE.Vector3();
+  gltf.scene.traverse((object) => {
+    if (!object.isMesh) return;
+    const position = object.geometry.attributes.position;
+    for (let i = 0; i < position.count; i++) { vertex.fromBufferAttribute(position, i).applyMatrix4(object.matrixWorld); points.push([vertex.x, vertex.y, vertex.z]); }
+  });
+  return points;
+}
+const glbNodeCount = (file) => {
+  const glb = fs.readFileSync(path.join(__dirname, '../public', file));
+  return JSON.parse(glb.subarray(20, 20 + glb.readUInt32LE(12)).toString('utf8')).nodes.length;
+};
+
+test('overview organs sit inside the body skin (the eyeball fills its opening in the skin and has its own test)', async () => {
+  const { ORGANS } = loadTs('src/lib/organ-models.ts');
+  const shell = await skinShell();
+  const report = [];
+  for (const organ of Object.values(ORGANS)) {
+    if (organ.isShell || organ.procedural || organ.id === 'eyeball') continue;
+    const placements = organ.bodyParts?.length
+      ? organ.bodyParts.map((part) => ({ file: part.glb, placed: { id: organ.id, bodyPosition: part.position, bodySize: part.size } }))
+      : [{ file: organ.glb, placed: organ }];
+    const inside = [];
+    for (const { file, placed } of placements) {
+      const points = glbNodeCount(file) === 1 ? await glbPoints(file) : await scenePoints(file);
+      inside.push(shell.fractionInside(placeOverview(placed, points, boundsOf(points)), 300));
+    }
+    const fraction = Math.min(...inside);
+    // The intestine model is wider than the atlas bowel at the flanks (97% inside); the other organs are entirely inside.
+    if (fraction < 0.95) report.push(`${organ.id}: only ${(fraction * 100).toFixed(1)}% of the vertices are inside the skin`);
+  }
+  assert.deepEqual(report, []);
+});
+
+test('body surface and anatomy layers are valid BodyParts3D conversions in the atlas frame', async () => {
+  const { ANATOMY_LAYER_IDS, ANATOMY_LAYERS } = loadTs('src/lib/anatomy-layers.ts');
+  const { GLTFLoader } = await import('three/examples/jsm/loaders/GLTFLoader.js');
+  const systems = new Set(atlasParts().map((p) => p.system));
+  const files = { '/models/bp3d-skin-male.glb': ['Skin', 'Eyebrow', 'Hair', 'Lip'] };
+  const meshNames = { skeletal: 'Skeleton', arterial: 'Arteries', venous: 'Veins' };
+  assert.deepEqual([...ANATOMY_LAYER_IDS], ['skeletal', 'arterial', 'venous']);
+  for (const id of ANATOMY_LAYER_IDS) {
+    assert.ok(systems.has(id), `${id} is not an atlas system`);
+    files[ANATOMY_LAYERS[id].glb] = [meshNames[id]];
+  }
+  let body;
+  for (const [url, names] of Object.entries(files)) {
+    const bytes = fs.readFileSync(path.join(__dirname, '../public', url));
+    assert.ok(bytes.length < 6e6, `${url} is ${(bytes.length / 1e6).toFixed(1)} MB, too heavy to load on demand`);
+    const gltf = await new GLTFLoader().parseAsync(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength), '');
+    assert.deepEqual(gltf.scene.children.map((child) => child.name), names, url);
+    assert.match(gltf.asset.copyright, /BodyParts3D.*Attribution 4\.0/, `${url} must carry the BodyParts3D licence notice`);
+    const box = new THREE.Box3().setFromObject(gltf.scene);
+    assert.ok(!box.isEmpty() && [...box.min.toArray(), ...box.max.toArray()].every(Number.isFinite), `${url} has no valid geometry`);
+    gltf.scene.traverse((object) => { if (object.isMesh) assert.ok(object.geometry.index.count / 3 >= 500, `${url} ${object.name} is nearly empty`); });
+    if (names[0] === 'Skin') body = box;
+    // Skeleton and vessels lie inside the skin's outline, to a hand's width at the extremities.
+    else for (let k = 0; k < 3; k++) assert.ok(box.min.getComponent(k) >= body.min.getComponent(k) - 0.02 && box.max.getComponent(k) <= body.max.getComponent(k) + 0.02, `${url} leaves the skin along ${'xyz'[k]}`);
+  }
+});
+
+test('realistic skin shader patches match the installed three.js and really apply', () => {
+  const { SKIN_SHADER_TARGETS, createSkinMaterial, createOrganMaterial } = loadTs('src/components/sim/realistic-materials.ts');
+  const { vertexShader, fragmentShader } = THREE.ShaderLib.physical;
+  for (const target of SKIN_SHADER_TARGETS.vertex) assert.ok(vertexShader.includes(target), `three.js vertex shader no longer has ${target}`);
+  for (const target of SKIN_SHADER_TARGETS.fragment) assert.ok(fragmentShader.includes(target), `three.js fragment shader no longer has ${target}`);
+  assert.ok(THREE.ShaderChunk.lights_physical_pars_fragment.includes(SKIN_SHADER_TARGETS.diffuse), 'the diffuse line that wraps the light changed');
+  for (const glass of [false, true]) {
+    const shader = { uniforms: {}, vertexShader, fragmentShader };
+    createSkinMaterial({ glass }).onBeforeCompile(shader, null);
+    assert.match(shader.vertexShader, /vObjPos = position;/);
+    assert.match(shader.fragmentShader, /sssIrr/, 'the wrap-around lighting was not applied');
+    assert.match(shader.fragmentShader, /skinH\(vObjPos\)/, 'the skin relief was not applied');
+    assert.equal(/uGlassMin, uGlassMax/.test(shader.fragmentShader), glass, 'only the see-through skin gets the Fresnel alpha');
+  }
+  // Organs keep the colour and texture of their model and gain a wet clear coat, without touching the model's own material.
+  const source = new THREE.MeshStandardMaterial({ color: '#b04030', roughness: 0.9, metalness: 0.6 });
+  const organ = createOrganMaterial(source, 'liver');
+  assert.ok(organ.isMeshPhysicalMaterial && organ.clearcoat > 0 && organ.metalness === 0);
+  assert.equal(organ.color.getHexString(), 'b04030');
+  assert.equal(source.metalness, 0.6, 'the source material must stay as it was');
+  assert.ok(createOrganMaterial(new THREE.MeshBasicMaterial(), 'heart').isMeshPhysicalMaterial, 'unknown material types fall back to a plain organ colour');
 });

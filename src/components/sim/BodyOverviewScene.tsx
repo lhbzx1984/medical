@@ -1,15 +1,19 @@
 "use client";
 
-// 人体概览场景：人形参照轮廓（全息 / 真实肤色）+ 器官按解剖位置摆放，用于
-// 「手术模拟的人体层面」「首页英雄图」与「学习中心的全身概览」。
+// 人体概览场景：写实人体体表（透视 / 实体）+ 器官按解剖位置摆放 + 可选的骨骼、血管层，用于
+// 「手术模拟的人体层面」与「学习中心的全身概览」。体表加载期间以人形轮廓占位。
 // 性别感知：女性模型包含程序化子宫附件（BodyParts3D 无女性生殖网格）。
 import { Suspense } from "react";
 import { Html } from "@react-three/drei";
 import { ORGANS, ORGAN_LIST } from "@/lib/organ-models";
+import type { AnatomyLayerState } from "@/lib/anatomy-layers";
 import type { OrganId } from "@/lib/types";
+import { AnatomyLayers } from "./AnatomyLayers";
 import { OrganModel } from "./OrganModel";
 import { BodyOutline } from "./BodyOutline";
 import { FemaleReproductive } from "./FemaleReproductive";
+import { ReferenceBody } from "./ReferenceBody";
+import { StudioLighting } from "./StudioLighting";
 
 export interface BodyOverviewSceneProps {
   /** 高亮脉冲的器官 */
@@ -20,17 +24,19 @@ export interface BodyOverviewSceneProps {
   focusMode?: boolean;
   /** 手术模拟：只展示患部器官（忽略其余器官） */
   onlyFocus?: boolean;
-  /** 轮廓模式：全息线框 / 真实肤色外皮 */
+  /** 体表模式：hologram = 透视（玻璃质，可见内部）/ skin = 实体肤色体表；加载占位的人形轮廓同样按此模式 */
   shellMode?: "hologram" | "skin";
-  /** skin 模式淡出系数（1 = 实体外皮） */
+  /** 占位轮廓在 skin 模式下的淡出系数（1 = 实体外皮） */
   shellFade?: number;
   /** 显示可点击的器官文字标注 */
   showLabels?: boolean;
   /** 模型性别（女性呈现子宫附件与乳房轮廓） */
   sex?: "male" | "female";
-  /** 是否渲染人形参照轮廓 */
+  /** 是否渲染人体体表 */
   showShell?: boolean;
   showOrgans?: boolean;
+  /** 打开的解剖层（骨骼 / 动脉 / 静脉）；缺省不显示 */
+  layers?: AnatomyLayerState;
 }
 
 /** 可点击的器官文字标注（跟随器官位置，点击 = 选中该器官） */
@@ -105,12 +111,13 @@ function OrganByInfo({
   if (organ.bodyParts?.length) {
     return (
       <>
-        {organ.bodyParts.map((part) => (
+        {organ.bodyParts.map((part, index) => (
           <OrganModel
-            key={part.glb}
+            key={`${part.glb}-${index}`}
             organ={{ ...organ, glb: part.glb }}
             targetSize={part.size}
             position={part.position}
+            rotation={organ.bodyRotation}
             highlight={highlight}
             dimmed={dimmed}
             onClick={onClick}
@@ -152,6 +159,7 @@ export function BodyOverviewScene({
   sex = "male",
   showShell = true,
   showOrgans = true,
+  layers,
 }: BodyOverviewSceneProps) {
   const focus = (highlightOrgan ?? null) as OrganId | null;
   const organs = ORGAN_LIST.filter(
@@ -162,16 +170,18 @@ export function BodyOverviewScene({
   );
   return (
     <group>
-      {/* 灯光 */}
-      <ambientLight intensity={0.75} />
-      <hemisphereLight args={["#bcd9ff", "#1a2233", 0.7]} />
-      <directionalLight position={[2.5, 4, 3]} intensity={1.15} />
-      <directionalLight position={[-3, 2, -2.5]} intensity={0.35} color="#9fd8ff" />
+      <StudioLighting />
 
-      {/* 人形参照轮廓 */}
+      {/* 人体体表（男性 BodyParts3D 皮肤，女性 HuBMAP 体表）；加载期间显示人形轮廓 */}
       {showShell && (
-        <BodyOutline mode={shellMode} opacity={shellMode === "skin" ? shellFade : 1} sex={sex} />
+        <Suspense
+          fallback={<BodyOutline mode={shellMode} opacity={shellMode === "skin" ? shellFade : 1} sex={sex} />}
+        >
+          <ReferenceBody key={sex} sex={sex} solid={shellMode === "skin"} />
+        </Suspense>
       )}
+
+      {layers && <AnatomyLayers layers={layers} />}
 
       <Suspense fallback={null}>
         {showOrgans &&
@@ -210,10 +220,7 @@ export function OrganCloseupScene({
   const closeupGlb = useReferenceModel ? organ.closeupGlb : undefined;
   return (
     <group>
-      <ambientLight intensity={0.7} />
-      <hemisphereLight args={["#bcd9ff", "#1a2233", 0.7]} />
-      <directionalLight position={[2, 3, 3]} intensity={1.2} />
-      <directionalLight position={[-2.5, 1.5, -2]} intensity={0.4} color="#9fd8ff" />
+      <StudioLighting />
       <Suspense fallback={null}>
         {organ.procedural && !closeupGlb ? (
           <FemaleReproductive

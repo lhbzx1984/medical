@@ -17,6 +17,7 @@ import { BodyOverviewScene } from "./BodyOverviewScene";
 import { OrganModel } from "./OrganModel";
 import { FemaleReproductive } from "./FemaleReproductive";
 import { InstrumentRig, RegionMarker, instrumentIds } from "./instruments";
+import { StudioLighting } from "./StudioLighting";
 
 export interface SimulationStageProps {
   simulation: SimulationRun | null;
@@ -195,10 +196,7 @@ function StageContent({
         </>
       ) : (
         <>
-          <ambientLight intensity={0.7} />
-          <hemisphereLight args={["#bcd9ff", "#1a2233", 0.7]} />
-          <directionalLight position={[2, 3, 3]} intensity={1.2} />
-          <directionalLight position={[-2.5, 1.5, -2]} intensity={0.4} color="#9fd8ff" />
+          <StudioLighting />
           <Suspense fallback={null}>
             {organ.procedural ? (
               <FemaleReproductive targetSize={1.35} highlight />

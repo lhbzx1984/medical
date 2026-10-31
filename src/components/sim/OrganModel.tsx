@@ -7,6 +7,7 @@ import * as THREE from "three";
 import { useEffect, useMemo, useRef } from "react";
 import type { OrganInfo } from "@/lib/organ-models";
 import { setEmissiveIntensity } from "./material-utils";
+import { createOrganMaterial } from "./realistic-materials";
 
 export interface OrganModelProps {
   organ: OrganInfo;
@@ -67,8 +68,8 @@ export function OrganModel({
       const mesh = o as THREE.Mesh;
       if (!mesh.isMesh) return;
       const make = (m: THREE.Material) => {
-        const mm = (m as THREE.MeshStandardMaterial).clone();
-        mm.metalness = 0;
+        // 保留 GLB 原色与贴图，叠加器官表面的湿润高光（物理材质）。
+        const mm = createOrganMaterial(m, organ.id);
         // 保留模型原色作为基准，针对参考肝脏略微提亮以适配深色视口。
         if (organ.id === "liver" && organ.closeupGlb && organ.glb === organ.closeupGlb && mm.color) {
           const original = typeof m.userData?.referenceBaseColor === "number" ? m.userData.referenceBaseColor : mm.color.getHex();
@@ -93,7 +94,7 @@ export function OrganModel({
           mm.opacity = 1;
           mm.depthWrite = true;
         }
-        if (mm instanceof THREE.MeshStandardMaterial) mats.push(mm);
+        mats.push(mm);
         return mm;
       };
       const original = normalized.originalMaterials.get(mesh)!;
