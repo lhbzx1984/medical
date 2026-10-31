@@ -1,6 +1,6 @@
 // 3D 器官模型注册表。
-// GLB 资产来自 thebuggeddev/anatomy（Meshopt 压缩），缩略图来自其器官图集。
-// 例外：stomach.glb 由 scripts/extract-stomach-glb.mjs 从 BodyParts3D 精细图谱（FJ2564）转换，缩略图为其实际渲染。
+// 心脏、肝脏与肺的特写可使用 HuBMAP 男性参考模型；全身视图使用已配准的原始模型。
+// 其他 GLB 与缩略图来自 thebuggeddev/anatomy；stomach.glb 由 BodyParts3D 精细图谱转换。
 // bodyPosition / bodySize 用于「人体概览」场景中的解剖学摆放：
 //   坐标系为 Y 轴向上、单位米、标准站立人体身高约 1.75m，面朝 +Z；+X 为患者左侧（与精细图谱一致）。
 //   bodyRotation（可选）：GLB 自身朝向与图谱不同的器官在概览里绕竖直轴的旋转；器官特写与器官级视图仍按 GLB 原始朝向。
@@ -15,6 +15,8 @@ export interface OrganInfo {
   brief: string;
   /** GLB 路径；程序化器官（procedural）留空 */
   glb: string;
+  referenceLabel?: string;
+  closeupGlb?: string;
   thumb: string;
   organImg: string;
   /** 概览场景中的中心位置 */
@@ -71,6 +73,8 @@ export const ORGANS: Record<OrganId, OrganInfo> = {
     system: "循环系统",
     brief: "四腔肌性泵，驱动肺循环与体循环；瓣膜保证血液单向流动。",
     glb: "/models/heart.glb",
+    closeupGlb: "/models/hra-heart-male.glb",
+    referenceLabel: "HuBMAP 男性参考器官模型",
     thumb: "/anatomy/heart/thumb.webp",
     organImg: "/anatomy/heart/organ.webp",
     // x 取自精细图谱心腔与心房壁的包围盒中心（偏患者左侧）
@@ -84,6 +88,8 @@ export const ORGANS: Record<OrganId, OrganInfo> = {
     system: "呼吸系统",
     brief: "气体交换场所，支气管树逐级分支至肺泡，氧气与二氧化碳在此交换。",
     glb: "/models/lungs.glb",
+    closeupGlb: "/models/hra-lung-male.glb",
+    referenceLabel: "HuBMAP 男性参考器官模型",
     thumb: "/anatomy/lungs/thumb.webp",
     organImg: "/anatomy/lungs/organ.webp",
     // 图谱没有肺实质网格，按肋骨与气道取值：肺体宽 0.25（第 1—10 肋外包围盒宽 0.273，两侧各留 1.1 cm；图谱段支气管树宽 0.239，被包在肺内），
@@ -99,6 +105,8 @@ export const ORGANS: Record<OrganId, OrganInfo> = {
     system: "消化系统",
     brief: "最大实质器官，位于右膈下；参与代谢、解毒、胆汁生成与血浆蛋白合成。",
     glb: "/models/liver.glb",
+    closeupGlb: "/models/hra-liver-male.glb",
+    referenceLabel: "HuBMAP 男性参考器官模型",
     thumb: "/anatomy/liver/thumb.webp",
     organImg: "/anatomy/liver/organ.webp",
     // 取自精细图谱各肝段的包围盒中心与最大边长（米）：右叶在患者右侧，左叶越过中线，故 x 略偏右。

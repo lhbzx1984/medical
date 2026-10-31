@@ -254,6 +254,7 @@ export default function LearningCenter() {
                           ? "完整人体 · 2D 解剖图"
                           : `${organ.nameZh} · ${organ.nameEn}`}
                     </div>
+                    {mode === "organ" && organ.referenceLabel && <div className="text-[11px] text-[var(--muted)]">{organ.referenceLabel} · 个体解剖存在差异</div>}
                     <div className="mt-0.5 text-[12.5px] leading-6 text-[var(--text)]">
                       {overviewTarget
                         ? overviewTarget.brief

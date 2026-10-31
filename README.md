@@ -266,6 +266,14 @@ $env:MEDPLAN_TEST_OUTPUT='D:/某个新目录'
 
 真实服务验收需在完成自己的 Auth、SQL 和知识种子配置后执行：登录 → 新建合成病例 → 生成 v1 → 检查对应模拟 → 专家修订 v2 → 切回 v1 检查顾问上下文 → 学习问答及插图 → 用另一个账号确认看不到该病例。再核验错误输入、失败重试和限流。没有真实凭证时，不能据此认定真实云端链路已通过。
 
+## HuBMAP 器官模型来源
+
+心脏、肝脏和肺的器官特写使用 HuBMAP Human Reference Atlas 的男性参考器官模型；全身及模拟视图保留现有已配准模型。参考器官数据采用 CC BY 4.0：
+
+- Browne, K., Schlehlein, H. 等，HuBMAP Human Reference Atlas 3D Reference Object Library，https://humanatlas.io/3d-reference-library 。
+- [男性心脏 v1.3](https://purl.humanatlas.io/ref-organ/heart-male/v1.3)、[男性肝脏 v1.2](https://purl.humanatlas.io/ref-organ/liver-male/v1.2)、[男性肺 v1.4](https://purl.humanatlas.io/ref-organ/lung-male/v1.4)。
+- 这些是男性参考器官，女性显示模式下也会显示同一参考模型，不代表患者的个体解剖。展示时模型会居中缩放，肝脏材质在深色画布中经过提亮。
+
 ## 版权与致谢
 
 - [lhbzx1984/human-atlas](https://github.com/lhbzx1984/human-atlas)（MIT）：BodyParts3D 网格管线与 atlas 数据

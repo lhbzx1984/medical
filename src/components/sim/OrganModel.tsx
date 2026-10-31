@@ -69,6 +69,12 @@ export function OrganModel({
       const make = (m: THREE.Material) => {
         const mm = (m as THREE.MeshStandardMaterial).clone();
         mm.metalness = 0;
+        // 保留模型原色作为基准，针对参考肝脏略微提亮以适配深色视口。
+        if (organ.id === "liver" && organ.closeupGlb && organ.glb === organ.closeupGlb && mm.color) {
+          const original = typeof m.userData?.referenceBaseColor === "number" ? m.userData.referenceBaseColor : mm.color.getHex();
+          mm.userData.referenceBaseColor = original;
+          mm.color.setHex(original).multiplyScalar(2);
+        }
         mm.emissive = new THREE.Color(highlight ? "#20d3c2" : "#000000");
         mm.emissiveIntensity = highlight ? 0.22 : 0;
         if (shell) {
@@ -97,7 +103,7 @@ export function OrganModel({
     });
     matsRef.current = mats;
     return () => mats.forEach((material) => material.dispose());
-  }, [normalized, shell, dimmed, highlight]);
+  }, [normalized, shell, dimmed, highlight, organ.id, organ.closeupGlb, organ.glb]);
 
   // 高亮脉冲
   const t = useRef(0);

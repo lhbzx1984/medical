@@ -210,8 +210,8 @@ export function OrganCloseupScene({
           />
         ) : (
           <OrganModel
-            organ={organ}
-            targetSize={1.6}
+            organ={organ.closeupGlb ? { ...organ, glb: organ.closeupGlb } : organ}
+            targetSize={organ.closeupGlb ? 1.25 : 1.6}
             autoRotate
             onClick={
               onSelectOrgan
