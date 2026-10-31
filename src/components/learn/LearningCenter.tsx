@@ -53,9 +53,10 @@ export default function LearningCenter() {
   const sex = useSyncExternalStore(subscribeSex, storedSex, () => "male" as const);
   const [controlsOpen, setControlsOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
-  const [useReferenceModel, setUseReferenceModel] = useState(true);
+  const [useReferenceModel, setUseReferenceModel] = useState(false);
   const [overviewView, setOverviewView] = useState<"2d" | "3d">("2d");
   const [show3DLabels, setShow3DLabels] = useState(false);
+  const [showBodySurface, setShowBodySurface] = useState(false);
 
   const switchSex = useCallback((v: Sex) => {
     try { localStorage.setItem("mp-sex", v); } catch {}
@@ -76,6 +77,8 @@ export default function LearningCenter() {
   /** 左栏卡片 / 特写按钮 → 器官特写模式 */
   const openCloseup = useCallback((id: OrganId) => {
     setOrganId(id);
+    // 保留子宫与胃的参考模型，其他器官默认使用原有带纹理的模型。
+    setUseReferenceModel(id === "uterus" || id === "stomach");
     setStructure(null);
     setSelected(null);
     setMode("organ");
@@ -85,6 +88,7 @@ export default function LearningCenter() {
   /** 概览中点击标注 / 3D 器官 → 选中并聚焦（保持概览，外皮淡出） */
   const focusOrgan = useCallback((id: OverviewId) => {
     setSelected({ id, sex });
+    setShowBodySurface(false);
   }, [sex]);
 
   const chatContext = useMemo(() => {
@@ -206,7 +210,7 @@ export default function LearningCenter() {
                 ? `器官特写 · ${organ.nameZh}（${organ.nameEn}）`
                 : overviewView === "3d" ? "全身概览 · 3D 器官同屏" : "全身概览 · 点击文字标注查看器官"}
           </span>
-          <div className="ml-auto flex items-center gap-2">
+          <div className="ml-auto flex flex-wrap items-center gap-2">
             {mode === "overview" && (
               <div className="flex gap-1" role="group" aria-label="全身概览视图">
                 {(["2d", "3d"] as const).map((view) => (
@@ -224,6 +228,11 @@ export default function LearningCenter() {
             {mode === "overview" && overviewView === "3d" && (
               <button className="btn !py-1 !text-xs" aria-pressed={show3DLabels} onClick={() => setShow3DLabels((show) => !show)}>
                 {show3DLabels ? "隐藏标注" : "显示标注"}
+              </button>
+            )}
+            {mode === "overview" && overviewView === "3d" && (
+              <button className="btn !py-1 !text-xs" aria-pressed={showBodySurface} onClick={() => setShowBodySurface((show) => !show)}>
+                {showBodySurface ? "透视体表" : "显示体表"}
               </button>
             )}
             {quizTarget && <button className="btn !py-1 !text-xs" onClick={() => setQuizOrgan(quizTarget)}>学习自测</button>}
@@ -268,6 +277,7 @@ export default function LearningCenter() {
                   organId={organ.id}
                   useReferenceModel={useReferenceModel}
                   showLabels={show3DLabels}
+                  showBodySurface={showBodySurface}
                   selectedId={mode === "overview" && selectedId !== "breast" ? selectedId : null}
                   onSelect={focusOrgan}
                   onClearSelect={() => setSelected(null)}
@@ -286,11 +296,13 @@ export default function LearningCenter() {
                           : `${organ.nameZh} · ${organ.nameEn}`}
                     </div>
                     {mode === "organ" && useReferenceModel && organ.referenceLabel && <div className="text-[11px] text-[var(--muted)]">{organ.referenceLabel} · 个体解剖存在差异</div>}
+                    {mode === "organ" && !useReferenceModel && organ.closeupGlb && <div className="text-[11px] text-[var(--muted)]">原器官模型 · 仅供教学示意</div>}
+                    {mode === "overview" && overviewView === "3d" && <div className="text-[11px] text-[var(--muted)]">HuBMAP {sex === "male" ? "男性" : "女性"}体表参考 · 器官为示意配准</div>}
                     <div className="mt-0.5 text-[12.5px] leading-6 text-[var(--text)]">
                       {overviewTarget
                         ? overviewTarget.brief
                         : mode === "overview"
-                          ? overviewView === "3d" ? "拖拽旋转、滚轮缩放，点击器官查看详情；模型为参考示意，器官可能存在重叠。" : "点击器官旁的文字标注查看详情；性别切换可对比男性 / 女性解剖结构。"
+                          ? overviewView === "3d" ? "拖拽旋转、滚轮缩放；可切换体表与透视。模型为参考示意，器官可能存在重叠。" : "点击器官旁的文字标注查看详情；性别切换可对比男性 / 女性解剖结构。"
                           : organ.brief}
                     </div>
                   </div>

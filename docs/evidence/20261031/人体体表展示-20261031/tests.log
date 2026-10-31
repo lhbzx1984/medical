@@ -1,0 +1,132 @@
+
+> medplan-atlas@0.1.0 test
+> node --test --test-concurrency=1 tests/*.test.cjs
+
+admin authorization, user denial, and knowledge edits passed
+✔ tests\admin.test.cjs (2323.9194ms)
+✔ same-origin checks use the public Host header even when Next uses an internal URL (266.9396ms)
+✔ anonymous callers are rejected before any case data is read or written (395.0125ms)
+✔ supported organs include the uterus in AI and region validation (58.855ms)
+✔ unsupported AI focus organs cannot silently become intestine or skin simulations (44.1372ms)
+✔ the sourced stomach model keeps its identity across planning, labels and region fallback (110.3725ms)
+✔ request validation rejects malformed case input as client errors before storage (85.305ms)
+✔ case creation trims input and stores patient and plan; a failing plan write is reported, not hidden (149.7231ms)
+✔ case edits are tied to the version they were based on and stale edits are conflicts (64.6141ms)
+✔ every state-changing route rejects cross-site requests before touching sessions or data (739.7188ms)
+✔ the health endpoint reports configuration flags without echoing credentials (12.514ms)
+archive, restore, conflict and user isolation passed
+✔ tests\archive.test.cjs (2380.2216ms)
+legacy assignment, audit, no reassignment and access control passed
+✔ tests\assign.test.cjs (2571.2767ms)
+(node:41424) [THREE_CJS_DEPRECATED] DeprecationWarning: `require("three")` is deprecated and will be removed.
+Replace `const THREE = require("three")` with `import * as THREE from "three"`.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ atlas metadata recovers after a temporary request failure (264.1716ms)
+✔ atlas chunk retries a failed request and decompresses the successful response (94.5065ms)
+✔ atlas pointer picking ignores hidden front structure and follows exploded structure (44.9739ms)
+✔ overview organ x positions match their atlas structures (+X is the patient left) (70.2518ms)
+✔ overview liver body matches the atlas liver in centre and longest side (vessel stub left out) (330.9072ms)
+✔ overview kidneys and pancreas match their atlas structures in centre and longest side (ureter stubs left out) (264.5828ms)
+✔ overview uses independently aligned kidneys with atlas-consistent laterality and height (62.1904ms)
+✔ reference body models fit the shared standing coordinate system (44.9335ms)
+✔ overview lungs fit inside the ribs and around the atlas airway trees (trachea stub left out) (226.8697ms)
+✔ overview brain faces front like the atlas brain and sits in the head of the body outline (248.7345ms)
+✔ overview eyeball is the atlas left eye in size and orientation and sits in the head of the body outline (225.9986ms)
+audit administrator restrictions passed
+✔ tests\audit.test.cjs (2569.7476ms)
+✔ the user client refuses privileged keys and missing configuration (142.1924ms)
+✔ the user client reads and writes the visitor cookies through the Next.js cookie jar as HttpOnly (8.6592ms)
+✔ auth service failures and throttling keep their status instead of reading as signed out or wrong password (429.398ms)
+✔ a session lookup outage is an error, while an expired session is simply signed out (236.3584ms)
+✔ routes that open the store themselves report an auth outage instead of failing unhandled (677.5655ms)
+✔ the acting account comes from the verified session; malformed display names fall back to the email (207.4495ms)
+✔ an un-migrated database is refused instead of serving rows without isolation (95.4384ms)
+✔ administrator access is only granted after the database confirms the role (186.2598ms)
+✔ login, logout and password routes validate input before calling the auth service (111.2202ms)
+chat, message and image ownership, session takeover and anonymous access passed
+✔ tests\chat-isolation.test.cjs (2313.9456ms)
+✔ a learning answer streams deltas, ends with done and is saved under the signed-in account (304.5985ms)
+✔ provider failures during an answer reach the client and the partial answer is not saved (401.8939ms)
+✔ a failure while saving the finished answer is reported instead of a false done (75.2984ms)
+✔ cancelling the client stream aborts the provider request and saves nothing (61.2255ms)
+✔ malformed chat requests are client errors that spend no quota and never reach the provider (70.7001ms)
+✔ a history of exactly 24 messages is accepted (62.114ms)
+✔ guidance mode builds its case context on the server and ignores client-supplied summaries (67.2499ms)
+✔ chat is limited by the shared quota and by missing provider configuration (123.8463ms)
+✔ an unavailable provider is reported as an upstream error (53.2038ms)
+latest diagnosis updated atomically
+✔ tests\diagnosis.test.cjs (2305.6244ms)
+case edit, history, stale revision, stale edit and user isolation passed
+✔ tests\edit.test.cjs (2345.7679ms)
+finalize, freeze, user isolation, reopen passed
+✔ tests\finalize.test.cjs (2336.3005ms)
+review requirements and citation snapshot passed
+✔ tests\knowledge.test.cjs (2318.6357ms)
+✔ malformed simulation steps are rejected instead of fabricated into playable steps (45.9276ms)
+✔ simulation normalization preserves explicitly empty instrument lists (43.0271ms)
+✔ invalid AI simulation uses the existing plan-derived fallback and still commits one revision (137.9383ms)
+✔ incomplete AI plans are upstream errors and nothing is committed (260.6882ms)
+✔ the AI quota is consumed once per generation and an exhausted quota stops before any model call (75.3167ms)
+✔ feedback revisions are signed by the logged-in account, never by a name in the request (115.1464ms)
+✔ feedback and generation reject missing, stale or finalized input without calling the model (118.4134ms)
+✔ generation without a configured model key is a service error and spends no quota (70.3144ms)
+✔ two concurrent generations commit one version and the other reports a conflict (77.4434ms)
+✔ a revision committed by another tab while the model runs surfaces as HTTP 409 (68.9311ms)
+✔ generate shares one deadline across both AI calls and never commits an expired result (84.1832ms)
+✔ feedback shares one deadline across both AI calls and never commits an expired result (63.9031ms)
+✔ text calls always have a bounded abort signal (157.4924ms)
+✔ ending a streaming iterator cancels its upstream body (32.7526ms)
+✔ provider SSE errors are surfaced instead of a successful empty answer (20.7752ms)
+✔ the DONE event terminates the upstream protocol (18.1673ms)
+✔ an upstream EOF without DONE rejects instead of completing a partial answer (20.0272ms)
+✔ invalid provider image fields are rejected before image persistence (136.7637ms)
+✔ image generation stores the picture under the signed-in account and still returns it when history fails (88.1887ms)
+✔ an exhausted image quota stops before the provider is called (79.3559ms)
+✔ malformed non-streaming provider responses are reported as upstream errors (12.0386ms)
+✔ malformed SSE objects are surfaced as upstream errors (10.6171ms)
+learning attempt ownership and spoofing checks passed
+✔ tests\quiz.test.cjs (2271.9819ms)
+AI quota windows roll over, keep separate counts and clean up old records
+✔ tests\quota-window.test.cjs (2341.9136ms)
+AI quota limits and per-user isolation passed
+✔ tests\quota.test.cjs (2314.6514ms)
+(node:40580) [THREE_CJS_DEPRECATED] DeprecationWarning: `require("three")` is deprecated and will be removed.
+Replace `const THREE = require("three")` with `import * as THREE from "three"`.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ manual simulation preview shows operation phase before playback starts (1.2119ms)
+✔ pause preserves playback time and resume completes only the remaining duration (0.2345ms)
+✔ resuming a paused final simulation step does not jump back to the beginning (133.7885ms)
+✔ a completed simulation replays from the first step (121.6625ms)
+✔ invalid historical simulation data shows an error without mounting a 3D stage (380.1863ms)
+✔ a failing child query is surfaced rather than shown as an empty history (4.7954ms)
+✔ plan details are read with the signed-in session and map database rows to the API shape (1.5263ms)
+✔ knowledge search quotes filter punctuation and preserves literal LIKE characters (0.4914ms)
+✔ saving a revision uses one RPC and translates stale-version conflicts (1.4875ms)
+✔ case state changes map database error codes to conflict and not-found errors (1.2305ms)
+✔ AI quota is consumed through the shared database counter and fails closed (0.5072ms)
+✔ knowledge seeding uses stable IDs and preserves edited seeded entries (166.5185ms)
+✔ historical version without a matching simulation never plays the latest simulation (297.0325ms)
+✔ guidance context and session identity follow the selected case and version (132.7429ms)
+✔ an invalid historical focus organ reaches the simulation error instead of crashing its workspace (101.8208ms)
+✔ invalid historical model content renders a useful error instead of crashing (38.197ms)
+✔ valid historical content still renders the procedure and its steps (57.4599ms)
+✔ stomach and breast labels preserve their own identities instead of selecting intestine or skin (23.9734ms)
+✔ stomach selection opens the sourced closeup and gives the tutor the same organ for both sexes (148.4571ms)
+✔ closeups default to textured originals while keeping reference models available (66.9811ms)
+✔ overview switches between 2D and 3D without carrying an unsupported selection (60.6935ms)
+✔ an external sex update keeps the visible closeup and tutor context on an available organ (50.8883ms)
+✔ an external sex update clears overview selections and their tutor context (104.0026ms)
+✔ an external sex update cannot reuse an atlas structure from the other sex (54.466ms)
+✔ local sex buttons and mode changes preserve matching model and tutor contexts (65.7777ms)
+✔ image generation blocks simultaneous chat and is cancelled when its panel unmounts (30.0239ms)
+✔ a streamed error preserves partial output and tells the user what failed (53.8134ms)
+✔ chat history stays within the server message count and JSON byte limits (40.7498ms)
+✔ a question after cancellation retains completed history without sending the failure as an answer (27.5165ms)
+ℹ tests 102
+ℹ suites 0
+ℹ pass 102
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 45242.4583

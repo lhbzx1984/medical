@@ -130,6 +130,23 @@ test('stomach selection opens the sourced closeup and gives the tutor the same o
   }
 });
 
+test('closeups default to textured originals while keeping reference models available',()=>{
+  const panel=learningHarness('female');
+  try {
+    learningButton(panel.render(),'心脏').props.onClick();
+    let tree=panel.render();
+    assert.equal(learningCanvas(tree).props.useReferenceModel,false);
+    learningButton(tree,'查看参考模型').props.onClick();
+    assert.equal(learningCanvas(panel.render()).props.useReferenceModel,true);
+    learningButton(panel.render(),'胰').props.onClick();
+    assert.equal(learningCanvas(panel.render()).props.useReferenceModel,false);
+    learningButton(panel.render(),'子宫').props.onClick();
+    assert.equal(learningCanvas(panel.render()).props.useReferenceModel,true);
+    learningButton(panel.render(),'胃').props.onClick();
+    assert.equal(learningCanvas(panel.render()).props.useReferenceModel,true);
+  } finally {panel.cleanup();}
+});
+
 test('overview switches between 2D and 3D without carrying an unsupported selection',()=>{
   const panel=learningHarness('female');
   try {
@@ -144,11 +161,15 @@ test('overview switches between 2D and 3D without carrying an unsupported select
     assert.equal(canvas.props.selectedId,null, '2D-only breast selection must not reach the 3D camera');
     assert.equal(canvas.props.sex,'female');
     assert.equal(canvas.props.showLabels,false);
-    learningButton(three,'显示标注').props.onClick();
+    assert.equal(canvas.props.showBodySurface,false);
+    learningButton(three,'显示体表').props.onClick();
+    assert.equal(panel.render().find(n=>n.props?.mode==='overview' && n.props.organId).props.showBodySurface,true);
+    learningButton(panel.render(),'显示标注').props.onClick();
     assert.equal(panel.render().find(n=>n.props?.mode==='overview' && n.props.organId).props.showLabels,true);
     canvas.props.onSelect('kidneys');
     const selected=panel.render();
     assert.equal(selected.find(n=>n.props?.mode==='overview' && n.props.organId).props.selectedId,'kidneys');
+    assert.equal(selected.find(n=>n.props?.mode==='overview' && n.props.organId).props.showBodySurface,false, 'selecting an organ restores transparency');
     assert.equal(learningChat(selected).props.context.organId,'kidneys');
     learningButton(selected,'2D 解剖图').props.onClick();
     const back=panel.render();

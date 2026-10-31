@@ -44,7 +44,7 @@
 
 ### 功能二：医学学习中心（`/learning`）
 
-- **全身概览**：在男女 2D 解剖图与 3D 器官同屏间切换；3D 支持旋转、缩放、显示标注和选择器官，已有模型可进入特写。器官位置为教学示意，可能互相遮挡或重叠。
+- **全身概览**：在男女 2D 解剖图与 3D 器官同屏间切换；3D 支持旋转、缩放、显示标注、显示实体体表或透视内部，已有模型可进入特写。男女体表来自 HuBMAP 参考模型；器官与体表是不同来源的示意配准，可能互相遮挡或重叠。
   胃使用由图谱网格转换的独立特写模型；乳腺保留自身名称和导师上下文，尚无独立特写模型时明确提示
 - **器官特写**：脑 / 眼球 / 心脏 / 肺 / 肝 / 胰 / 肾 / 肠 / 皮肤组织 / 子宫附件（女性），360° 观察
 - **精细人体图谱**：BodyParts3D 4.0 的 **2,234 个可选择结构**，15 大解剖系统过滤、
@@ -268,12 +268,13 @@ $env:MEDPLAN_TEST_OUTPUT='D:/某个新目录'
 
 ## HuBMAP 器官模型来源
 
-脑、左眼、心脏、肺、肝、胰的器官特写使用 HuBMAP Human Reference Atlas 的男性参考器官模型；子宫特写使用女性参考模型（不含附件）。全身及模拟视图使用原有已配准模型，左右肾除外：人体概览使用 HuBMAP 男性左右独立肾模型并分别按图谱定位。参考器官数据采用 CC BY 4.0：
+脑、左眼、心脏、肺、肝、胰的器官特写可切换至 HuBMAP Human Reference Atlas 的男性参考器官模型；子宫特写默认使用女性参考模型（不含附件）。除胃、子宫外，器官特写默认使用原有带纹理模型，可手动切换参考模型。全身及模拟视图使用原有已配准模型，左右肾除外：人体概览使用 HuBMAP 男性左右独立肾模型并分别按图谱定位。参考器官数据采用 CC BY 4.0：
 
 - Browne, K., Schlehlein, H. 等，HuBMAP Human Reference Atlas 3D Reference Object Library，https://humanatlas.io/3d-reference-library 。
 - 肾、肠及胃特写采用 Innerscene 基于 MakeHuman 制作的 CC0 简化示意模型： https://www.innerscene.com/tools/library/3d-parts/kidneys-pair-c78928dd ， https://www.innerscene.com/tools/library/3d-parts/intestines-26224e6a ， https://www.innerscene.com/tools/library/3d-parts/stomach-e1e1d2ab 。皮肤组织沿用原有切面模型。
 - [男性脑 v1.4](https://purl.humanatlas.io/ref-organ/brain-male/v1.4)、[男性左眼 v1.3](https://purl.humanatlas.io/ref-organ/eye-male-left/v1.3)、[男性胰腺 v1.3](https://purl.humanatlas.io/ref-organ/pancreas-male/v1.3)、[女性子宫 v1.2](https://purl.humanatlas.io/ref-organ/uterus-female/v1.2)。
 - [男性左肾 v1.3](https://purl.humanatlas.io/ref-organ/kidney-male-left/v1.3)、[男性右肾 v1.3](https://purl.humanatlas.io/ref-organ/kidney-male-right/v1.3)。
+- 3D 全身概览体表：[男性体表 v1.4](https://purl.humanatlas.io/ref-organ/skin-male/v1.4)、[女性体表 v1.5](https://purl.humanatlas.io/ref-organ/skin-female/v1.5)，已居中、按场景高度缩放，并更换显示材质（肤色和透明度）；体表与器官并非同一个体的精确配准。
 - [男性心脏 v1.3](https://purl.humanatlas.io/ref-organ/heart-male/v1.3)、[男性肝脏 v1.2](https://purl.humanatlas.io/ref-organ/liver-male/v1.2)、[男性肺 v1.4](https://purl.humanatlas.io/ref-organ/lung-male/v1.4)。
 - 除子宫外，上述 HuBMAP 模型为男性参考器官；女性显示模式下仍会显示同一男性模型，不代表患者的个体解剖。展示时模型会居中缩放，肝脏材质在深色画布中经过提亮。
 

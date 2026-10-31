@@ -2,7 +2,7 @@
 
 // 学习中心 3D 画布：全身概览（真实肤色外皮 + 可点击器官标注）与器官特写两种模式。
 // 概览中点击文字标注 / 3D 器官 → 外皮淡出并聚焦该器官；点空白处恢复外皮。
-import { useEffect, useRef } from "react";
+import { Suspense, useEffect, useRef } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
@@ -10,12 +10,15 @@ import * as THREE from "three";
 import { ORGANS } from "@/lib/organ-models";
 import type { OrganId } from "@/lib/types";
 import { BodyOverviewScene, OrganCloseupScene } from "@/components/sim/BodyOverviewScene";
+import { BodyOutline } from "@/components/sim/BodyOutline";
+import { ReferenceBody } from "./ReferenceBody";
 
 interface Props {
   mode: "overview" | "organ";
   organId: OrganId;
   useReferenceModel?: boolean;
   showLabels?: boolean;
+  showBodySurface?: boolean;
   /** 概览中当前选中的器官（null = 外皮实体状态） */
   selectedId: OrganId | null;
   onSelect: (id: OrganId) => void;
@@ -79,6 +82,7 @@ export default function LearnCanvas({
   organId,
   useReferenceModel = true,
   showLabels = false,
+  showBodySurface = false,
   selectedId,
   onSelect,
   onClearSelect,
@@ -103,8 +107,14 @@ export default function LearnCanvas({
           maxDistance={6}
           target={[0, overview ? 1.0 : 0, 0]}
         />
+        {overview && (
+          <Suspense fallback={<BodyOutline mode="hologram" sex={sex} />}>
+            <ReferenceBody key={sex} sex={sex} solid={showBodySurface} />
+          </Suspense>
+        )}
         {overview ? (
           <BodyOverviewScene
+            showShell={false}
             highlightOrgan={selectedId}
             onSelectOrgan={(id) => id === selectedId ? onClearSelect() : onSelect(id)}
             shellMode="hologram"

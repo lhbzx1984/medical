@@ -192,6 +192,22 @@ test('overview uses independently aligned kidneys with atlas-consistent laterali
   assert.ok(Math.abs((left.position[1] - right.position[1]) - 0.018) < 0.002, 'the right kidney should be lower');
 });
 
+test('reference body models fit the shared standing coordinate system', async () => {
+  const { fitReferenceBody } = loadTs('src/lib/reference-body.ts');
+  const { GLTFLoader } = await import('three/examples/jsm/loaders/GLTFLoader.js');
+  for (const sex of ['male', 'female']) {
+    const bytes = fs.readFileSync(path.join(__dirname, `../public/models/hra-skin-${sex}.glb`));
+    const gltf = await new GLTFLoader().parseAsync(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength), '');
+    const bounds = new THREE.Box3().setFromObject(gltf.scene);
+    assert.ok(!bounds.isEmpty(), `${sex} body model must contain geometry`);
+    const fit = fitReferenceBody(bounds.min.toArray(), bounds.max.toArray());
+    assert.ok(Math.abs((bounds.min.y + fit.position[1]) * fit.scale) < 1e-6);
+    assert.ok(Math.abs((bounds.max.y + fit.position[1]) * fit.scale - 1.78) < 1e-6);
+    assert.ok(Math.abs(((bounds.min.x + bounds.max.x) / 2 + fit.position[0]) * fit.scale) < 1e-6);
+  }
+  assert.throws(() => fitReferenceBody([0,0,0], [1,0,1]), /Invalid/);
+});
+
 // Lungs, brain and eyeball (mackdown.md section 6). Helpers shared by the three tests below.
 const atlasParts = () => JSON.parse(fs.readFileSync(path.join(__dirname, '../public/atlas/atlas.json'), 'utf8')).parts;
 /** Union of the bounds of the atlas structures whose name (and, if given, system) matches. */
