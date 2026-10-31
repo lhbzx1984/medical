@@ -17,6 +17,8 @@ export interface OrganInfo {
   glb: string;
   referenceLabel?: string;
   closeupGlb?: string;
+  /** 概览中需独立配准的左右器官（如左右肾） */
+  bodyParts?: { glb: string; position: [number, number, number]; size: number }[];
   thumb: string;
   organImg: string;
   /** 概览场景中的中心位置 */
@@ -142,10 +144,14 @@ export const ORGANS: Record<OrganId, OrganInfo> = {
     glb: "/models/kidneys.glb",
     closeupGlb: "/models/innerscene-kidneys.glb",
     referenceLabel: "Innerscene 示意模型",
+    // 精细图谱左右肾的包围盒中心与最长边；+X 为患者左侧。
+    bodyParts: [
+      { glb: "/models/hra-kidney-left-male.glb", position: [0.0616, 1.1156, -0.0201], size: 0.1059 },
+      { glb: "/models/hra-kidney-right-male.glb", position: [-0.0590, 1.0971, -0.0117], size: 0.1044 },
+    ],
     thumb: "/anatomy/kidneys/thumb.webp",
     organImg: "/anatomy/kidneys/organ.webp",
-    // 取自精细图谱左右肾的包围盒中心与最大边长（米，最大边为左右宽）。
-    // 本模型下方带输尿管残端（图谱的肾不含输尿管），包围盒中心比肾主体中心低约 0.7 cm，故 y 比图谱中心 1.107 低 0.007。
+    // 单体模型的旧定位保留给标签、相机与原模型；概览使用上方独立配准的左右肾。
     bodyPosition: [0, 1.1, -0.014],
     bodySize: 0.178,
   },

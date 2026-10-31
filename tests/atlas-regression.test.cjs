@@ -167,6 +167,31 @@ test('overview kidneys and pancreas match their atlas structures in centre and l
   assert.deepEqual(off, []);
 });
 
+test('overview uses independently aligned kidneys with atlas-consistent laterality and height', async () => {
+  const { ORGANS } = loadTs('src/lib/organ-models.ts');
+  const { parts } = JSON.parse(fs.readFileSync(path.join(__dirname, '../public/atlas/atlas.json'), 'utf8'));
+  const { GLTFLoader } = await import('three/examples/jsm/loaders/GLTFLoader.js');
+  const kidneys = ORGANS.kidneys.bodyParts;
+  assert.equal(kidneys?.length, 2, 'the overview needs two separately positioned models');
+  const [left, right] = kidneys;
+  assert.notEqual(left.glb, right.glb);
+  for (const [part, side] of [[left, 'Left'], [right, 'Right']]) {
+    const atlas = parts.find((p) => p.name === `${side} kidney`);
+    assert.ok(atlas, `${side} kidney is missing from the atlas`);
+    const centre = atlas.bounds[0].map((v, i) => (v + atlas.bounds[1][i]) / 2);
+    const longest = Math.max(...atlas.bounds[0].map((v, i) => atlas.bounds[1][i] - v));
+    assert.ok(part.position.every((v, i) => Math.abs(v - centre[i]) < 0.001), `${side} kidney centre differs from atlas`);
+    assert.ok(Math.abs(part.size - longest) < 0.001, `${side} kidney size differs from atlas`);
+    const bytes = fs.readFileSync(path.join(__dirname, '../public', part.glb));
+    const gltf = await new GLTFLoader().parseAsync(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength), '');
+    const box = new THREE.Box3().setFromObject(gltf.scene);
+    const size = box.getSize(new THREE.Vector3());
+    assert.ok(!box.isEmpty() && size.y > size.x && size.y > size.z, `${side} model must have a vertical kidney shape`);
+  }
+  assert.ok(left.position[0] > 0 && right.position[0] < 0, '+X is the patient left');
+  assert.ok(Math.abs((left.position[1] - right.position[1]) - 0.018) < 0.002, 'the right kidney should be lower');
+});
+
 // Lungs, brain and eyeball (mackdown.md section 6). Helpers shared by the three tests below.
 const atlasParts = () => JSON.parse(fs.readFileSync(path.join(__dirname, '../public/atlas/atlas.json'), 'utf8')).parts;
 /** Union of the bounds of the atlas structures whose name (and, if given, system) matches. */

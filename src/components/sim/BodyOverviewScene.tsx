@@ -102,6 +102,23 @@ function OrganByInfo({
         onSelect(organ.id);
       }
     : undefined;
+  if (organ.bodyParts?.length) {
+    return (
+      <>
+        {organ.bodyParts.map((part) => (
+          <OrganModel
+            key={part.glb}
+            organ={{ ...organ, glb: part.glb }}
+            targetSize={part.size}
+            position={part.position}
+            highlight={highlight}
+            dimmed={dimmed}
+            onClick={onClick}
+          />
+        ))}
+      </>
+    );
+  }
   if (organ.procedural) {
     return (
       <FemaleReproductive
