@@ -594,7 +594,7 @@ export default function AtlasViewer({ onSelectStructure, sex = "male" }: Props) 
           <br />
           BodyParts3D 4.0 · CC BY 4.0{sex === "female" && (
           <br />
-        )}{sex === "female" && "女性模式：已隐藏男性生殖结构"}
+        )}{sex === "female" && "女性模式：以男性参考数据为基础，已隐藏男性生殖结构"}
         </div>
       </div>
     </div>

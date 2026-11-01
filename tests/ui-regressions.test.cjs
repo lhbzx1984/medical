@@ -198,6 +198,30 @@ test('3D overview offers skeleton, artery and vein layers that open the body sur
   } finally {panel.cleanup();}
 });
 
+test('extra organ selection follows sex and clears stale tutor context',()=>{
+  const panel=learningHarness('male');
+  try {
+    let tree=panel.render();
+    assert.ok(learningButton(tree,'脾'));
+    assert.ok(learningButton(tree,'膀胱'));
+    assert.ok(learningButton(tree,'前列腺'));
+    assert.equal(learningButton(tree,'卵巢'),undefined);
+    learningButton(tree,'脾').props.onClick();
+    tree=panel.render();
+    const canvas=tree.find(n=>n.props?.mode==='overview' && n.props.organId);
+    assert.equal(canvas.props.extraSelected,'spleen');
+    assert.match(learningChat(tree).props.context.organName,/脾/);
+    tree=panel.externalSex('female');
+    assert.equal(tree.find(n=>n.props?.mode==='overview' && n.props.organId).props.extraSelected,null);
+    assert.ok(learningButton(tree,'卵巢'));
+    assert.ok(learningButton(tree,'乳腺'));
+    assert.equal(learningButton(tree,'前列腺'),undefined);
+    learningButton(tree,'卵巢').props.onClick();
+    assert.match(learningChat(panel.render()).props.context.organName,/卵巢/);
+
+  } finally {panel.cleanup();}
+});
+
 test('an external sex update keeps the visible closeup and tutor context on an available organ',()=>{
   const panel=learningHarness();
   try {

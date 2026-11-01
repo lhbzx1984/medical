@@ -217,6 +217,23 @@ test('reference bodies share the atlas standing coordinate system', async () => 
   assert.ok(Math.abs((skin.min.x + skin.max.x) / 2) < 0.01, 'male skin is centred on the atlas midline');
 });
 
+test('supplementary reference organs have valid geometry near their recorded centers', async () => {
+  const { EXTRA_ORGAN_LIST } = loadTs('src/lib/extra-organs.ts');
+  const { GLTFLoader } = await import('three/examples/jsm/loaders/GLTFLoader.js');
+  for (const organ of EXTRA_ORGAN_LIST) for (const sex of ['male', 'female']) {
+    const paths = organ.files[sex]; if (!paths) continue;
+    const combined = new THREE.Box3();
+    for (const file of paths) {
+      const bytes = fs.readFileSync(path.join(__dirname, '../public', file));
+      const gltf = await new GLTFLoader().parseAsync(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength), '');
+      const box = new THREE.Box3().setFromObject(gltf.scene);
+      assert.ok(!box.isEmpty(), `${file} must contain geometry`); combined.union(box);
+    }
+    const center = combined.getCenter(new THREE.Vector3()).toArray();
+    assert.ok(center.every((n, i) => Math.abs(n - organ.centers[sex][i]) < 0.012), `${organ.id} ${sex} center mismatch: ${center}`);
+  }
+});
+
 // Lungs, brain and eyeball (mackdown.md section 6). Helpers shared by the three tests below.
 const atlasParts = () => JSON.parse(fs.readFileSync(path.join(__dirname, '../public/atlas/atlas.json'), 'utf8')).parts;
 /** Union of the bounds of the atlas structures whose name (and, if given, system) matches. */

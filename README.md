@@ -44,7 +44,8 @@
 
 ### 功能二：医学学习中心（`/learning`）
 
-- **全身概览**：在男女 2D 解剖图与 3D 器官同屏间切换；3D 支持旋转、缩放、显示标注、显示实体体表或透视内部，已有模型可进入特写。男性体表是 BodyParts3D 的写实皮肤（含头发、眉毛、嘴唇，与器官在同一图谱坐标系里），女性体表仍是 HuBMAP 参考网格（只升级了材质，没有面部细节）；眼球左右各一个（右眼沿身体中线镜像左眼）。还可单独打开骨骼、动脉、静脉三个解剖层（打开时体表自动让开；女性模式沿用男性解剖层，仅作示意）。体表与器官是示意配准，不代表个体解剖。
+- **全身概览**：在男女 2D 解剖图与 3D 器官同屏间切换；3D 支持旋转、缩放、显示标注、显示实体体表或透视内部，已有模型可进入特写。男性体表是 BodyParts3D 的写实皮肤（含头发、眉毛、嘴唇，与器官在同一图谱坐标系里），女性体表仍是 HuBMAP 参考网格（只升级了材质，没有面部细节）；眼球左右各一个（右眼沿身体中线镜像左眼）。还可单独打开骨骼、动脉、静脉三个解剖层（打开时体表自动让开；女性模式沿用男性解剖层，仅作示意）。体表与器官是示意配准，不代表个体解剖。 3D 补充脾、膀胱、前列腺（男性）、卵巢和乳腺（女性）参考模型，可在“更多器官”选择并聚焦。
+
   胃使用由图谱网格转换的独立特写模型；乳腺保留自身名称和导师上下文，尚无独立特写模型时明确提示
 - **器官特写**：脑 / 眼球 / 心脏 / 肺 / 肝 / 胰 / 肾 / 肠 / 皮肤组织 / 子宫附件（女性），360° 观察
 - **精细人体图谱**：BodyParts3D 4.0 的 **2,234 个可选择结构**，15 大解剖系统过滤、
@@ -287,8 +288,10 @@ $env:MEDPLAN_TEST_OUTPUT='D:/某个新目录'
 - [男性脑 v1.4](https://purl.humanatlas.io/ref-organ/brain-male/v1.4)、[男性左眼 v1.3](https://purl.humanatlas.io/ref-organ/eye-male-left/v1.3)、[男性胰腺 v1.3](https://purl.humanatlas.io/ref-organ/pancreas-male/v1.3)、[女性子宫 v1.2](https://purl.humanatlas.io/ref-organ/uterus-female/v1.2)。
 - [男性左肾 v1.3](https://purl.humanatlas.io/ref-organ/kidney-male-left/v1.3)、[男性右肾 v1.3](https://purl.humanatlas.io/ref-organ/kidney-male-right/v1.3)。
 - 3D 全身概览女性体表：[女性体表 v1.5](https://purl.humanatlas.io/ref-organ/skin-female/v1.5)，已居中、按场景高度缩放，并更换显示材质（肤色和透明度）；男性体表已改用 BodyParts3D 皮肤（见“版权与致谢”），原先的 HuBMAP 男性体表文件 `hra-skin-male.glb` 不再被引用，已从 `public/models` 删除；体表与器官并非同一个体的精确配准。
+
+- 同屏补充器官：HuBMAP [男性脾 v1.3](https://purl.humanatlas.io/ref-organ/spleen-male/v1.3)、[女性脾 v1.3](https://purl.humanatlas.io/ref-organ/spleen-female/v1.3)、[男性膀胱 v1.2](https://purl.humanatlas.io/ref-organ/urinary-bladder-male/v1.2)、[女性膀胱 v1.2](https://purl.humanatlas.io/ref-organ/urinary-bladder-female/v1.2)、[前列腺 v1.2](https://purl.humanatlas.io/ref-organ/prostate-male/v1.2)、女性[左卵巢](https://purl.humanatlas.io/ref-organ/ovary-female-left/v1.3)与[右卵巢](https://purl.humanatlas.io/ref-organ/ovary-female-right/v1.3)、女性[左乳腺](https://purl.humanatlas.io/ref-organ/mammary-gland-female-left/v1.1)与[右乳腺](https://purl.humanatlas.io/ref-organ/mammary-gland-female-right/v1.1)；按 HuBMAP 体表包围盒映射到图谱高度，乳腺颜色及部分透明度为显示而调整。
 - [男性心脏 v1.3](https://purl.humanatlas.io/ref-organ/heart-male/v1.3)、[男性肝脏 v1.2](https://purl.humanatlas.io/ref-organ/liver-male/v1.2)、[男性肺 v1.4](https://purl.humanatlas.io/ref-organ/lung-male/v1.4)。
-- 除子宫外，上述 HuBMAP 模型为男性参考器官；女性显示模式下仍会显示同一男性模型，不代表患者的个体解剖。展示时模型会居中缩放，肝脏材质在深色画布中经过提亮。
+- 脑、左眼、心脏、肺、肝、胰及肾的特写参考模型为男性参考；女性显示模式下仍会显示同一男性模型，不代表患者的个体解剖。展示时模型会居中缩放，肝脏材质在深色画布中经过提亮。
 
 ## 版权与致谢
 

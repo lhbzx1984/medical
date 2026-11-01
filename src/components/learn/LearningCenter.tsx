@@ -8,6 +8,7 @@ import { useCallback, useMemo, useState, useSyncExternalStore } from "react";
 import { ORGAN_LIST, ORGANS } from "@/lib/organ-models";
 import { ANATOMY_LAYER_IDS, ANATOMY_LAYERS, NO_ANATOMY_LAYERS, type AnatomyLayerId, type AnatomyLayerState } from "@/lib/anatomy-layers";
 import type { OrganId } from "@/lib/types";
+import { EXTRA_ORGANS, EXTRA_ORGAN_LIST, type ExtraOrganId } from "@/lib/extra-organs";
 import type { StructureInfo } from "@/components/atlas/AtlasViewer";
 import OrganQuiz from "./OrganQuiz";
 import { overviewStructure, type OverviewId } from "./Anatomy2D";
@@ -65,11 +66,14 @@ export default function LearningCenter() {
     if (!layers[id]) setShowBodySurface(false);
     setLayers({ ...layers, [id]: !layers[id] });
   }, [layers]);
+  const [extraSelected, setExtraSelected] = useState<{ id: ExtraOrganId; sex: Sex } | null>(null);
+
 
   const switchSex = useCallback((v: Sex) => {
     try { localStorage.setItem("mp-sex", v); } catch {}
     window.dispatchEvent(new Event("medplan-sex"));
     setSelected(null);
+    setExtraSelected(null);
     setStructure(null);
     if (v === "male" && organId === "uterus") setOrganId("heart");
   }, [organId]);
@@ -78,7 +82,8 @@ export default function LearningCenter() {
   const organ = chosenOrgan.femaleOnly && sex !== "female" ? ORGANS.heart : chosenOrgan;
   const selectedId = mode === "overview" && selected?.sex === sex ? selected.id : null;
   const structCtx = mode === "atlas" && structure?.sex === sex ? structure.info : null;
-  const overviewTarget = selectedId ? overviewStructure(selectedId) : null;
+  const extraId = mode === "overview" && overviewView === "3d" && extraSelected?.sex === sex ? extraSelected.id : null;
+  const overviewTarget = extraId ? EXTRA_ORGANS[extraId] : selectedId ? overviewStructure(selectedId) : null;
   // 自测题按 3D 器官出题；乳腺等没有对应器官模型的概览结构不提供自测入口。
   const quizTarget: OrganId | null = mode === "organ" ? organId : mode === "overview" ? overviewTarget?.modelId ?? null : null;
 
@@ -89,6 +94,7 @@ export default function LearningCenter() {
     setUseReferenceModel(id === "uterus" || id === "stomach");
     setStructure(null);
     setSelected(null);
+    setExtraSelected(null);
     setMode("organ");
     setControlsOpen(false);
   }, []);
@@ -96,8 +102,23 @@ export default function LearningCenter() {
   /** 概览中点击标注 / 3D 器官 → 选中并聚焦（保持概览，外皮淡出） */
   const focusOrgan = useCallback((id: OverviewId) => {
     setSelected({ id, sex });
+    setExtraSelected(null);
     setShowBodySurface(false);
   }, [sex]);
+
+  const selectExtra = useCallback((id: ExtraOrganId) => {
+    setSelected(null);
+    setExtraSelected({ id, sex });
+    setShowBodySurface(false);
+    setMode("overview");
+    setOverviewView("3d");
+    setControlsOpen(false);
+  }, [sex]);
+
+  const clearOverviewSelection = useCallback(() => {
+    setSelected(null);
+    setExtraSelected(null);
+  }, []);
 
   const chatContext = useMemo(() => {
     if (structCtx) {
@@ -143,7 +164,7 @@ export default function LearningCenter() {
           </div>
           {sex === "female" && (
             <div className="mt-1.5 text-[10px] leading-4 text-[var(--muted)]">
-              女性模式：图谱中已隐藏男性生殖结构
+              女性模式：精细图谱以男性参考数据为基础，已隐藏男性生殖结构。
             </div>
           )}
         </div>
@@ -161,7 +182,7 @@ export default function LearningCenter() {
                 setMode(id);
                 setControlsOpen(false);
                 if (id !== "atlas") setStructure(null);
-                if (id !== "overview") setSelected(null);
+                if (id !== "overview") { setSelected(null); setExtraSelected(null); }
               }}
               className={`rounded-lg border p-2.5 text-left transition-colors ${
                 mode === id
@@ -176,6 +197,14 @@ export default function LearningCenter() {
             </button>
           ))}
         </div>
+
+        <div className="mb-1.5 mt-3 text-[12px] font-semibold text-[var(--muted)]">更多器官 · 3D 观察</div>
+        <div className="grid grid-cols-2 gap-1.5">
+          {EXTRA_ORGAN_LIST.filter((item) => item.files[sex]).map((item) => (
+            <button key={item.id} className="btn !py-2 !text-xs" aria-pressed={extraId === item.id} onClick={() => selectExtra(item.id)}>{item.nameZh}</button>
+          ))}
+        </div>
+        <button className="btn mt-2 !py-2 !text-xs" onClick={() => { setMode("atlas"); setSelected(null); setExtraSelected(null); setControlsOpen(false); }}>浏览精细解剖图谱</button>
 
         <div className="mb-1.5 text-[12px] font-semibold text-[var(--muted)]">器官模型</div>
         <div className="grid grid-cols-2 gap-1.5">
@@ -226,7 +255,7 @@ export default function LearningCenter() {
                     key={view}
                     className={`btn !py-1 !text-xs ${overviewView === view ? "!border-[var(--accent)] !text-[var(--accent)]" : ""}`}
                     aria-pressed={overviewView === view}
-                    onClick={() => { setOverviewView(view); setSelected(null); }}
+                    onClick={() => { setOverviewView(view); clearOverviewSelection(); }}
                   >
                     {view === "2d" ? "2D 解剖图" : "3D 同屏"}
                   </button>
@@ -302,8 +331,10 @@ export default function LearningCenter() {
                   showBodySurface={showBodySurface}
                   layers={layers}
                   selectedId={mode === "overview" && selectedId !== "breast" ? selectedId : null}
+                  extraSelected={extraId}
+                  onSelectExtra={selectExtra}
                   onSelect={focusOrgan}
-                  onClearSelect={() => setSelected(null)}
+                  onClearSelect={clearOverviewSelection}
                   sex={sex}
                 />
               )}
@@ -337,7 +368,7 @@ export default function LearningCenter() {
                   {mode === "overview" && (
                     <div className="pointer-events-auto flex flex-col items-end gap-1.5">
                       {overviewView === "3d" && overviewTarget && (
-                        <button className="btn !py-1 !text-[11.5px]" onClick={() => setSelected(null)}>返回全身</button>
+                        <button className="btn !py-1 !text-[11.5px]" onClick={clearOverviewSelection}>返回全身</button>
                       )}
                       {overviewTarget?.modelId && (
                         <button
@@ -347,7 +378,8 @@ export default function LearningCenter() {
                           进入特写 →
                         </button>
                       )}
-                      {overviewTarget && !overviewTarget.modelId && <span className="text-[11px] text-[var(--muted)]">暂无特写模型</span>}
+                      {selectedId === "breast" && sex === "female" && overviewView === "2d" && <button className="btn !py-1 !text-[11.5px]" onClick={() => selectExtra("mammary")}>查看乳腺 3D</button>}
+                      {overviewTarget && !overviewTarget.modelId && <span className="text-[11px] text-[var(--muted)]">{extraId ? "参考器官 · 可旋转观察" : selectedId === "breast" ? "可在 3D 同屏观察" : "暂无特写模型"}</span>}
                       <div className="text-right text-[11px] text-[var(--muted)]">
                         {overviewView === "3d" ? "拖拽旋转 · 点击器官" : "点击标注查看器官"}
                         <br />
@@ -366,7 +398,7 @@ export default function LearningCenter() {
       <aside id="learning-chat" aria-label="AI 医学导师" className={`panel ${chatOpen ? "fixed inset-x-3 bottom-4 top-20 z-40 flex" : "hidden"} shrink-0 flex-col overflow-hidden xl:static xl:flex xl:w-[360px]`}>
         <button className="btn m-2 self-end xl:hidden" onClick={() => setChatOpen(false)}>关闭导师</button>
         <ChatPanel
-          key={`${sex}-${mode}-${structCtx ? structCtx.conceptId || structCtx.name : mode === "overview" ? selectedId ?? "overview" : organ.id}`}
+          key={`${sex}-${mode}-${structCtx ? structCtx.conceptId || structCtx.name : mode === "overview" ? extraId ?? selectedId ?? "overview" : organ.id}`}
           mode="learning"
           context={chatContext}
           className="h-full"

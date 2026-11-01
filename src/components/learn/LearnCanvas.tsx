@@ -11,6 +11,9 @@ import { ORGANS } from "@/lib/organ-models";
 import type { AnatomyLayerState } from "@/lib/anatomy-layers";
 import type { OrganId } from "@/lib/types";
 import { BodyOverviewScene, OrganCloseupScene } from "@/components/sim/BodyOverviewScene";
+import { Suspense } from "react";
+import { ExtraOrgans } from "./ExtraOrgans";
+import { EXTRA_ORGANS, type ExtraOrganId, extraBodyFit } from "@/lib/extra-organs";
 
 interface Props {
   mode: "overview" | "organ";
@@ -22,13 +25,15 @@ interface Props {
   layers?: AnatomyLayerState;
   /** 概览中当前选中的器官（null = 外皮实体状态） */
   selectedId: OrganId | null;
+  extraSelected?: ExtraOrganId | null;
+  onSelectExtra?: (id: ExtraOrganId) => void;
   onSelect: (id: OrganId) => void;
   onClearSelect: () => void;
   sex?: "male" | "female";
 }
 
 /** 相机焦点：概览选中器官后飞向该器官，清除后回到全身 */
-function CameraFocus({ mode, selectedId }: { mode: "overview" | "organ"; selectedId: OrganId | null }) {
+function CameraFocus({ mode, selectedId, extraSelected, sex }: { mode: "overview" | "organ"; selectedId: OrganId | null; extraSelected: ExtraOrganId | null; sex: "male" | "female" }) {
   const camera = useThree((s) => s.camera);
   const controls = useThree((s) => s.controls) as OrbitControlsImpl | null;
   const goal = useRef<{ pos: THREE.Vector3; target: THREE.Vector3 } | null>(null);
@@ -43,6 +48,11 @@ function CameraFocus({ mode, selectedId }: { mode: "overview" | "organ"; selecte
         target,
         pos: target.clone().add(dir.multiplyScalar(o.bodySize * 2.2 + 0.5)),
       };
+    } else if (mode === "overview" && extraSelected && EXTRA_ORGANS[extraSelected].centers[sex]) {
+      const fit = extraBodyFit(sex);
+      const center = EXTRA_ORGANS[extraSelected].centers[sex]!;
+      const target = new THREE.Vector3(...center).add(new THREE.Vector3(...fit.position)).multiplyScalar(fit.scale);
+      goal.current = { target, pos: target.clone().add(new THREE.Vector3(0.16, 0.13, 0.65)) };
     } else if (mode === "overview") {
       goal.current = {
         target: new THREE.Vector3(0, 1.0, 0),
@@ -55,7 +65,7 @@ function CameraFocus({ mode, selectedId }: { mode: "overview" | "organ"; selecte
       };
     }
     anim.current = true;
-  }, [mode, selectedId]);
+  }, [mode, selectedId, extraSelected, sex]);
 
   useEffect(() => {
     if (!controls) return;
@@ -86,22 +96,24 @@ export default function LearnCanvas({
   showBodySurface = false,
   layers,
   selectedId,
+  extraSelected = null,
+  onSelectExtra,
   onSelect,
   onClearSelect,
   sex = "male",
 }: Props) {
   const overview = mode === "overview";
   return (
-    <div className="vp absolute inset-0 bg-gradient-to-b from-[#0a1322] to-[#070d18]">
+    <div className="vp absolute inset-0 bg-[radial-gradient(ellipse_at_50%_38%,#35485a_0%,#182636_48%,#0b1523_100%)]">
       <Canvas
         dpr={[1, 2]}
         camera={{ position: [0.55, 1.5, 2.95], fov: 40, near: 0.01, far: 60 }}
         gl={{ antialias: true, alpha: true }}
         onPointerMissed={() => {
-          if (overview && selectedId) onClearSelect();
+          if (overview && (selectedId || extraSelected)) onClearSelect();
         }}
       >
-        <CameraFocus mode={mode} selectedId={overview ? selectedId : null} />
+        <CameraFocus mode={mode} selectedId={overview ? selectedId : null} extraSelected={overview ? extraSelected : null} sex={sex} />
         <OrbitControls
           makeDefault
           enablePan={false}
@@ -109,10 +121,16 @@ export default function LearnCanvas({
           maxDistance={6}
           target={[0, overview ? 1.0 : 0, 0]}
         />
+        {overview && onSelectExtra && (
+          <Suspense fallback={null}>
+            <ExtraOrgans sex={sex} selected={extraSelected} onSelect={onSelectExtra} />
+          </Suspense>
+        )}
         {overview ? (
           <BodyOverviewScene
             showShell
-            highlightOrgan={selectedId}
+            highlightOrgan={selectedId ?? (extraSelected ? "__extra__" : null)}
+            focusMode={extraSelected !== null}
             onSelectOrgan={(id) => id === selectedId ? onClearSelect() : onSelect(id)}
             shellMode={showBodySurface ? "skin" : "hologram"}
             showLabels={showLabels}
