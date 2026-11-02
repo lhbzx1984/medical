@@ -268,7 +268,7 @@ export default function LearningCenter() {
               </button>
             )}
             {mode === "overview" && overviewView === "3d" && (
-              <button className="btn !py-1 !text-xs" aria-pressed={showBodySurface} onClick={() => setShowBodySurface((show) => !show)}>
+              <button className="btn !py-1 !text-xs" aria-pressed={showBodySurface} onClick={() => { if (!showBodySurface) clearOverviewSelection(); setShowBodySurface((show) => !show); }}>
                 {showBodySurface ? "透视体表" : "显示体表"}
               </button>
             )}
@@ -353,11 +353,11 @@ export default function LearningCenter() {
                     {mode === "organ" && !useReferenceModel && organ.closeupGlb && <div className="text-[11px] text-[var(--muted)]">原器官模型 · 仅供教学示意</div>}
                     {mode === "overview" && overviewView === "3d" && (
                       <div className="text-[11px] text-[var(--muted)]">
-                        {sex === "male" ? "BodyParts3D 男性体表" : "HuBMAP 女性体表参考"} · 器官为示意配准
+                        {sex === "male" ? "BodyParts3D 男性体表" : "MakeHuman 女性体表参考"} · 器官为示意配准
                         {sex === "female" && ANATOMY_LAYER_IDS.some((id) => layers[id]) && " · 骨骼与血管层取自男性图谱，仅作示意"}
                       </div>
                     )}
-                    <div className="mt-0.5 text-[12.5px] leading-6 text-[var(--text)]">
+                    <div className={`mt-0.5 text-[12.5px] leading-6 text-[var(--text)] ${mode === "overview" && !overviewTarget ? "hidden sm:block" : ""}`}>
                       {overviewTarget
                         ? overviewTarget.brief
                         : mode === "overview"
@@ -380,7 +380,7 @@ export default function LearningCenter() {
                       )}
                       {selectedId === "breast" && sex === "female" && overviewView === "2d" && <button className="btn !py-1 !text-[11.5px]" onClick={() => selectExtra("mammary")}>查看乳腺 3D</button>}
                       {overviewTarget && !overviewTarget.modelId && <span className="text-[11px] text-[var(--muted)]">{extraId ? "参考器官 · 可旋转观察" : selectedId === "breast" ? "可在 3D 同屏观察" : "暂无特写模型"}</span>}
-                      <div className="text-right text-[11px] text-[var(--muted)]">
+                      <div className="hidden text-right text-[11px] text-[var(--muted)] sm:block">
                         {overviewView === "3d" ? "拖拽旋转 · 点击器官" : "点击标注查看器官"}
                         <br />
                         {overviewView === "3d" ? "点击空白返回全身" : "再次点击取消选择"}

@@ -44,7 +44,7 @@
 
 ### 功能二：医学学习中心（`/learning`）
 
-- **全身概览**：在男女 2D 解剖图与 3D 器官同屏间切换；3D 支持旋转、缩放、显示标注、显示实体体表或透视内部，已有模型可进入特写。男性体表是 BodyParts3D 的写实皮肤（含头发、眉毛、嘴唇，与器官在同一图谱坐标系里），女性体表仍是 HuBMAP 参考网格（只升级了材质，没有面部细节）；眼球左右各一个（右眼沿身体中线镜像左眼）。还可单独打开骨骼、动脉、静脉三个解剖层（打开时体表自动让开；女性模式沿用男性解剖层，仅作示意）。体表与器官是示意配准，不代表个体解剖。 3D 补充脾、膀胱、前列腺（男性）、卵巢和乳腺（女性）参考模型，可在“更多器官”选择并聚焦。
+- **全身概览**：在男女 2D 解剖图与 3D 器官同屏间切换；3D 支持旋转、缩放、显示标注、显示实体体表或透视内部，已有模型可进入特写。男性体表是 BodyParts3D 的写实皮肤（含头发、眉毛、嘴唇，与器官在同一图谱坐标系里），女性体表使用 MakeHuman 女性基础网格与示意眼部结构；概览中的眼球为左右各一个（右眼沿身体中线镜像左眼）。还可单独打开骨骼、动脉、静脉三个解剖层（打开时体表自动让开；女性模式沿用男性解剖层，仅作示意）。体表与器官是示意配准，不代表个体解剖。 3D 补充脾、膀胱、前列腺（男性）、卵巢和乳腺（女性）参考模型，可在“更多器官”选择并聚焦。
 
   胃使用由图谱网格转换的独立特写模型；乳腺保留自身名称和导师上下文，尚无独立特写模型时明确提示
 - **器官特写**：脑 / 眼球 / 心脏 / 肺 / 肝 / 胰 / 肾 / 肠 / 皮肤组织 / 子宫附件（女性），360° 观察
@@ -228,7 +228,7 @@ public/
   加载后统一克隆材质并置 `metalness=0` 还原漫反射色彩
 - **全身概览**：器官与体表使用同一套图谱坐标（米，Y 向上，脚底 y=0，体表高 1.719 m）摆放。
   男性体表是 BodyParts3D 的皮肤网格（含眉毛、头发、嘴唇，约 5.8 万三角形），女性体表是
-  HuBMAP 参考网格（缩放到同一高度）；人形"全息"轮廓（`BodyOutline`，程序化旋转体 + 菲涅尔
+  MakeHuman 女性参考网格（缩放到同一高度；眼球为附加示意）；人形"全息"轮廓（`BodyOutline`，程序化旋转体 + 菲涅尔
   边缘光）只在体表加载期间占位（skin.glb 实为皮肤显微组织切片，不作外壳）
 - **写实材质与光照**：`StudioLighting` 为人体概览、器官特写和手术规划统一提供三点灯光与程序化
   环境光（three 自带 `RoomEnvironment` 经 `PMREMGenerator` 预过滤，不加载外部 HDR 贴图）；
@@ -279,6 +279,10 @@ $env:MEDPLAN_TEST_OUTPUT='D:/某个新目录'
 
 真实服务验收需在完成自己的 Auth、SQL 和知识种子配置后执行：登录 → 新建合成病例 → 生成 v1 → 检查对应模拟 → 专家修订 v2 → 切回 v1 检查顾问上下文 → 学习问答及插图 → 用另一个账号确认看不到该病例。再核验错误输入、失败重试和限流。没有真实凭证时，不能据此认定真实云端链路已通过。
 
+## 女性人体体表来源
+
+女性体表 `public/models/makehuman-female.glb` 由 [MakeHuman 社区基础网格与体型数据](https://github.com/makehumancommunity/makehuman/tree/a8bc2d54ff0ac92e78ff71431b1023eda42bf482/makehuman/data)生成，原始资产为 CC0。使用 `3dobjs/base.obj`、`targets/macrodetails/asian-female-young.target` 与 `universal-female-young-averagemuscle-averageweight.target`；仅保留 body 面、应用体型变形、三角化并重新计算法线，最后缩放定位到场景高度。源文件与操作可通过 `scripts/build-makehuman-female.py` 重现（需 Python、numpy）；实体视图额外添加程序化眼球。此模型是一个理想化的成人女性参考，并不代表所有女性体型或经过临床验证的人体。它与 HuBMAP 器官及男性图谱骨骼、血管属于不同参考个体，位置与姿态仅近似，尤其是四肢解剖层不精确。学习中心显示实体体表时隐藏内部器官，切换透视或选中器官即可恢复。
+
 ## HuBMAP 器官模型来源
 
 脑、左眼、心脏、肺、肝、胰的器官特写可切换至 HuBMAP Human Reference Atlas 的男性参考器官模型；子宫特写默认使用女性参考模型（不含附件）。除胃、子宫外，器官特写默认使用原有带纹理模型，可手动切换参考模型。全身及模拟视图使用原有已配准模型，左右肾除外：人体概览使用 HuBMAP 男性左右独立肾模型并分别按图谱定位。参考器官数据采用 CC BY 4.0：
@@ -287,7 +291,7 @@ $env:MEDPLAN_TEST_OUTPUT='D:/某个新目录'
 - 肾、肠及胃特写采用 Innerscene 基于 MakeHuman 制作的 CC0 简化示意模型： https://www.innerscene.com/tools/library/3d-parts/kidneys-pair-c78928dd ， https://www.innerscene.com/tools/library/3d-parts/intestines-26224e6a ， https://www.innerscene.com/tools/library/3d-parts/stomach-e1e1d2ab 。皮肤组织沿用原有切面模型。
 - [男性脑 v1.4](https://purl.humanatlas.io/ref-organ/brain-male/v1.4)、[男性左眼 v1.3](https://purl.humanatlas.io/ref-organ/eye-male-left/v1.3)、[男性胰腺 v1.3](https://purl.humanatlas.io/ref-organ/pancreas-male/v1.3)、[女性子宫 v1.2](https://purl.humanatlas.io/ref-organ/uterus-female/v1.2)。
 - [男性左肾 v1.3](https://purl.humanatlas.io/ref-organ/kidney-male-left/v1.3)、[男性右肾 v1.3](https://purl.humanatlas.io/ref-organ/kidney-male-right/v1.3)。
-- 3D 全身概览女性体表：[女性体表 v1.5](https://purl.humanatlas.io/ref-organ/skin-female/v1.5)，已居中、按场景高度缩放，并更换显示材质（肤色和透明度）；男性体表已改用 BodyParts3D 皮肤（见“版权与致谢”），原先的 HuBMAP 男性体表文件 `hra-skin-male.glb` 不再被引用，已从 `public/models` 删除；体表与器官并非同一个体的精确配准。
+- 之前使用的 [HuBMAP 女性体表 v1.5](https://purl.humanatlas.io/ref-organ/skin-female/v1.5) 文件保留，包围盒仍用于 HuBMAP 补充器官的坐标映射；当前显示改用下述 MakeHuman 女性体表。两者来自不同个体，体表与器官并非精确配准。
 
 - 同屏补充器官：HuBMAP [男性脾 v1.3](https://purl.humanatlas.io/ref-organ/spleen-male/v1.3)、[女性脾 v1.3](https://purl.humanatlas.io/ref-organ/spleen-female/v1.3)、[男性膀胱 v1.2](https://purl.humanatlas.io/ref-organ/urinary-bladder-male/v1.2)、[女性膀胱 v1.2](https://purl.humanatlas.io/ref-organ/urinary-bladder-female/v1.2)、[前列腺 v1.2](https://purl.humanatlas.io/ref-organ/prostate-male/v1.2)、女性[左卵巢](https://purl.humanatlas.io/ref-organ/ovary-female-left/v1.3)与[右卵巢](https://purl.humanatlas.io/ref-organ/ovary-female-right/v1.3)、女性[左乳腺](https://purl.humanatlas.io/ref-organ/mammary-gland-female-left/v1.1)与[右乳腺](https://purl.humanatlas.io/ref-organ/mammary-gland-female-right/v1.1)；按 HuBMAP 体表包围盒映射到图谱高度，乳腺颜色及部分透明度为显示而调整。
 - 按需观察结构：HuBMAP 男女[喉 v1.1](https://purl.humanatlas.io/ref-organ/larynx-male/v1.1)（[女性](https://purl.humanatlas.io/ref-organ/larynx-female/v1.1)）、[气管 v1.1](https://purl.humanatlas.io/ref-organ/trachea-male/v1.1)（[女性](https://purl.humanatlas.io/ref-organ/trachea-female/v1.1)）、[脊髓 v1.1](https://purl.humanatlas.io/ref-organ/spinal-cord-male/v1.1)（[女性](https://purl.humanatlas.io/ref-organ/spinal-cord-female/v1.1)）、[胸腺 v1.3](https://purl.humanatlas.io/ref-organ/thymus-male/v1.3)（[女性](https://purl.humanatlas.io/ref-organ/thymus-female/v1.3)）和女性[左输卵管 v1.2](https://purl.humanatlas.io/ref-organ/fallopian-tube-female-left/v1.2)、[右输卵管 v1.2](https://purl.humanatlas.io/ref-organ/fallopian-tube-female-right/v1.2)。选择后才加载；与其他参考模型按体表包围盒近似配准，仅用于教学。

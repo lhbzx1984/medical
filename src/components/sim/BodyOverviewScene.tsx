@@ -173,7 +173,7 @@ export function BodyOverviewScene({
     <group>
       <StudioLighting />
 
-      {/* 人体体表（男性 BodyParts3D 皮肤，女性 HuBMAP 体表）；加载期间显示人形轮廓 */}
+      {/* 人体体表（男性 BodyParts3D 皮肤，女性 MakeHuman 体表）；加载期间显示人形轮廓 */}
       {showShell && (
         <Suspense
           fallback={<BodyOutline mode={shellMode} opacity={shellMode === "skin" ? shellFade : 1} sex={sex} />}

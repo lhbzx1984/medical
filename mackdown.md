@@ -14,6 +14,8 @@
 
 **2026-11-02 后续更新**：全身 3D 补充男女喉、气管、胸腺和脊髓，以及女性双侧输卵管，选择时才加载；完整人体图谱仍非完整女性数据，模型仅供教学。详见 `剩余器官3D修正-20261031/说明.md` 第 10 节。
 
+**2026-11-02 女性体表更新**：女性人体改为 MakeHuman CC0 基础体表，并补充示意眼部；实体体表视图隐藏器官以清晰观察外形。该体表与既有器官和男性骨骼层并非同一个体，配准仅为示意。详见 `剩余器官3D修正-20261031/说明.md` 第 11 节。
+
 
 本文取代合并前的 `mackdown.md`；合并前的原文保存在 [`docs/archive/local-line-20261030/mackdown.local-line.md`](docs/archive/local-line-20261030/mackdown.local-line.md)（只把会话链接和本机路径换成了占位符）。启动与接口以 [`README.md`](README.md) 为入口，逐文件清单见 [`docs/merge-ledger-20261030.md`](docs/merge-ledger-20261030.md)，交接说明见 [`CLAUDE_HANDOFF.md`](CLAUDE_HANDOFF.md)。
 

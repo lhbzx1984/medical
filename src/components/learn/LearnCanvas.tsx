@@ -123,7 +123,7 @@ export default function LearnCanvas({
           maxDistance={6}
           target={[0, overview ? 1.0 : 0, 0]}
         />
-        {overview && onSelectExtra && (
+        {overview && !showBodySurface && onSelectExtra && (
           <Suspense fallback={null}>
             <ExtraOrgans sex={sex} selected={extraSelected} onSelect={onSelectExtra} />
           </Suspense>
@@ -131,6 +131,7 @@ export default function LearnCanvas({
         {overview ? (
           <BodyOverviewScene
             showShell
+            showOrgans={!showBodySurface}
             highlightOrgan={selectedId ?? (extraSelected ? "__extra__" : null)}
             focusMode={extraSelected !== null}
             onSelectOrgan={(id) => id === selectedId ? onClearSelect() : onSelect(id)}

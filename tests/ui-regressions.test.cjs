@@ -171,7 +171,12 @@ test('overview switches between 2D and 3D without carrying an unsupported select
     assert.equal(selected.find(n=>n.props?.mode==='overview' && n.props.organId).props.selectedId,'kidneys');
     assert.equal(selected.find(n=>n.props?.mode==='overview' && n.props.organId).props.showBodySurface,false, 'selecting an organ restores transparency');
     assert.equal(learningChat(selected).props.context.organId,'kidneys');
-    learningButton(selected,'2D 解剖图').props.onClick();
+    learningButton(selected,'显示体表').props.onClick();
+    const surface=panel.render();
+    assert.equal(surface.find(n=>n.props?.mode==='overview' && n.props.organId).props.selectedId,null, 'solid view clears organ selection');
+    assert.equal(surface.find(n=>n.props?.mode==='overview' && n.props.organId).props.showBodySurface,true);
+    assert.match(learningChat(surface).props.context.organName,/全身概览/);
+    learningButton(surface,'2D 解剖图').props.onClick();
     const back=panel.render();
     assert.equal(back.find(n=>n.props?.onEnterCloseup).props.selectedId,null);
     assert.match(learningChat(back).props.context.organName,/全身概览/);

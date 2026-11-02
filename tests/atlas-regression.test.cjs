@@ -203,8 +203,8 @@ test('reference bodies share the atlas standing coordinate system', async () => 
   const atlasSkinTop = Math.max(...JSON.parse(fs.readFileSync(path.join(__dirname, '../public/atlas/atlas.json'), 'utf8')).parts
     .filter((p) => p.name === 'Skin').map((p) => p.bounds[1][1]));
   assert.ok(Math.abs(REFERENCE_BODY_HEIGHT - atlasSkinTop) < 0.001, `body height ${REFERENCE_BODY_HEIGHT}, atlas skin top ${atlasSkinTop}`);
-  // Female: the HuBMAP body is fitted to that height, standing on y=0 and centred on x/z.
-  const female = new THREE.Box3().setFromObject((await load('hra-skin-female.glb')).scene);
+  // Female: the MakeHuman body is fitted to that height, standing on y=0 and centred on x/z.
+  const female = new THREE.Box3().setFromObject((await load('makehuman-female.glb')).scene);
   assert.ok(!female.isEmpty(), 'female body model must contain geometry');
   const fit = fitReferenceBody(female.min.toArray(), female.max.toArray());
   assert.ok(Math.abs((female.min.y + fit.position[1]) * fit.scale) < 1e-6);
