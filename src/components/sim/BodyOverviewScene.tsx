@@ -166,6 +166,7 @@ export function BodyOverviewScene({
     (o) =>
       !o.isShell &&
       (!o.femaleOnly || sex === "female") &&
+      !(focusMode && o.procedural) &&
       (!onlyFocus || o.id === focus)
   );
   return (

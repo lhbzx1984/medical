@@ -52,7 +52,9 @@ function CameraFocus({ mode, selectedId, extraSelected, sex }: { mode: "overview
       const fit = extraBodyFit(sex);
       const center = EXTRA_ORGANS[extraSelected].centers[sex]!;
       const target = new THREE.Vector3(...center).add(new THREE.Vector3(...fit.position)).multiplyScalar(fit.scale);
-      goal.current = { target, pos: target.clone().add(new THREE.Vector3(0.16, 0.13, 0.65)) };
+      const distance = EXTRA_ORGANS[extraSelected].focusDistance ?? 0.68;
+      const direction = new THREE.Vector3(0.16, 0.13, 0.65).normalize();
+      goal.current = { target, pos: target.clone().add(direction.multiplyScalar(distance)) };
     } else if (mode === "overview") {
       goal.current = {
         target: new THREE.Vector3(0, 1.0, 0),

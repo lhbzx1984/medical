@@ -39,7 +39,7 @@ export function ExtraOrgans({ sex, selected, onSelect }: { sex: "male" | "female
   const fit = extraBodyFit(sex);
   return <group scale={fit.scale}>
     <group position={fit.position}>
-      {EXTRA_ORGAN_LIST.flatMap((organ) => (organ.files[sex] ?? []).map((path) => (
+      {EXTRA_ORGAN_LIST.filter((organ) => !organ.onDemand || selected === organ.id).flatMap((organ) => (organ.files[sex] ?? []).map((path) => (
         <Suspense key={path} fallback={null}><ExtraMesh path={path} selected={selected === organ.id} dimmed={selected !== null && selected !== organ.id} mammary={organ.id === "mammary"} onSelect={() => onSelect(organ.id)} /></Suspense>
       )))}
     </group>
