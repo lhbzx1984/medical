@@ -279,6 +279,10 @@ $env:MEDPLAN_TEST_OUTPUT='D:/某个新目录'
 
 真实服务验收需在完成自己的 Auth、SQL 和知识种子配置后执行：登录 → 新建合成病例 → 生成 v1 → 检查对应模拟 → 专家修订 v2 → 切回 v1 检查顾问上下文 → 学习问答及插图 → 用另一个账号确认看不到该病例。再核验错误输入、失败重试和限流。没有真实凭证时，不能据此认定真实云端链路已通过。
 
+## 女性体表分区
+
+在学习中心选择“女性”→“3D 同屏”→“体表分区”，可按头面部、颈部、胸腹部、上肢和下肢选择 34 个前面体表区域，所选区域以点位标注。切换时会显示实体体表并关闭已打开的骨骼、血管层；继续选择器官或图层会退出分区模式。手机上选择后列表会收起。区域名称参考用户提供的体表解剖分区图及 [OpenStax 解剖学术语](https://openstax.org/books/anatomy-and-physiology-2e/pages/1-6-anatomical-terminology)；点位是粗略示意，不是参考图中的区域边界，也未覆盖所有后面及深部结构，不用于临床定位。女性实体体表的头发与发髻为程序化示意，不改变网格或器官坐标。
+
 ## 女性人体体表来源
 
 女性体表 `public/models/makehuman-female.glb` 由 [MakeHuman 社区基础网格与体型数据](https://github.com/makehumancommunity/makehuman/tree/a8bc2d54ff0ac92e78ff71431b1023eda42bf482/makehuman/data)生成，原始资产为 CC0。使用 `3dobjs/base.obj`、`targets/macrodetails/asian-female-young.target` 与 `universal-female-young-averagemuscle-averageweight.target`；仅保留 body 面、应用体型变形、三角化并重新计算法线，最后缩放定位到场景高度。源文件与操作可通过 `scripts/build-makehuman-female.py` 重现（需 Python、numpy）；实体视图额外添加程序化眼球。此模型是一个理想化的成人女性参考，并不代表所有女性体型或经过临床验证的人体。它与 HuBMAP 器官及男性图谱骨骼、血管属于不同参考个体，位置与姿态仅近似，尤其是四肢解剖层不精确。学习中心显示实体体表时隐藏内部器官，切换透视或选中器官即可恢复。

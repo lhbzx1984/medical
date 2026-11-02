@@ -16,6 +16,8 @@
 
 **2026-11-02 女性体表更新**：女性人体改为 MakeHuman CC0 基础体表，并补充示意眼部；实体体表视图隐藏器官以清晰观察外形。该体表与既有器官和男性骨骼层并非同一个体，配准仅为示意。详见 `剩余器官3D修正-20261031/说明.md` 第 11 节。
 
+**2026-11-02 女性体表分区**：依据用户提供的女性体表分区图，在女性实体视图增加发髻和 34 个可选择的前面体表区域点位；未绘制精确区域边界，详见 `剩余器官3D修正-20261031/说明.md` 第 12 节。
+
 
 本文取代合并前的 `mackdown.md`；合并前的原文保存在 [`docs/archive/local-line-20261030/mackdown.local-line.md`](docs/archive/local-line-20261030/mackdown.local-line.md)（只把会话链接和本机路径换成了占位符）。启动与接口以 [`README.md`](README.md) 为入口，逐文件清单见 [`docs/merge-ledger-20261030.md`](docs/merge-ledger-20261030.md)，交接说明见 [`CLAUDE_HANDOFF.md`](CLAUDE_HANDOFF.md)。
 

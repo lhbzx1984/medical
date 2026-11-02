@@ -47,6 +47,8 @@ export function ReferenceBody({ sex, solid = false }: { sex: "male" | "female"; 
       mesh.renderOrder = glass ? (mesh.material === skin ? 5 : 6) : 0;
       mesh.raycast = () => {};
     });
+    // 按皮肤本身拟合，发髻不会改变身高或器官的位置。
+    const skinBounds = sex === "female" ? new THREE.Box3().setFromObject(clone) : null;
     // MakeHuman 基础体表的眼眶不包含眼球；实体展示时补充简洁的眼白与虹膜。
     if (sex === "female" && solid) {
       const eyeWhite = own(new THREE.MeshStandardMaterial({ color: "#eee7e0", roughness: 0.34 }));
@@ -62,12 +64,24 @@ export function ReferenceBody({ sex, solid = false }: { sex: "male" | "female"; 
         eye.raycast = () => {}; pupil.raycast = () => {};
         clone.add(eye, pupil);
       }
+      // 参考图中的收发与发髻仅用于体表展示，不遮挡透视器官。
+      const hairMaterial = own(createHairMaterial(false));
+      const capGeometry = new THREE.SphereGeometry(1, 32, 20, 0, Math.PI * 2, 0, 1.36);
+      const bunGeometry = new THREE.SphereGeometry(1, 24, 16);
+      geometries.push(capGeometry, bunGeometry);
+      const cap = new THREE.Mesh(capGeometry, hairMaterial);
+      cap.position.set(0, 0.616, 0.044);
+      cap.scale.set(0.069, 0.064, 0.086);
+      const bun = new THREE.Mesh(bunGeometry, hairMaterial);
+      bun.position.set(0, 0.688, -0.012);
+      bun.scale.set(0.034, 0.022, 0.035);
+      cap.raycast = () => {}; bun.raycast = () => {};
+      clone.add(cap, bun);
     }
     const group = new THREE.Group();
     group.add(clone);
-    if (sex === "female") {
-      const bounds = new THREE.Box3().setFromObject(clone);
-      const fit = fitReferenceBody(bounds.min.toArray(), bounds.max.toArray());
+    if (skinBounds) {
+      const fit = fitReferenceBody(skinBounds.min.toArray(), skinBounds.max.toArray());
       clone.position.set(...fit.position);
       group.scale.setScalar(fit.scale);
     }

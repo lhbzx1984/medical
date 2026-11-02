@@ -10,6 +10,8 @@ import { ANATOMY_LAYER_IDS, ANATOMY_LAYERS, NO_ANATOMY_LAYERS, type AnatomyLayer
 import type { OrganId } from "@/lib/types";
 import { EXTRA_ORGANS, EXTRA_ORGAN_LIST, type ExtraOrganId } from "@/lib/extra-organs";
 import type { StructureInfo } from "@/components/atlas/AtlasViewer";
+import type { SurfaceRegion } from "@/lib/surface-regions";
+import SurfaceRegionPanel from "./SurfaceRegionPanel";
 import OrganQuiz from "./OrganQuiz";
 import { overviewStructure, type OverviewId } from "./Anatomy2D";
 
@@ -59,11 +61,13 @@ export default function LearningCenter() {
   const [overviewView, setOverviewView] = useState<"2d" | "3d">("2d");
   const [show3DLabels, setShow3DLabels] = useState(false);
   const [showBodySurface, setShowBodySurface] = useState(false);
+  const [showSurfaceRegions, setShowSurfaceRegions] = useState(false);
+  const [surfaceRegion, setSurfaceRegion] = useState<SurfaceRegion | null>(null);
   const [layers, setLayers] = useState<AnatomyLayerState>(NO_ANATOMY_LAYERS);
 
   /** 打开骨骼 / 血管层时自动切到透视体表，否则层被不透明的皮肤挡住 */
   const toggleLayer = useCallback((id: AnatomyLayerId) => {
-    if (!layers[id]) setShowBodySurface(false);
+    if (!layers[id]) { setShowBodySurface(false); setShowSurfaceRegions(false); }
     setLayers({ ...layers, [id]: !layers[id] });
   }, [layers]);
   const [extraSelected, setExtraSelected] = useState<{ id: ExtraOrganId; sex: Sex } | null>(null);
@@ -75,6 +79,8 @@ export default function LearningCenter() {
     setSelected(null);
     setExtraSelected(null);
     setStructure(null);
+    setShowSurfaceRegions(false);
+    setSurfaceRegion(null);
     if (v === "male" && organId === "uterus") setOrganId("heart");
   }, [organId]);
 
@@ -82,6 +88,7 @@ export default function LearningCenter() {
   const organ = chosenOrgan.femaleOnly && sex !== "female" ? ORGANS.heart : chosenOrgan;
   const selectedId = mode === "overview" && selected?.sex === sex ? selected.id : null;
   const structCtx = mode === "atlas" && structure?.sex === sex ? structure.info : null;
+  const surfaceMode = showSurfaceRegions && sex === "female" && mode === "overview" && overviewView === "3d" && showBodySurface;
   const extraId = mode === "overview" && overviewView === "3d" && extraSelected?.sex === sex ? extraSelected.id : null;
   const overviewTarget = extraId ? EXTRA_ORGANS[extraId] : selectedId ? overviewStructure(selectedId) : null;
   // 自测题按 3D 器官出题；乳腺等没有对应器官模型的概览结构不提供自测入口。
@@ -92,6 +99,7 @@ export default function LearningCenter() {
     setOrganId(id);
     // 保留子宫与胃的参考模型，其他器官默认使用原有带纹理的模型。
     setUseReferenceModel(id === "uterus" || id === "stomach");
+    setShowSurfaceRegions(false);
     setStructure(null);
     setSelected(null);
     setExtraSelected(null);
@@ -102,12 +110,14 @@ export default function LearningCenter() {
   /** 概览中点击标注 / 3D 器官 → 选中并聚焦（保持概览，外皮淡出） */
   const focusOrgan = useCallback((id: OverviewId) => {
     setSelected({ id, sex });
+    setShowSurfaceRegions(false);
     setExtraSelected(null);
     setShowBodySurface(false);
   }, [sex]);
 
   const selectExtra = useCallback((id: ExtraOrganId) => {
     setSelected(null);
+    setShowSurfaceRegions(false);
     setExtraSelected({ id, sex });
     setShowBodySurface(false);
     setMode("overview");
@@ -182,7 +192,7 @@ export default function LearningCenter() {
                 setMode(id);
                 setControlsOpen(false);
                 if (id !== "atlas") setStructure(null);
-                if (id !== "overview") { setSelected(null); setExtraSelected(null); }
+                if (id !== "overview") { setSelected(null); setExtraSelected(null); setShowSurfaceRegions(false); }
               }}
               className={`rounded-lg border p-2.5 text-left transition-colors ${
                 mode === id
@@ -204,7 +214,7 @@ export default function LearningCenter() {
             <button key={item.id} className="btn !py-2 !text-xs" aria-pressed={extraId === item.id} onClick={() => selectExtra(item.id)}>{item.nameZh}</button>
           ))}
         </div>
-        <button className="btn mt-2 !py-2 !text-xs" onClick={() => { setMode("atlas"); setSelected(null); setExtraSelected(null); setControlsOpen(false); }}>浏览精细解剖图谱</button>
+        <button className="btn mt-2 !py-2 !text-xs" onClick={() => { setMode("atlas"); setSelected(null); setExtraSelected(null); setShowSurfaceRegions(false); setControlsOpen(false); }}>浏览精细解剖图谱</button>
 
         <div className="mb-1.5 text-[12px] font-semibold text-[var(--muted)]">器官模型</div>
         <div className="grid grid-cols-2 gap-1.5">
@@ -255,21 +265,29 @@ export default function LearningCenter() {
                     key={view}
                     className={`btn !py-1 !text-xs ${overviewView === view ? "!border-[var(--accent)] !text-[var(--accent)]" : ""}`}
                     aria-pressed={overviewView === view}
-                    onClick={() => { setOverviewView(view); clearOverviewSelection(); }}
+                    onClick={() => { setOverviewView(view); clearOverviewSelection(); setShowSurfaceRegions(false); }}
                   >
                     {view === "2d" ? "2D 解剖图" : "3D 同屏"}
                   </button>
                 ))}
               </div>
             )}
-            {mode === "overview" && overviewView === "3d" && (
+            {mode === "overview" && overviewView === "3d" && !surfaceMode && (
               <button className="btn !py-1 !text-xs" aria-pressed={show3DLabels} onClick={() => setShow3DLabels((show) => !show)}>
                 {show3DLabels ? "隐藏标注" : "显示标注"}
               </button>
             )}
             {mode === "overview" && overviewView === "3d" && (
-              <button className="btn !py-1 !text-xs" aria-pressed={showBodySurface} onClick={() => { if (!showBodySurface) clearOverviewSelection(); setShowBodySurface((show) => !show); }}>
+              <button className="btn !py-1 !text-xs" aria-pressed={showBodySurface} onClick={() => { if (!showBodySurface) clearOverviewSelection(); setShowSurfaceRegions(false); setShowBodySurface((show) => !show); }}>
                 {showBodySurface ? "透视体表" : "显示体表"}
+              </button>
+            )}
+            {mode === "overview" && overviewView === "3d" && sex === "female" && (
+              <button className={`btn !py-1 !text-xs ${surfaceMode ? "!border-[var(--accent)] !text-[var(--accent)]" : ""}`} aria-pressed={surfaceMode} onClick={() => {
+                if (surfaceMode) { setShowSurfaceRegions(false); setSurfaceRegion(null); }
+                else { clearOverviewSelection(); setShow3DLabels(false); setLayers(NO_ANATOMY_LAYERS); setShowBodySurface(true); setShowSurfaceRegions(true); }
+              }}>
+                {surfaceMode ? "关闭体表分区" : "体表分区"}
               </button>
             )}
             {mode === "overview" && overviewView === "3d" && (
@@ -329,6 +347,8 @@ export default function LearningCenter() {
                   useReferenceModel={useReferenceModel}
                   showLabels={show3DLabels}
                   showBodySurface={showBodySurface}
+                  surfaceMode={surfaceMode}
+                  surfaceRegion={surfaceRegion}
                   layers={layers}
                   selectedId={mode === "overview" && selectedId !== "breast" ? selectedId : null}
                   extraSelected={extraId}
@@ -338,6 +358,7 @@ export default function LearningCenter() {
                   sex={sex}
                 />
               )}
+              {surfaceMode && <SurfaceRegionPanel selected={surfaceRegion} onSelect={setSurfaceRegion} />}
               {/* 底部信息条（视口内，保持深色） */}
               <div className="vp pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-[rgba(5,9,17,0.94)] to-transparent px-4 pb-3 pt-10">
                 <div className="flex flex-wrap items-end justify-between gap-2">

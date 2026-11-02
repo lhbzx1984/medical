@@ -4,7 +4,7 @@
 // 概览中点击文字标注 / 3D 器官 → 外皮淡出并聚焦该器官；点空白处恢复外皮。
 import { useEffect, useRef } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { OrbitControls } from "@react-three/drei";
+import { Html, OrbitControls } from "@react-three/drei";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import * as THREE from "three";
 import { ORGANS } from "@/lib/organ-models";
@@ -14,6 +14,7 @@ import { BodyOverviewScene, OrganCloseupScene } from "@/components/sim/BodyOverv
 import { Suspense } from "react";
 import { ExtraOrgans } from "./ExtraOrgans";
 import { EXTRA_ORGANS, type ExtraOrganId, extraBodyFit } from "@/lib/extra-organs";
+import type { SurfaceRegion } from "@/lib/surface-regions";
 
 interface Props {
   mode: "overview" | "organ";
@@ -21,6 +22,8 @@ interface Props {
   useReferenceModel?: boolean;
   showLabels?: boolean;
   showBodySurface?: boolean;
+  surfaceMode?: boolean;
+  surfaceRegion?: SurfaceRegion | null;
   /** 概览中打开的解剖层 */
   layers?: AnatomyLayerState;
   /** 概览中当前选中的器官（null = 外皮实体状态） */
@@ -33,14 +36,16 @@ interface Props {
 }
 
 /** 相机焦点：概览选中器官后飞向该器官，清除后回到全身 */
-function CameraFocus({ mode, selectedId, extraSelected, sex }: { mode: "overview" | "organ"; selectedId: OrganId | null; extraSelected: ExtraOrganId | null; sex: "male" | "female" }) {
+function CameraFocus({ mode, selectedId, extraSelected, sex, surfaceMode }: { mode: "overview" | "organ"; selectedId: OrganId | null; extraSelected: ExtraOrganId | null; sex: "male" | "female"; surfaceMode: boolean }) {
   const camera = useThree((s) => s.camera);
   const controls = useThree((s) => s.controls) as OrbitControlsImpl | null;
   const goal = useRef<{ pos: THREE.Vector3; target: THREE.Vector3 } | null>(null);
   const anim = useRef(false);
 
   useEffect(() => {
-    if (mode === "overview" && selectedId) {
+    if (mode === "overview" && surfaceMode) {
+      goal.current = { target: new THREE.Vector3(0, 1.0, 0), pos: new THREE.Vector3(0, 1.0, 2.95) };
+    } else if (mode === "overview" && selectedId) {
       const o = ORGANS[selectedId];
       const target = new THREE.Vector3(...o.bodyPosition);
       const dir = new THREE.Vector3(0.22, 0.18, 1).normalize();
@@ -67,7 +72,7 @@ function CameraFocus({ mode, selectedId, extraSelected, sex }: { mode: "overview
       };
     }
     anim.current = true;
-  }, [mode, selectedId, extraSelected, sex]);
+  }, [mode, selectedId, extraSelected, sex, surfaceMode]);
 
   useEffect(() => {
     if (!controls) return;
@@ -96,6 +101,8 @@ export default function LearnCanvas({
   useReferenceModel = true,
   showLabels = false,
   showBodySurface = false,
+  surfaceMode = false,
+  surfaceRegion = null,
   layers,
   selectedId,
   extraSelected = null,
@@ -115,7 +122,7 @@ export default function LearnCanvas({
           if (overview && (selectedId || extraSelected)) onClearSelect();
         }}
       >
-        <CameraFocus mode={mode} selectedId={overview ? selectedId : null} extraSelected={overview ? extraSelected : null} sex={sex} />
+        <CameraFocus mode={mode} selectedId={overview ? selectedId : null} extraSelected={overview ? extraSelected : null} sex={sex} surfaceMode={overview && surfaceMode} />
         <OrbitControls
           makeDefault
           enablePan={false}
@@ -123,6 +130,13 @@ export default function LearnCanvas({
           maxDistance={6}
           target={[0, overview ? 1.0 : 0, 0]}
         />
+        {overview && surfaceMode && surfaceRegion && (
+          <Html position={[...surfaceRegion.position]} style={{ pointerEvents: "none" }}>
+            <div className="relative h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-teal-300 shadow-lg">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 whitespace-nowrap rounded-full border border-teal-300/80 bg-[#102d3b]/95 px-2 py-1 text-[11px] font-semibold text-white shadow-lg">{surfaceRegion.name}</span>
+            </div>
+          </Html>
+        )}
         {overview && !showBodySurface && onSelectExtra && (
           <Suspense fallback={null}>
             <ExtraOrgans sex={sex} selected={extraSelected} onSelect={onSelectExtra} />

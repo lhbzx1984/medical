@@ -203,6 +203,35 @@ test('3D overview offers skeleton, artery and vein layers that open the body sur
   } finally {panel.cleanup();}
 });
 
+test('female surface regions open a clean body view and exit for organ or layer selection',()=>{
+  const panel=learningHarness('female');
+  try {
+    learningButton(panel.render(),'3D 同屏').props.onClick();
+    learningButton(panel.render(),'骨骼').props.onClick();
+    learningButton(panel.render(),'体表分区').props.onClick();
+    let tree=panel.render();
+    let canvas=tree.find(n=>n.props?.mode==='overview' && n.props.organId);
+    assert.equal(canvas.props.surfaceMode,true);
+    assert.equal(canvas.props.showBodySurface,true);
+    assert.deepEqual(canvas.props.layers,{skeletal:false,arterial:false,venous:false});
+    const regionPanel=tree.find(n=>typeof n.props?.onSelect==='function' && 'selected' in n.props);
+    assert.ok(regionPanel);
+    regionPanel.props.onSelect({name:'脐区',position:[0,1.02,0.105]});
+    assert.equal(panel.render().find(n=>n.props?.mode==='overview' && n.props.organId).props.surfaceRegion.name,'脐区');
+    learningButton(panel.render(),'卵巢').props.onClick();
+    canvas=panel.render().find(n=>n.props?.mode==='overview' && n.props.organId);
+    assert.equal(canvas.props.surfaceMode,false);
+    assert.equal(canvas.props.showBodySurface,false);
+    assert.equal(canvas.props.extraSelected,'ovaries');
+    learningButton(panel.render(),'体表分区').props.onClick();
+    learningButton(panel.render(),'骨骼').props.onClick();
+    canvas=panel.render().find(n=>n.props?.mode==='overview' && n.props.organId);
+    assert.equal(canvas.props.surfaceMode,false);
+    assert.equal(canvas.props.showBodySurface,false);
+    assert.equal(canvas.props.layers.skeletal,true);
+  } finally { panel.cleanup(); }
+});
+
 test('extra organ selection follows sex and clears stale tutor context',()=>{
   const panel=learningHarness('male');
   try {
