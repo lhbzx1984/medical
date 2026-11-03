@@ -20,6 +20,8 @@
 
 **2026-11-03 女性体表分区线**：增加可隐藏的体表正面示意线，投影贴合女性模型表面；不是精确解剖边界。详见 `剩余器官3D修正-20261031/说明.md` 第 13 节。
 
+**2026-11-03 女性体表背面**：补充背面示意分区和正反面切换，避免旋转时透过人体显示另一面的标记；详见 `剩余器官3D修正-20261031/说明.md` 第 14 节。
+
 
 本文取代合并前的 `mackdown.md`；合并前的原文保存在 [`docs/archive/local-line-20261030/mackdown.local-line.md`](docs/archive/local-line-20261030/mackdown.local-line.md)（只把会话链接和本机路径换成了占位符）。启动与接口以 [`README.md`](README.md) 为入口，逐文件清单见 [`docs/merge-ledger-20261030.md`](docs/merge-ledger-20261030.md)，交接说明见 [`CLAUDE_HANDOFF.md`](CLAUDE_HANDOFF.md)。
 

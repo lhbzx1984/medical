@@ -10,7 +10,7 @@ import { ANATOMY_LAYER_IDS, ANATOMY_LAYERS, NO_ANATOMY_LAYERS, type AnatomyLayer
 import type { OrganId } from "@/lib/types";
 import { EXTRA_ORGANS, EXTRA_ORGAN_LIST, type ExtraOrganId } from "@/lib/extra-organs";
 import type { StructureInfo } from "@/components/atlas/AtlasViewer";
-import type { SurfaceRegion } from "@/lib/surface-regions";
+import type { SurfaceRegion, SurfaceSide } from "@/lib/surface-regions";
 import SurfaceRegionPanel from "./SurfaceRegionPanel";
 import OrganQuiz from "./OrganQuiz";
 import { overviewStructure, type OverviewId } from "./Anatomy2D";
@@ -64,6 +64,7 @@ export default function LearningCenter() {
   const [showSurfaceRegions, setShowSurfaceRegions] = useState(false);
   const [showSurfaceLines, setShowSurfaceLines] = useState(true);
   const [surfaceRegion, setSurfaceRegion] = useState<SurfaceRegion | null>(null);
+  const [surfaceSide, setSurfaceSide] = useState<SurfaceSide>("front");
   const [layers, setLayers] = useState<AnatomyLayerState>(NO_ANATOMY_LAYERS);
 
   /** 打开骨骼 / 血管层时自动切到透视体表，否则层被不透明的皮肤挡住 */
@@ -352,6 +353,7 @@ export default function LearningCenter() {
                   showLabels={show3DLabels}
                   showBodySurface={showBodySurface}
                   surfaceMode={surfaceMode}
+                  surfaceSide={surfaceSide}
                   showSurfaceLines={showSurfaceLines}
                   surfaceRegion={surfaceRegion}
                   layers={layers}
@@ -363,9 +365,9 @@ export default function LearningCenter() {
                   sex={sex}
                 />
               )}
-              {surfaceMode && <SurfaceRegionPanel selected={surfaceRegion} onSelect={setSurfaceRegion} />}
+              {surfaceMode && <SurfaceRegionPanel selected={surfaceRegion} onSelect={setSurfaceRegion} side={surfaceSide} onSideChange={(side) => { setSurfaceRegion(null); setSurfaceSide(side); }} />}
               {/* 底部信息条（视口内，保持深色） */}
-              <div className="vp pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-[rgba(5,9,17,0.94)] to-transparent px-4 pb-3 pt-10">
+              <div className={`vp pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-[rgba(5,9,17,0.94)] to-transparent px-4 pb-3 pt-10 ${surfaceMode ? "hidden sm:block" : ""}`}>
                 <div className="flex flex-wrap items-end justify-between gap-2">
                   <div className="max-w-[72%]">
                     <div className="text-[15px] font-bold text-[var(--heading)]">

@@ -15,7 +15,7 @@ import { Suspense } from "react";
 import { ExtraOrgans } from "./ExtraOrgans";
 import SurfaceBoundaryLines from "./SurfaceBoundaryLines";
 import { EXTRA_ORGANS, type ExtraOrganId, extraBodyFit } from "@/lib/extra-organs";
-import type { SurfaceRegion } from "@/lib/surface-regions";
+import type { SurfaceRegion, SurfaceSide } from "@/lib/surface-regions";
 
 interface Props {
   mode: "overview" | "organ";
@@ -24,6 +24,7 @@ interface Props {
   showLabels?: boolean;
   showBodySurface?: boolean;
   surfaceMode?: boolean;
+  surfaceSide?: SurfaceSide;
   showSurfaceLines?: boolean;
   surfaceRegion?: SurfaceRegion | null;
   /** 概览中打开的解剖层 */
@@ -38,7 +39,7 @@ interface Props {
 }
 
 /** 相机焦点：概览选中器官后飞向该器官，清除后回到全身 */
-function CameraFocus({ mode, selectedId, extraSelected, sex, surfaceMode }: { mode: "overview" | "organ"; selectedId: OrganId | null; extraSelected: ExtraOrganId | null; sex: "male" | "female"; surfaceMode: boolean }) {
+function CameraFocus({ mode, selectedId, extraSelected, sex, surfaceMode, surfaceSide }: { mode: "overview" | "organ"; selectedId: OrganId | null; extraSelected: ExtraOrganId | null; sex: "male" | "female"; surfaceMode: boolean; surfaceSide: SurfaceSide }) {
   const camera = useThree((s) => s.camera);
   const controls = useThree((s) => s.controls) as OrbitControlsImpl | null;
   const goal = useRef<{ pos: THREE.Vector3; target: THREE.Vector3 } | null>(null);
@@ -46,7 +47,14 @@ function CameraFocus({ mode, selectedId, extraSelected, sex, surfaceMode }: { mo
 
   useEffect(() => {
     if (mode === "overview" && surfaceMode) {
-      goal.current = { target: new THREE.Vector3(0, 1.0, 0), pos: new THREE.Vector3(0, 1.0, 2.95) };
+      // 正反面切换直接定位，避免插值穿过人体中心。
+      const target = new THREE.Vector3(0, 1.0, 0);
+      const pos = new THREE.Vector3(0, 1.0, surfaceSide === "front" ? 2.95 : -2.95);
+      camera.position.copy(pos);
+      if (controls) { controls.target.copy(target); controls.update(); }
+      goal.current = null;
+      anim.current = false;
+      return;
     } else if (mode === "overview" && selectedId) {
       const o = ORGANS[selectedId];
       const target = new THREE.Vector3(...o.bodyPosition);
@@ -74,7 +82,7 @@ function CameraFocus({ mode, selectedId, extraSelected, sex, surfaceMode }: { mo
       };
     }
     anim.current = true;
-  }, [mode, selectedId, extraSelected, sex, surfaceMode]);
+  }, [mode, selectedId, extraSelected, sex, surfaceMode, surfaceSide, camera, controls]);
 
   useEffect(() => {
     if (!controls) return;
@@ -97,6 +105,22 @@ function CameraFocus({ mode, selectedId, extraSelected, sex, surfaceMode }: { mo
   return null;
 }
 
+/** 只在观察所选表面时显示标注，避免标记透过人体出现在另一侧。 */
+function SurfaceMarker({ region, side }: { region: SurfaceRegion; side: SurfaceSide }) {
+  const element = useRef<HTMLDivElement>(null);
+  const camera = useThree((state) => state.camera);
+  const controls = useThree((state) => state.controls) as OrbitControlsImpl | null;
+  useFrame(() => {
+    const facingFront = camera.position.z >= (controls?.target.z ?? 0);
+    if (element.current) element.current.style.visibility = facingFront === (side === "front") ? "visible" : "hidden";
+  });
+  return <Html position={[...region.position]} style={{ pointerEvents: "none" }}>
+    <div ref={element} className="relative h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-teal-300 shadow-lg">
+      <span className="absolute left-3 top-1/2 -translate-y-1/2 whitespace-nowrap rounded-full border border-teal-300/80 bg-[#102d3b]/95 px-2 py-1 text-[11px] font-semibold text-white shadow-lg">{region.name}</span>
+    </div>
+  </Html>;
+}
+
 export default function LearnCanvas({
   mode,
   organId,
@@ -104,6 +128,7 @@ export default function LearnCanvas({
   showLabels = false,
   showBodySurface = false,
   surfaceMode = false,
+  surfaceSide = "front",
   showSurfaceLines = true,
   surfaceRegion = null,
   layers,
@@ -125,7 +150,7 @@ export default function LearnCanvas({
           if (overview && (selectedId || extraSelected)) onClearSelect();
         }}
       >
-        <CameraFocus mode={mode} selectedId={overview ? selectedId : null} extraSelected={overview ? extraSelected : null} sex={sex} surfaceMode={overview && surfaceMode} />
+        <CameraFocus mode={mode} selectedId={overview ? selectedId : null} extraSelected={overview ? extraSelected : null} sex={sex} surfaceMode={overview && surfaceMode} surfaceSide={surfaceSide} />
         <OrbitControls
           makeDefault
           enablePan={false}
@@ -133,13 +158,9 @@ export default function LearnCanvas({
           maxDistance={6}
           target={[0, overview ? 1.0 : 0, 0]}
         />
-        {overview && surfaceMode && showSurfaceLines && <Suspense fallback={null}><SurfaceBoundaryLines /></Suspense>}
+        {overview && surfaceMode && showSurfaceLines && <Suspense fallback={null}><SurfaceBoundaryLines side={surfaceSide} /></Suspense>}
         {overview && surfaceMode && surfaceRegion && (
-          <Html position={[...surfaceRegion.position]} style={{ pointerEvents: "none" }}>
-            <div className="relative h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-teal-300 shadow-lg">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 whitespace-nowrap rounded-full border border-teal-300/80 bg-[#102d3b]/95 px-2 py-1 text-[11px] font-semibold text-white shadow-lg">{surfaceRegion.name}</span>
-            </div>
-          </Html>
+          <SurfaceMarker region={surfaceRegion} side={surfaceSide} />
         )}
         {overview && !showBodySurface && onSelectExtra && (
           <Suspense fallback={null}>

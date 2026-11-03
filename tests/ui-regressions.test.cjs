@@ -222,6 +222,10 @@ test('female surface regions open a clean body view and exit for organ or layer 
     assert.ok(regionPanel);
     regionPanel.props.onSelect({name:'脐区',position:[0,1.02,0.105]});
     assert.equal(panel.render().find(n=>n.props?.mode==='overview' && n.props.organId).props.surfaceRegion.name,'脐区');
+    panel.render().find(n=>typeof n.props?.onSideChange==='function').props.onSideChange('back');
+    canvas=panel.render().find(n=>n.props?.mode==='overview' && n.props.organId);
+    assert.equal(canvas.props.surfaceSide,'back');
+    assert.equal(canvas.props.surfaceRegion,null, 'switching sides clears the previous label');
     learningButton(panel.render(),'卵巢').props.onClick();
     canvas=panel.render().find(n=>n.props?.mode==='overview' && n.props.organId);
     assert.equal(canvas.props.surfaceMode,false);

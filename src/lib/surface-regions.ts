@@ -46,4 +46,31 @@ export const SURFACE_REGION_GROUPS = [
   ] },
 ] as const;
 
-export type SurfaceRegion = (typeof SURFACE_REGION_GROUPS)[number]["regions"][number];
+/** 背面区域为教学用近似位置，不构成精确体表边界。 */
+export const POSTERIOR_REGION_GROUPS = [
+  { name: "头颈部", regions: [
+    { name: "枕区", position: [0, 1.65, -0.09] },
+    { name: "颈后区", position: [0, 1.49, -0.09] },
+  ] },
+  { name: "背部", regions: [
+    { name: "肩胛区", position: [0.10, 1.35, -0.10] },
+    { name: "脊柱区", position: [0, 1.23, -0.10] },
+    { name: "腰背区", position: [-0.08, 1.04, -0.10] },
+    { name: "骶区", position: [0, 0.91, -0.12] },
+    { name: "臀区", position: [-0.095, 0.82, -0.13] },
+  ] },
+  { name: "上肢", regions: [
+    { name: "臂后区", position: [0.235, 1.29, -0.07] },
+    { name: "肘后区", position: [0.305, 1.16, -0.07] },
+    { name: "前臂后区", position: [-0.36, 1.07, -0.06] },
+    { name: "手背区", position: [0.48, 0.96, -0.05] },
+  ] },
+  { name: "下肢", regions: [
+    { name: "大腿后区", position: [-0.12, 0.68, -0.12] },
+    { name: "腘区", position: [0.105, 0.46, -0.10] },
+    { name: "小腿后区", position: [-0.105, 0.30, -0.10] },
+    { name: "足跟区", position: [0.15, 0.06, -0.10] },
+  ] },
+] as const;
+export type SurfaceSide = "front" | "back";
+export type SurfaceRegion = (typeof SURFACE_REGION_GROUPS)[number]["regions"][number] | (typeof POSTERIOR_REGION_GROUPS)[number]["regions"][number];
