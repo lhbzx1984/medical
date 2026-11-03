@@ -62,6 +62,7 @@ export default function LearningCenter() {
   const [show3DLabels, setShow3DLabels] = useState(false);
   const [showBodySurface, setShowBodySurface] = useState(false);
   const [showSurfaceRegions, setShowSurfaceRegions] = useState(false);
+  const [showSurfaceLines, setShowSurfaceLines] = useState(true);
   const [surfaceRegion, setSurfaceRegion] = useState<SurfaceRegion | null>(null);
   const [layers, setLayers] = useState<AnatomyLayerState>(NO_ANATOMY_LAYERS);
 
@@ -290,6 +291,9 @@ export default function LearningCenter() {
                 {surfaceMode ? "关闭体表分区" : "体表分区"}
               </button>
             )}
+            {surfaceMode && (
+              <button className="btn !py-1 !text-xs" aria-pressed={showSurfaceLines} onClick={() => setShowSurfaceLines((show) => !show)}>{showSurfaceLines ? "隐藏分区线" : "显示分区线"}</button>
+            )}
             {mode === "overview" && overviewView === "3d" && (
               <div className="flex gap-1" role="group" aria-label="解剖层">
                 {ANATOMY_LAYER_IDS.map((id) => (
@@ -348,6 +352,7 @@ export default function LearningCenter() {
                   showLabels={show3DLabels}
                   showBodySurface={showBodySurface}
                   surfaceMode={surfaceMode}
+                  showSurfaceLines={showSurfaceLines}
                   surfaceRegion={surfaceRegion}
                   layers={layers}
                   selectedId={mode === "overview" && selectedId !== "breast" ? selectedId : null}

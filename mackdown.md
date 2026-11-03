@@ -18,6 +18,8 @@
 
 **2026-11-02 女性体表分区**：依据用户提供的女性体表分区图，在女性实体视图增加发髻和 34 个可选择的前面体表区域点位；未绘制精确区域边界，详见 `剩余器官3D修正-20261031/说明.md` 第 12 节。
 
+**2026-11-03 女性体表分区线**：增加可隐藏的体表正面示意线，投影贴合女性模型表面；不是精确解剖边界。详见 `剩余器官3D修正-20261031/说明.md` 第 13 节。
+
 
 本文取代合并前的 `mackdown.md`；合并前的原文保存在 [`docs/archive/local-line-20261030/mackdown.local-line.md`](docs/archive/local-line-20261030/mackdown.local-line.md)（只把会话链接和本机路径换成了占位符）。启动与接口以 [`README.md`](README.md) 为入口，逐文件清单见 [`docs/merge-ledger-20261030.md`](docs/merge-ledger-20261030.md)，交接说明见 [`CLAUDE_HANDOFF.md`](CLAUDE_HANDOFF.md)。
 

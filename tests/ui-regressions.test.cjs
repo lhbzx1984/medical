@@ -213,6 +213,10 @@ test('female surface regions open a clean body view and exit for organ or layer 
     let canvas=tree.find(n=>n.props?.mode==='overview' && n.props.organId);
     assert.equal(canvas.props.surfaceMode,true);
     assert.equal(canvas.props.showBodySurface,true);
+    assert.equal(canvas.props.showSurfaceLines,true);
+    learningButton(tree,'隐藏分区线').props.onClick();
+    assert.equal(panel.render().find(n=>n.props?.mode==='overview' && n.props.organId).props.showSurfaceLines,false);
+    learningButton(panel.render(),'显示分区线').props.onClick();
     assert.deepEqual(canvas.props.layers,{skeletal:false,arterial:false,venous:false});
     const regionPanel=tree.find(n=>typeof n.props?.onSelect==='function' && 'selected' in n.props);
     assert.ok(regionPanel);

@@ -13,6 +13,7 @@ import type { OrganId } from "@/lib/types";
 import { BodyOverviewScene, OrganCloseupScene } from "@/components/sim/BodyOverviewScene";
 import { Suspense } from "react";
 import { ExtraOrgans } from "./ExtraOrgans";
+import SurfaceBoundaryLines from "./SurfaceBoundaryLines";
 import { EXTRA_ORGANS, type ExtraOrganId, extraBodyFit } from "@/lib/extra-organs";
 import type { SurfaceRegion } from "@/lib/surface-regions";
 
@@ -23,6 +24,7 @@ interface Props {
   showLabels?: boolean;
   showBodySurface?: boolean;
   surfaceMode?: boolean;
+  showSurfaceLines?: boolean;
   surfaceRegion?: SurfaceRegion | null;
   /** 概览中打开的解剖层 */
   layers?: AnatomyLayerState;
@@ -102,6 +104,7 @@ export default function LearnCanvas({
   showLabels = false,
   showBodySurface = false,
   surfaceMode = false,
+  showSurfaceLines = true,
   surfaceRegion = null,
   layers,
   selectedId,
@@ -130,6 +133,7 @@ export default function LearnCanvas({
           maxDistance={6}
           target={[0, overview ? 1.0 : 0, 0]}
         />
+        {overview && surfaceMode && showSurfaceLines && <Suspense fallback={null}><SurfaceBoundaryLines /></Suspense>}
         {overview && surfaceMode && surfaceRegion && (
           <Html position={[...surfaceRegion.position]} style={{ pointerEvents: "none" }}>
             <div className="relative h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-teal-300 shadow-lg">
