@@ -204,7 +204,14 @@ test('reference bodies share the atlas standing coordinate system', async () => 
     .filter((p) => p.name === 'Skin').map((p) => p.bounds[1][1]));
   assert.ok(Math.abs(REFERENCE_BODY_HEIGHT - atlasSkinTop) < 0.001, `body height ${REFERENCE_BODY_HEIGHT}, atlas skin top ${atlasSkinTop}`);
   // Female: the MakeHuman body is fitted to that height, standing on y=0 and centred on x/z.
-  const female = new THREE.Box3().setFromObject((await load('makehuman-female.glb')).scene);
+  const femaleBytes = fs.readFileSync(path.join(__dirname, '../public/models/makehuman-female-detailed.glb'));
+  const jsonLength = femaleBytes.readUInt32LE(12);
+  const gltfJson = JSON.parse(femaleBytes.subarray(20, 20 + jsonLength).toString('utf8'));
+  const primitive = gltfJson.meshes[0].primitives.find((part) => gltfJson.materials[part.material]?.name === 'Skin');
+  assert.ok(primitive, 'detailed female model has a skin surface');
+  assert.ok(gltfJson.textures?.length > 0, 'detailed female model retains its textures');
+  const bounds = gltfJson.accessors[primitive.attributes.POSITION];
+  const female = new THREE.Box3(new THREE.Vector3(...bounds.min), new THREE.Vector3(...bounds.max));
   assert.ok(!female.isEmpty(), 'female body model must contain geometry');
   const fit = fitReferenceBody(female.min.toArray(), female.max.toArray());
   assert.ok(Math.abs((female.min.y + fit.position[1]) * fit.scale) < 1e-6);

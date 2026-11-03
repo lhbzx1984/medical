@@ -61,7 +61,13 @@ export default function SurfaceBoundaryLines({ side }: { side: SurfaceSide }) {
     wrapper.scale.setScalar(fit.scale);
     wrapper.updateMatrixWorld(true);
     const material = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide });
-    model.traverse((node) => { if ((node as THREE.Mesh).isMesh) (node as THREE.Mesh).material = material; });
+    model.traverse((node) => {
+      const mesh = node as THREE.Mesh;
+      if (!mesh.isMesh) return;
+      // 仅投影到皮肤；头发和眼部不是体表分区的测量表面。
+      if (!Array.isArray(mesh.material) && mesh.material.name === "Skin") mesh.material = material;
+      else mesh.raycast = () => {};
+    });
     const ray = new THREE.Raycaster();
     const direction = new THREE.Vector3(0, 0, side === "front" ? -1 : 1);
     const vertices: number[] = [];

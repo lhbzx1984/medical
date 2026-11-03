@@ -22,6 +22,8 @@
 
 **2026-11-03 女性体表背面**：补充背面示意分区和正反面切换，避免旋转时透过人体显示另一面的标记；详见 `剩余器官3D修正-20261031/说明.md` 第 14 节。
 
+**2026-11-03 女性体表写实更新**：采用 Ara 3D Gen 基于 MakeHuman CC0 素材生成的女性模型，保留面部、眼部、发型与皮肤纹理；器官与其他图层仍为近似配准。详见 `剩余器官3D修正-20261031/说明.md` 第 16 节。
+
 
 本文取代合并前的 `mackdown.md`；合并前的原文保存在 [`docs/archive/local-line-20261030/mackdown.local-line.md`](docs/archive/local-line-20261030/mackdown.local-line.md)（只把会话链接和本机路径换成了占位符）。启动与接口以 [`README.md`](README.md) 为入口，逐文件清单见 [`docs/merge-ledger-20261030.md`](docs/merge-ledger-20261030.md)，交接说明见 [`CLAUDE_HANDOFF.md`](CLAUDE_HANDOFF.md)。
 
