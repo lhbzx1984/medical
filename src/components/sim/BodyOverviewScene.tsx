@@ -162,6 +162,7 @@ export function BodyOverviewScene({
   layers,
 }: BodyOverviewSceneProps) {
   const focus = (highlightOrgan ?? null) as OrganId | null;
+  const femaleMuscleView = sex === "female" && !!layers?.muscular && shellMode === "hologram" && !highlightOrgan;
   const organs = ORGAN_LIST.filter(
     (o) =>
       !o.isShell &&
@@ -178,14 +179,14 @@ export function BodyOverviewScene({
         <Suspense
           fallback={<BodyOutline mode={shellMode} opacity={shellMode === "skin" ? shellFade : 1} sex={sex} />}
         >
-          <ReferenceBody key={sex} sex={sex} solid={shellMode === "skin"} />
+          <ReferenceBody key={sex} sex={sex} solid={shellMode === "skin"} headOnly={femaleMuscleView} />
         </Suspense>
       )}
 
-      {layers && <AnatomyLayers layers={layers} />}
+      {layers && <AnatomyLayers layers={layers} femaleHead={femaleMuscleView} />}
 
       <Suspense fallback={null}>
-        {showOrgans &&
+        {showOrgans && !femaleMuscleView &&
           organs.map((o) => (
             <OrganByInfo
               key={o.id}

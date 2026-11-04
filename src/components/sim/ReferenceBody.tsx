@@ -15,10 +15,10 @@ export const REFERENCE_BODY_GLB = {
   female: "/models/makehuman-female-detailed.glb",
 } as const;
 
-export function ReferenceBody({ sex, solid = false }: { sex: "male" | "female"; solid?: boolean }) {
+export function ReferenceBody({ sex, solid = false, headOnly = false }: { sex: "male" | "female"; solid?: boolean; headOnly?: boolean }) {
   const { scene } = useGLTF(REFERENCE_BODY_GLB[sex]);
   const body = useMemo(() => {
-    const glass = !solid;
+    const glass = !solid && !headOnly;
     const skin = createSkinMaterial({ glass });
     const materials: THREE.Material[] = [skin];
     const own = <T extends THREE.Material>(material: T) => {
@@ -32,7 +32,11 @@ export function ReferenceBody({ sex, solid = false }: { sex: "male" | "female"; 
       if (sex === "female") {
         const original = mesh.material as THREE.MeshStandardMaterial;
         if (glass) { mesh.visible = original.name === "Skin"; mesh.material = skin; }
-        else { mesh.material = own(original.clone()); }
+        else {
+          const material = own(original.clone());
+          if (headOnly) material.clippingPlanes = [new THREE.Plane(new THREE.Vector3(0, 1, 0), -1.48)];
+          mesh.material = material;
+        }
         mesh.raycast = () => {};
         return;
       }
@@ -63,7 +67,7 @@ export function ReferenceBody({ sex, solid = false }: { sex: "male" | "female"; 
       group.scale.setScalar(fit.scale);
     }
     return { group, materials };
-  }, [scene, sex, solid]);
+  }, [scene, sex, solid, headOnly]);
   useEffect(() => () => {
     body.materials.forEach((material) => material.dispose());
   }, [body]);

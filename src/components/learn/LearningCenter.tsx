@@ -67,12 +67,13 @@ export default function LearningCenter() {
   const [surfaceSide, setSurfaceSide] = useState<SurfaceSide>("front");
   const [layers, setLayers] = useState<AnatomyLayerState>(NO_ANATOMY_LAYERS);
 
-  /** 打开骨骼 / 血管层时自动切到透视体表，否则层被不透明的皮肤挡住 */
+  const [extraSelected, setExtraSelected] = useState<{ id: ExtraOrganId; sex: Sex } | null>(null);
+
+  /** 打开解剖层时自动切到透视体表。 */
   const toggleLayer = useCallback((id: AnatomyLayerId) => {
-    if (!layers[id]) { setShowBodySurface(false); setShowSurfaceRegions(false); }
+    if (!layers[id]) { setShowBodySurface(false); setShowSurfaceRegions(false); if (id === "muscular") { setSelected(null); setExtraSelected(null); } }
     setLayers({ ...layers, [id]: !layers[id] });
   }, [layers]);
-  const [extraSelected, setExtraSelected] = useState<{ id: ExtraOrganId; sex: Sex } | null>(null);
 
 
   const switchSex = useCallback((v: Sex) => {
@@ -382,7 +383,7 @@ export default function LearningCenter() {
                     {mode === "overview" && overviewView === "3d" && (
                       <div className="text-[11px] text-[var(--muted)]">
                         {sex === "male" ? "BodyParts3D 男性体表" : "MakeHuman 女性体表参考"} · 器官为示意配准
-                        {sex === "female" && ANATOMY_LAYER_IDS.some((id) => layers[id]) && " · 肌肉、骨骼与血管层取自男性图谱，仅作示意"}
+                        {sex === "female" && ANATOMY_LAYER_IDS.some((id) => layers[id]) && " · 肌肉、骨骼与血管层取自男性图谱，仅作示意；女性头部与肌肉为近似拼接"}
                       </div>
                     )}
                     <div className={`mt-0.5 text-[12.5px] leading-6 text-[var(--text)] ${mode === "overview" && !overviewTarget ? "hidden sm:block" : ""}`}>

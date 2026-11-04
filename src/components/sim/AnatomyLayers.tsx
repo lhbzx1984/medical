@@ -8,11 +8,12 @@ import { ANATOMY_LAYER_IDS, ANATOMY_LAYERS, type AnatomyLayerId, type AnatomyLay
 import * as THREE from "three";
 import { createLayerMaterial } from "./realistic-materials";
 
-function AnatomyLayer({ id }: { id: AnatomyLayerId }) {
+function AnatomyLayer({ id, femaleHead }: { id: AnatomyLayerId; femaleHead: boolean }) {
   const { scene } = useGLTF(ANATOMY_LAYERS[id].glb);
   const layer = useMemo(() => {
     const object = scene.clone(true);
     const material = createLayerMaterial(id);
+    if (id === "muscular" && femaleHead) material.clippingPlanes = [new THREE.Plane(new THREE.Vector3(0, -1, 0), 1.48)];
     object.traverse((child) => {
       const mesh = child as THREE.Mesh;
       if (!mesh.isMesh) return;
@@ -20,17 +21,17 @@ function AnatomyLayer({ id }: { id: AnatomyLayerId }) {
       mesh.raycast = () => {};
     });
     return { object, material };
-  }, [scene, id]);
+  }, [scene, id, femaleHead]);
   useEffect(() => () => layer.material.dispose(), [layer]);
   return <primitive object={layer.object} />;
 }
 
-export function AnatomyLayers({ layers }: { layers: AnatomyLayerState }) {
+export function AnatomyLayers({ layers, femaleHead = false }: { layers: AnatomyLayerState; femaleHead?: boolean }) {
   return (
     <>
       {ANATOMY_LAYER_IDS.filter((id) => layers[id]).map((id) => (
         <Suspense key={id} fallback={null}>
-          <AnatomyLayer id={id} />
+          <AnatomyLayer id={id} femaleHead={femaleHead} />
         </Suspense>
       ))}
     </>

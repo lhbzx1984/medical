@@ -143,6 +143,7 @@ export default function LearnCanvas({
   return (
     <div className="vp absolute inset-0 bg-[radial-gradient(ellipse_at_50%_38%,#35485a_0%,#182636_48%,#0b1523_100%)]">
       <Canvas
+        onCreated={({ gl }) => { gl.localClippingEnabled = true; }}
         dpr={[1, 2]}
         camera={{ position: [0.55, 1.5, 2.95], fov: 40, near: 0.01, far: 60 }}
         gl={{ antialias: true, alpha: true }}
@@ -162,7 +163,7 @@ export default function LearnCanvas({
         {overview && surfaceMode && surfaceRegion && (
           <SurfaceMarker region={surfaceRegion} side={surfaceSide} />
         )}
-        {overview && !showBodySurface && onSelectExtra && (
+        {overview && !showBodySurface && !(sex === "female" && layers?.muscular && !selectedId && !extraSelected) && onSelectExtra && (
           <Suspense fallback={null}>
             <ExtraOrgans sex={sex} selected={extraSelected} onSelect={onSelectExtra} />
           </Suspense>

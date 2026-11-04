@@ -206,6 +206,23 @@ test('3D overview offers skeleton, artery and vein layers that open the body sur
   } finally {panel.cleanup();}
 });
 
+test('female muscle view clears an organ selection and returns to the body surface',()=>{
+  const panel=learningHarness('female');
+  try {
+    learningButton(panel.render(),'3D 同屏').props.onClick();
+    learningButton(panel.render(),'卵巢').props.onClick();
+    learningButton(panel.render(),'肌肉').props.onClick();
+    let tree=panel.render();
+    let canvas=tree.find(n=>n.props?.mode==='overview' && n.props.organId);
+    assert.equal(canvas.props.extraSelected,null);
+    assert.equal(canvas.props.layers.muscular,true);
+    assert.equal(canvas.props.showBodySurface,false);
+    learningButton(tree,'显示体表').props.onClick();
+    canvas=panel.render().find(n=>n.props?.mode==='overview' && n.props.organId);
+    assert.equal(canvas.props.showBodySurface,true);
+  } finally { panel.cleanup(); }
+});
+
 test('female surface regions open a clean body view and exit for organ or layer selection',()=>{
   const panel=learningHarness('female');
   try {
