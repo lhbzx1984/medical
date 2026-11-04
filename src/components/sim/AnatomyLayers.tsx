@@ -1,6 +1,6 @@
 "use client";
 
-// 全身概览里的骨骼 / 动脉 / 静脉层：按需加载，只在打开对应层时才下载 GLB。
+// 全身概览里的肌肉 / 骨骼 / 动脉 / 静脉层：按需加载，只在打开对应层时才下载 GLB。
 // 层仅作参照，不阻挡对器官的点选。
 import { useGLTF } from "@react-three/drei";
 import { Suspense, useEffect, useMemo } from "react";

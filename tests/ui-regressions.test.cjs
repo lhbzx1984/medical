@@ -188,16 +188,19 @@ test('3D overview offers skeleton, artery and vein layers that open the body sur
   try {
     learningButton(panel.render(),'3D 同屏').props.onClick();
     const canvas=()=>panel.render().find(n=>n.props?.mode==='overview' && n.props.organId);
-    assert.deepEqual(canvas().props.layers,{skeletal:false,arterial:false,venous:false}, 'layers start closed');
+    assert.deepEqual(canvas().props.layers,{muscular:false,skeletal:false,arterial:false,venous:false}, 'layers start closed');
     learningButton(panel.render(),'显示体表').props.onClick();
     assert.equal(canvas().props.showBodySurface,true);
     learningButton(panel.render(),'骨骼').props.onClick();
-    assert.deepEqual(canvas().props.layers,{skeletal:true,arterial:false,venous:false});
+    assert.deepEqual(canvas().props.layers,{muscular:false,skeletal:true,arterial:false,venous:false});
     assert.equal(canvas().props.showBodySurface,false, 'opening a layer turns the opaque skin see-through so the layer is not hidden');
+    learningButton(panel.render(),'肌肉').props.onClick();
+    assert.equal(canvas().props.layers.muscular,true, 'muscles can be shown independently');
+    learningButton(panel.render(),'肌肉').props.onClick();
     learningButton(panel.render(),'动脉').props.onClick();
     learningButton(panel.render(),'静脉').props.onClick();
     learningButton(panel.render(),'骨骼').props.onClick();
-    assert.deepEqual(canvas().props.layers,{skeletal:false,arterial:true,venous:true}, 'each layer toggles on its own');
+    assert.deepEqual(canvas().props.layers,{muscular:false,skeletal:false,arterial:true,venous:true}, 'each layer toggles on its own');
     learningButton(panel.render(),'2D 解剖图').props.onClick();
     assert.equal(learningButton(panel.render(),'骨骼'),undefined, 'layer buttons belong to the 3D view only');
   } finally {panel.cleanup();}
@@ -217,7 +220,7 @@ test('female surface regions open a clean body view and exit for organ or layer 
     learningButton(tree,'隐藏分区线').props.onClick();
     assert.equal(panel.render().find(n=>n.props?.mode==='overview' && n.props.organId).props.showSurfaceLines,false);
     learningButton(panel.render(),'显示分区线').props.onClick();
-    assert.deepEqual(canvas.props.layers,{skeletal:false,arterial:false,venous:false});
+    assert.deepEqual(canvas.props.layers,{muscular:false,skeletal:false,arterial:false,venous:false});
     const regionPanel=tree.find(n=>typeof n.props?.onSelect==='function' && 'selected' in n.props);
     assert.ok(regionPanel);
     regionPanel.props.onSelect({name:'脐区',position:[0,1.02,0.105]});

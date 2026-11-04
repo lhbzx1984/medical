@@ -37,6 +37,7 @@ const LAYERS = [
       { name: "Lip", ids: ["FJ2814"], color: [0.71, 0.38, 0.35, 1] },
     ],
   },
+  { file: "bp3d-muscles-male.glb", meshes: [{ name: "Muscles", system: "muscular", color: [0.6, 0.23, 0.2, 1], ratio: 0.4 }] },
   { file: "bp3d-skeleton-male.glb", meshes: [{ name: "Skeleton", system: "skeletal", color: [0.9, 0.85, 0.74, 1], ratio: 0.4 }] },
   { file: "bp3d-arteries-male.glb", meshes: [{ name: "Arteries", system: "arterial", exclude: INTRA_ORGAN, color: [0.7, 0.15, 0.17, 1], ratio: 0.5 }] },
   { file: "bp3d-veins-male.glb", meshes: [{ name: "Veins", system: "venous", exclude: INTRA_ORGAN, color: [0.25, 0.35, 0.65, 1], ratio: 0.5 }] },

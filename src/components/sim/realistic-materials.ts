@@ -144,6 +144,8 @@ export function createLipMaterial(glass: boolean) {
 /** 骨骼、动脉、静脉层的材质（颜色为教学惯例：动脉红、静脉蓝、骨骼象牙白）。 */
 export function createLayerMaterial(id: AnatomyLayerId) {
   switch (id) {
+    case "muscular":
+      return new THREE.MeshPhysicalMaterial({ color: "#a84f46", roughness: 0.7, sheen: 0.25, sheenColor: new THREE.Color("#e7a398") });
     case "skeletal":
       return new THREE.MeshPhysicalMaterial({
         color: "#e6d9bd",

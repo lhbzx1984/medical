@@ -479,8 +479,8 @@ test('body surface and anatomy layers are valid BodyParts3D conversions in the a
   const { GLTFLoader } = await import('three/examples/jsm/loaders/GLTFLoader.js');
   const systems = new Set(atlasParts().map((p) => p.system));
   const files = { '/models/bp3d-skin-male.glb': ['Skin', 'Eyebrow', 'Hair', 'Lip'] };
-  const meshNames = { skeletal: 'Skeleton', arterial: 'Arteries', venous: 'Veins' };
-  assert.deepEqual([...ANATOMY_LAYER_IDS], ['skeletal', 'arterial', 'venous']);
+  const meshNames = { muscular: 'Muscles', skeletal: 'Skeleton', arterial: 'Arteries', venous: 'Veins' };
+  assert.deepEqual([...ANATOMY_LAYER_IDS], ['muscular', 'skeletal', 'arterial', 'venous']);
   for (const id of ANATOMY_LAYER_IDS) {
     assert.ok(systems.has(id), `${id} is not an atlas system`);
     files[ANATOMY_LAYERS[id].glb] = [meshNames[id]];
@@ -488,7 +488,7 @@ test('body surface and anatomy layers are valid BodyParts3D conversions in the a
   let body;
   for (const [url, names] of Object.entries(files)) {
     const bytes = fs.readFileSync(path.join(__dirname, '../public', url));
-    assert.ok(bytes.length < 6e6, `${url} is ${(bytes.length / 1e6).toFixed(1)} MB, too heavy to load on demand`);
+    assert.ok(bytes.length < (url.includes("muscles") ? 16e6 : 6e6), `${url} is ${(bytes.length / 1e6).toFixed(1)} MB, too heavy to load on demand`);
     const gltf = await new GLTFLoader().parseAsync(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength), '');
     assert.deepEqual(gltf.scene.children.map((child) => child.name), names, url);
     assert.match(gltf.asset.copyright, /BodyParts3D.*Attribution 4\.0/, `${url} must carry the BodyParts3D licence notice`);

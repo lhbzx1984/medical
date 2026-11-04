@@ -382,7 +382,7 @@ export default function LearningCenter() {
                     {mode === "overview" && overviewView === "3d" && (
                       <div className="text-[11px] text-[var(--muted)]">
                         {sex === "male" ? "BodyParts3D 男性体表" : "MakeHuman 女性体表参考"} · 器官为示意配准
-                        {sex === "female" && ANATOMY_LAYER_IDS.some((id) => layers[id]) && " · 骨骼与血管层取自男性图谱，仅作示意"}
+                        {sex === "female" && ANATOMY_LAYER_IDS.some((id) => layers[id]) && " · 肌肉、骨骼与血管层取自男性图谱，仅作示意"}
                       </div>
                     )}
                     <div className={`mt-0.5 text-[12.5px] leading-6 text-[var(--text)] ${mode === "overview" && !overviewTarget ? "hidden sm:block" : ""}`}>
