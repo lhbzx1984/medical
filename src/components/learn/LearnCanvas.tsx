@@ -25,6 +25,7 @@ interface Props {
   showBodySurface?: boolean;
   surfaceMode?: boolean;
   surfaceSide?: SurfaceSide;
+  bodyView?: { side: SurfaceSide; sequence: number } | null;
   showSurfaceLines?: boolean;
   surfaceRegion?: SurfaceRegion | null;
   /** 概览中打开的解剖层 */
@@ -39,7 +40,7 @@ interface Props {
 }
 
 /** 相机焦点：概览选中器官后飞向该器官，清除后回到全身 */
-function CameraFocus({ mode, selectedId, extraSelected, sex, surfaceMode, surfaceSide }: { mode: "overview" | "organ"; selectedId: OrganId | null; extraSelected: ExtraOrganId | null; sex: "male" | "female"; surfaceMode: boolean; surfaceSide: SurfaceSide }) {
+function CameraFocus({ mode, selectedId, extraSelected, sex, surfaceMode, surfaceSide, bodyView }: { mode: "overview" | "organ"; selectedId: OrganId | null; extraSelected: ExtraOrganId | null; sex: "male" | "female"; surfaceMode: boolean; surfaceSide: SurfaceSide; bodyView: { side: SurfaceSide; sequence: number } | null }) {
   const camera = useThree((s) => s.camera);
   const controls = useThree((s) => s.controls) as OrbitControlsImpl | null;
   const goal = useRef<{ pos: THREE.Vector3; target: THREE.Vector3 } | null>(null);
@@ -83,6 +84,15 @@ function CameraFocus({ mode, selectedId, extraSelected, sex, surfaceMode, surfac
     }
     anim.current = true;
   }, [mode, selectedId, extraSelected, sex, surfaceMode, surfaceSide, camera, controls]);
+
+  useEffect(() => {
+    if (!bodyView || mode !== "overview" || surfaceMode || !controls) return;
+    camera.position.set(0, 1.0, bodyView.side === "front" ? 2.95 : -2.95);
+    controls.target.set(0, 1.0, 0);
+    controls.update();
+    goal.current = null;
+    anim.current = false;
+  }, [bodyView, camera, controls, mode, surfaceMode]);
 
   useEffect(() => {
     if (!controls) return;
@@ -129,6 +139,7 @@ export default function LearnCanvas({
   showBodySurface = false,
   surfaceMode = false,
   surfaceSide = "front",
+  bodyView = null,
   showSurfaceLines = true,
   surfaceRegion = null,
   layers,
@@ -151,7 +162,7 @@ export default function LearnCanvas({
           if (overview && (selectedId || extraSelected)) onClearSelect();
         }}
       >
-        <CameraFocus mode={mode} selectedId={overview ? selectedId : null} extraSelected={overview ? extraSelected : null} sex={sex} surfaceMode={overview && surfaceMode} surfaceSide={surfaceSide} />
+        <CameraFocus mode={mode} selectedId={overview ? selectedId : null} extraSelected={overview ? extraSelected : null} sex={sex} surfaceMode={overview && surfaceMode} surfaceSide={surfaceSide} bodyView={bodyView} />
         <OrbitControls
           makeDefault
           enablePan={false}

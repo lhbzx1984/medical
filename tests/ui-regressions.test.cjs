@@ -206,6 +206,22 @@ test('3D overview offers skeleton, artery and vein layers that open the body sur
   } finally {panel.cleanup();}
 });
 
+test('3D body view controls request front and back views repeatedly',()=>{
+  const panel=learningHarness('female');
+  try {
+    learningButton(panel.render(),'3D 同屏').props.onClick();
+    learningButton(panel.render(),'背面').props.onClick();
+    let canvas=panel.render().find(n=>n.props?.mode==='overview' && n.props.organId);
+    assert.equal(canvas.props.bodyView.side,'back');
+    const previous=canvas.props.bodyView.sequence;
+    learningButton(panel.render(),'背面').props.onClick();
+    canvas=panel.render().find(n=>n.props?.mode==='overview' && n.props.organId);
+    assert.equal(canvas.props.bodyView.sequence,previous+1);
+    learningButton(panel.render(),'正面').props.onClick();
+    assert.equal(panel.render().find(n=>n.props?.mode==='overview' && n.props.organId).props.bodyView.side,'front');
+  } finally { panel.cleanup(); }
+});
+
 test('female muscle view clears an organ selection and returns to the body surface',()=>{
   const panel=learningHarness('female');
   try {

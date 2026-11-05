@@ -65,6 +65,7 @@ export default function LearningCenter() {
   const [showSurfaceLines, setShowSurfaceLines] = useState(true);
   const [surfaceRegion, setSurfaceRegion] = useState<SurfaceRegion | null>(null);
   const [surfaceSide, setSurfaceSide] = useState<SurfaceSide>("front");
+  const [bodyView, setBodyView] = useState<{ side: SurfaceSide; sequence: number } | null>(null);
   const [layers, setLayers] = useState<AnatomyLayerState>(NO_ANATOMY_LAYERS);
 
   const [extraSelected, setExtraSelected] = useState<{ id: ExtraOrganId; sex: Sex } | null>(null);
@@ -310,6 +311,13 @@ export default function LearningCenter() {
                 ))}
               </div>
             )}
+            {mode === "overview" && overviewView === "3d" && !surfaceMode && (
+              <div className="flex gap-1" role="group" aria-label="人体视角">
+                {([ ["front", "正面"], ["back", "背面"] ] as const).map(([side, label]) => (
+                  <button key={side} className="btn !py-1 !text-xs" onClick={() => { clearOverviewSelection(); setBodyView((previous) => ({ side, sequence: (previous?.sequence ?? 0) + 1 })); }}>{label}</button>
+                ))}
+              </div>
+            )}
             {quizTarget && <button className="btn !py-1 !text-xs" onClick={() => setQuizOrgan(quizTarget)}>学习自测</button>}
             {mode === "organ" && organ.closeupGlb && (
               <button className="btn !py-1 !text-xs" onClick={() => setUseReferenceModel((current) => !current)}>
@@ -355,6 +363,7 @@ export default function LearningCenter() {
                   showBodySurface={showBodySurface}
                   surfaceMode={surfaceMode}
                   surfaceSide={surfaceSide}
+                  bodyView={bodyView}
                   showSurfaceLines={showSurfaceLines}
                   surfaceRegion={surfaceRegion}
                   layers={layers}
