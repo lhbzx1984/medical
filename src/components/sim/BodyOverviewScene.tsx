@@ -174,16 +174,22 @@ export function BodyOverviewScene({
     <group>
       <StudioLighting />
 
-      {/* 人体体表（男性 BodyParts3D 皮肤，女性 MakeHuman 体表）；加载期间显示人形轮廓 */}
-      {showShell && (
-        <Suspense
-          fallback={<BodyOutline mode={shellMode} opacity={shellMode === "skin" ? shellFade : 1} sex={sex} />}
-        >
-          <ReferenceBody key={sex} sex={sex} solid={shellMode === "skin"} headOnly={femaleMuscleView} />
+      {/* 肌肉与女性头部同时加载，避免加载期间只显示悬空头部。 */}
+      {femaleMuscleView && layers ? (
+        <Suspense fallback={<BodyOutline mode="hologram" opacity={1} sex={sex} />}>
+          {showShell && <ReferenceBody key={sex} sex={sex} headOnly />}
+          <AnatomyLayers layers={layers} femaleHead />
         </Suspense>
+      ) : (
+        <>
+          {showShell && (
+            <Suspense fallback={<BodyOutline mode={shellMode} opacity={shellMode === "skin" ? shellFade : 1} sex={sex} />}>
+              <ReferenceBody key={sex} sex={sex} solid={shellMode === "skin"} />
+            </Suspense>
+          )}
+          {layers && <AnatomyLayers layers={layers} />}
+        </>
       )}
-
-      {layers && <AnatomyLayers layers={layers} femaleHead={femaleMuscleView} />}
 
       <Suspense fallback={null}>
         {showOrgans && !femaleMuscleView &&

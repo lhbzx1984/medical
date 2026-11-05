@@ -30,9 +30,9 @@ export function AnatomyLayers({ layers, femaleHead = false }: { layers: AnatomyL
   return (
     <>
       {ANATOMY_LAYER_IDS.filter((id) => layers[id]).map((id) => (
-        <Suspense key={id} fallback={null}>
-          <AnatomyLayer id={id} femaleHead={femaleHead} />
-        </Suspense>
+        femaleHead && id === "muscular"
+          ? <AnatomyLayer key={id} id={id} femaleHead />
+          : <Suspense key={id} fallback={null}><AnatomyLayer id={id} femaleHead={false} /></Suspense>
       ))}
     </>
   );
